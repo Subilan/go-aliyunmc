@@ -31,8 +31,8 @@ type CreateInstanceResponseBody struct {
 	TradePrice float32 `json:"tradePrice"`
 }
 
-func CreateInstance() helpers.BodyHandlerFunc[CreateInstanceBody] {
-	return func(body CreateInstanceBody, c *gin.Context) (any, error) {
+func CreateInstance() gin.HandlerFunc {
+	return helpers.BodyHandler(func(body CreateInstanceBody, c *gin.Context) (any, error) {
 		zone := globals.GetZoneItemByZoneId(body.ZoneId)
 
 		if zone == nil {
@@ -93,5 +93,5 @@ func CreateInstance() helpers.BodyHandlerFunc[CreateInstanceBody] {
 			InstanceId: tea.StringValue(createInstanceResponse.Body.InstanceId),
 			TradePrice: tea.Float32Value(createInstanceResponse.Body.TradePrice),
 		}), nil
-	}
+	})
 }

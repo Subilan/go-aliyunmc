@@ -17,10 +17,10 @@ import (
 )
 
 func bindRoutes(r *gin.Engine) {
-	r.GET("/describe/instanceTypeAndPricePerHour", helpers.QueryHandler(describe.InstanceTypeAndSpotPricePerHour()))
+	r.GET("/describe/instance-types-and-charge", describe.InstanceTypesAndSpotPricePerHour())
 	r.GET("/describe/instance/:instanceId", describe.Instance())
-	r.POST("/ecs-actions/createInstance", helpers.BodyHandler(ecsActions.CreateInstance()))
-	r.DELETE("/ecs-actions/deleteInstance/:instanceId", ecsActions.DeleteInstance())
+	r.POST("/ecs-actions/create-instance", ecsActions.CreateInstance())
+	r.DELETE("/ecs-actions/delete-instance/:instanceId", ecsActions.DeleteInstance())
 }
 
 func main() {

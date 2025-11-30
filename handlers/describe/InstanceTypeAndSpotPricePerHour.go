@@ -55,8 +55,8 @@ type InstanceTypeAndTradePrice struct {
 	Comment string `json:"comment,omitempty"`
 }
 
-func InstanceTypeAndSpotPricePerHour() helpers.QueryHandlerFunc[InstanceTypeAndPricePerHourBody] {
-	return func(body InstanceTypeAndPricePerHourBody, c *gin.Context) (any, error) {
+func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
+	return helpers.QueryHandler(func(body InstanceTypeAndPricePerHourBody, c *gin.Context) (any, error) {
 		client, err := clients.ShouldCreateEcsClient()
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
 
@@ -217,5 +217,5 @@ func InstanceTypeAndSpotPricePerHour() helpers.QueryHandlerFunc[InstanceTypeAndP
 		}
 
 		return helpers.Data(result), nil
-	}
+	})
 }
