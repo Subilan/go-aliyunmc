@@ -2,8 +2,10 @@ package helpers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
+	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
 )
 
@@ -29,17 +31,39 @@ func (e HttpError) Error() string {
 type QueryHandlerFunc[T any] func(query T, c *gin.Context) (any, error)
 
 func QueryHandler[T any](f QueryHandlerFunc[T]) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return BasicHandler(func(c *gin.Context) (any, error) {
 		var query T
 
 		if err := c.ShouldBindQuery(&query); err != nil {
-			c.JSON(http.StatusBadRequest, Details(err.Error()))
-			return
+			return nil, HttpError{Code: 400, Details: err.Error()}
 		}
 
-		res, err := f(query, c)
+		return f(query, c)
+	})
+}
+
+type BodyHandlerFunc[T any] func(body T, c *gin.Context) (any, error)
+
+func BodyHandler[T any](f BodyHandlerFunc[T]) gin.HandlerFunc {
+	return BasicHandler(func(c *gin.Context) (any, error) {
+		var body T
+
+		if err := c.ShouldBindBodyWithJSON(&body); err != nil {
+			return nil, HttpError{Code: http.StatusBadRequest, Details: err.Error()}
+		}
+
+		return f(body, c)
+	})
+}
+
+type BasicHandlerFunc func(c *gin.Context) (any, error)
+
+func BasicHandler(f BasicHandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		res, err := f(c)
 
 		var httpError *HttpError
+		var teaError *tea.SDKError
 
 		if err != nil {
 			if errors.As(err, &httpError) {
@@ -47,32 +71,8 @@ func QueryHandler[T any](f QueryHandlerFunc[T]) gin.HandlerFunc {
 				return
 			}
 
-			c.JSON(http.StatusInternalServerError, Details(err.Error()))
-			return
-		}
-
-		c.JSON(http.StatusOK, res)
-	}
-}
-
-type BodyHandlerFunc[T any] func(body T, c *gin.Context) (any, error)
-
-func BodyHandler[T any](f BodyHandlerFunc[T]) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var body T
-
-		if err := c.ShouldBindBodyWithJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, Details(err.Error()))
-			return
-		}
-
-		res, err := f(body, c)
-
-		var httpError *HttpError
-
-		if err != nil {
-			if errors.As(err, &httpError) {
-				c.JSON(httpError.Code, Details(err.Error()))
+			if errors.As(err, &teaError) {
+				c.JSON(*teaError.StatusCode, Details(fmt.Sprintf("sdk:%s", *teaError.Code)))
 				return
 			}
 

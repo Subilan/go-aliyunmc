@@ -9,6 +9,7 @@ import (
 	"github.com/Subilan/gomc-server/config"
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/handlers/describe"
+	"github.com/Subilan/gomc-server/handlers/ecsActions"
 	"github.com/Subilan/gomc-server/helpers"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +17,10 @@ import (
 )
 
 func bindRoutes(r *gin.Engine) {
-	r.GET("/describe/instanceTypeAndPricePerHour", helpers.QueryHandler(describe.InstanceTypeAndPricePerHour()))
+	r.GET("/describe/instanceTypeAndPricePerHour", helpers.QueryHandler(describe.InstanceTypeAndSpotPricePerHour()))
+	r.GET("/describe/instance/:instanceId", describe.Instance())
+	r.POST("/ecs-actions/createInstance", helpers.BodyHandler(ecsActions.CreateInstance()))
+	r.DELETE("/ecs-actions/deleteInstance/:instanceId", ecsActions.DeleteInstance())
 }
 
 func main() {

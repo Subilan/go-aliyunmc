@@ -1,6 +1,8 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var Cfg Config
 
@@ -16,11 +18,15 @@ type AliyunConfig struct {
 }
 
 type AliyunEcsConfig struct {
-	RegionId                string        `toml:"region_id"`
-	InternetMaxBandwidthOut int           `toml:"internet_max_bandwidth_out"`
-	ImageId                 string        `toml:"image_id"`
-	SystemDisk              EcsDiskConfig `toml:"system_disk"`
-	DataDisk                EcsDiskConfig `toml:"data_disk"`
+	RegionId                 string        `toml:"region_id"`
+	InternetMaxBandwidthOut  int           `toml:"internet_max_bandwidth_out"`
+	ImageId                  string        `toml:"image_id"`
+	SystemDisk               EcsDiskConfig `toml:"system_disk"`
+	DataDisk                 EcsDiskConfig `toml:"data_disk"`
+	HostName                 string        `toml:"hostname"`
+	Password                 string        `toml:"password"`
+	SpotInterruptionBehavior string        `toml:"spot_interruption_behavior"`
+	SecurityGroupId          string        `toml:"security_group_id"`
 }
 
 func (c AliyunEcsConfig) Endpoint() string {
