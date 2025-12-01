@@ -10,8 +10,6 @@ import (
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/handlers/describe"
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
-	"github.com/Subilan/gomc-server/helpers"
-
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -48,15 +46,34 @@ func main() {
 	}
 
 	log.Print("OK")
+
+	globals.VpcClient, err = clients.ShouldCreateVpcClient()
+	if err != nil {
+		log.Fatalln("Error creating VPC client:", err)
+	}
+
+	log.Print("OK")
+
 	log.Print("Loading global Zone information...")
 
-	globals.Zones, err = helpers.RetrieveZones(globals.EcsClient)
+	globals.ZoneCache, err = globals.RetrieveZones(globals.EcsClient)
 
 	if err != nil {
 		log.Fatalln("Error getting zones:", err)
 	}
 
 	log.Print("OK")
+
+	log.Print("Loading global VSwitch information...")
+
+	globals.VSwitchCache, err = globals.RetrieveVSwitches(globals.VpcClient)
+
+	if err != nil {
+		log.Fatalln("Error getting VSwitchCache:", err)
+	}
+
+	log.Print("OK")
+
 	log.Print("Loading gin...")
 
 	engine := gin.New()

@@ -12,13 +12,13 @@ type ServerConfig struct {
 }
 
 type AliyunConfig struct {
+	RegionId        string          `toml:"region_id"`
 	AccessKeyId     string          `toml:"access_key_id"`
 	AccessKeySecret string          `toml:"access_key_secret"`
 	Ecs             AliyunEcsConfig `toml:"ecs"`
 }
 
 type AliyunEcsConfig struct {
-	RegionId                 string        `toml:"region_id"`
 	InternetMaxBandwidthOut  int           `toml:"internet_max_bandwidth_out"`
 	ImageId                  string        `toml:"image_id"`
 	SystemDisk               EcsDiskConfig `toml:"system_disk"`
@@ -29,8 +29,14 @@ type AliyunEcsConfig struct {
 	SecurityGroupId          string        `toml:"security_group_id"`
 }
 
-func (c AliyunEcsConfig) Endpoint() string {
+// EcsEndpoint 返回 ECS 相关的请求 endpoint
+func (c AliyunConfig) EcsEndpoint() string {
 	return fmt.Sprintf("ecs.%s.aliyuncs.com", c.RegionId)
+}
+
+// VpcEndpoint 返回 VPC 相关请求 endpoint
+func (c AliyunConfig) VpcEndpoint() string {
+	return fmt.Sprintf("vpc.%s.aliyuncs.com", c.RegionId)
 }
 
 type EcsDiskConfig struct {

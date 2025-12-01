@@ -59,6 +59,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 	return helpers.QueryHandler(func(body InstanceTypeAndPricePerHourBody, c *gin.Context) (any, error) {
 		client, err := clients.ShouldCreateEcsClient()
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
+		regionId := config.Cfg.Aliyun.RegionId
 
 		if err != nil {
 			return nil, err
@@ -93,7 +94,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 
 		var result = make([]InstanceTypeAndPricePerHourResponseItem, 0)
 
-		var targetZoneItems []helpers.ZoneItem
+		var targetZoneItems []globals.ZoneCacheItem
 
 		if body.ZoneId != "" {
 			onlyZone := globals.GetZoneItemByZoneId(body.ZoneId)
@@ -103,11 +104,11 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 			}
 
 			// TODO: could be multiple
-			targetZoneItems = []helpers.ZoneItem{
+			targetZoneItems = []globals.ZoneCacheItem{
 				*onlyZone,
 			}
 		} else {
-			targetZoneItems = globals.Zones
+			targetZoneItems = globals.ZoneCache
 		}
 
 		for _, zoneItem := range targetZoneItems {
@@ -116,7 +117,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 
 			for _, instanceType := range zoneAvailableFilteredInstanceTypes {
 				describePriceRequest := &ecs20140526.DescribePriceRequest{
-					RegionId:                tea.String(ecsConfig.RegionId),
+					RegionId:                tea.String(regionId),
 					ResourceType:            tea.String("instance"),
 					InstanceType:            tea.String(instanceType),
 					InternetChargeType:      tea.String("PayByTraffic"),
@@ -143,7 +144,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 				}
 
 				if err != nil {
-					fmt.Printf("cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, ecsConfig.RegionId, *zoneItem.ZoneId)
+					fmt.Printf("cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, regionId, *zoneItem.ZoneId)
 					currentTypeAndTradePrice.Comment = err.Error()
 				} else {
 					currentTypeAndTradePrice.TradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice

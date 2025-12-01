@@ -21,7 +21,7 @@ func Instance() gin.HandlerFunc {
 		}
 
 		describeInstancesRequest := ecs20140526.DescribeInstancesRequest{
-			RegionId:    &config.Cfg.Aliyun.Ecs.RegionId,
+			RegionId:    &config.Cfg.Aliyun.RegionId,
 			InstanceIds: tea.String(fmt.Sprintf("[\"%s\"]", instanceId)),
 		}
 

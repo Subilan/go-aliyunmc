@@ -55,7 +55,7 @@ func CreateInstance() gin.HandlerFunc {
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
 
 		createInstanceRequest := &ecs20140526.CreateInstanceRequest{
-			RegionId:     tea.String(ecsConfig.RegionId),
+			RegionId:     tea.String(config.Cfg.Aliyun.RegionId),
 			ZoneId:       zone.ZoneId,
 			InstanceType: tea.String(body.InstanceType),
 			SystemDisk: &ecs20140526.CreateInstanceRequestSystemDisk{
