@@ -1,6 +1,7 @@
 package ecsActions
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/Subilan/gomc-server/config"
@@ -39,17 +40,12 @@ func CreateInstance() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "zone not found"}
 		}
 
-		found := false
-
-		for _, availableType := range zone.AvailableInstanceTypes {
-			if *availableType == body.InstanceType {
-				found = true
-				break
-			}
+		if !globals.IsInstanceTypeAvailableInZone(body.InstanceType, body.ZoneId) {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("instance type %s not available in zone %s or zone does not exist", body.InstanceType, body.ZoneId)}
 		}
 
-		if !found {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "instance type not found"}
+		if !globals.IsVSwitchInZone(body.VSwitchId, body.ZoneId) {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("vSwitch %s not found in region %s", body.VSwitchId, body.ZoneId)}
 		}
 
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()

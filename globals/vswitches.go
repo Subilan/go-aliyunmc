@@ -9,6 +9,17 @@ type VSwitchCacheItem struct {
 
 var VSwitchCache []VSwitchCacheItem
 
+// IsVSwitchInZone 判断当前的交换机信息缓存中，是否存在 zoneId 指定的可用区下标识符为 vSwitchId 的交换机
+func IsVSwitchInZone(vSwitchId string, zoneId string) bool {
+	for _, vSwitchItem := range VSwitchCache {
+		if vSwitchItem.ZoneId == zoneId && vSwitchItem.VSwitchId == vSwitchId {
+			return true
+		}
+	}
+
+	return false
+}
+
 func RetrieveVSwitches(client *vpc20160428.Client) ([]VSwitchCacheItem, error) {
 	describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{}
 

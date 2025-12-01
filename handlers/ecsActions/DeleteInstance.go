@@ -1,7 +1,6 @@
 package ecsActions
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Subilan/gomc-server/globals"
@@ -20,8 +19,6 @@ func DeleteInstance() gin.HandlerFunc {
 
 		_, force := c.GetQuery("force")
 		_, forceStop := c.GetQuery("forceStop")
-
-		fmt.Printf("force=%v, forceStop=%v", force, forceStop)
 
 		deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
 			InstanceId: &instanceId,
