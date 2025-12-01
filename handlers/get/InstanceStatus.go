@@ -30,7 +30,7 @@ func InstanceStatus() gin.HandlerFunc {
 		var result StoredInstanceStatus
 
 		err := globals.Pool.QueryRowContext(ctx, `
-SELECT statuses, updated_at FROM instance_statuses WHERE instance_id = $1
+SELECT statuses, updated_at FROM instance_statuses WHERE instance_id = ?
 `, instanceId).Scan(&result.Status, &result.UpdatedAt)
 
 		if err != nil {
