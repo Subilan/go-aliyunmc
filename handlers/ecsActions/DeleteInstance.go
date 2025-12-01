@@ -1,7 +1,9 @@
 package ecsActions
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
@@ -9,12 +11,29 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const DeleteInstanceTimeout = 15 * time.Second
+
 func DeleteInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
 			return nil, helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
+		}
+
+		ctx, cancel := context.WithTimeout(c, DeleteInstanceTimeout)
+		defer cancel()
+
+		var cnt int
+
+		err := globals.Pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM instances WHERE deleted_at IS NULL AND instance_id = ?", instanceId).Scan(&cnt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if cnt == 0 {
+			return nil, helpers.HttpError{Code: http.StatusNotFound, Details: "instance not found or already deleted"}
 		}
 
 		_, force := c.GetQuery("force")
@@ -26,7 +45,13 @@ func DeleteInstance() gin.HandlerFunc {
 			ForceStop:  &forceStop,
 		}
 
-		_, err := globals.EcsClient.DeleteInstance(deleteInstanceRequest)
+		_, err = globals.EcsClient.DeleteInstance(deleteInstanceRequest)
+
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = globals.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = ? WHERE instance_id = ?", time.Now().Local(), instanceId)
 
 		if err != nil {
 			return nil, err

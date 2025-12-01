@@ -1,8 +1,10 @@
 package ecsActions
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Subilan/gomc-server/config"
 	"github.com/Subilan/gomc-server/globals"
@@ -32,8 +34,12 @@ type CreateInstanceResponseBody struct {
 	TradePrice float32 `json:"tradePrice"`
 }
 
+const CreateInstanceTimeout = 15 * time.Second
+
 func CreateInstance() gin.HandlerFunc {
 	return helpers.BodyHandler(func(body CreateInstanceBody, c *gin.Context) (any, error) {
+		var err error
+
 		zone := globals.GetZoneItemByZoneId(body.ZoneId)
 
 		if zone == nil {
@@ -46,6 +52,21 @@ func CreateInstance() gin.HandlerFunc {
 
 		if !globals.IsVSwitchInZone(body.VSwitchId, body.ZoneId) {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("vSwitch %s not found in region %s", body.VSwitchId, body.ZoneId)}
+		}
+
+		ctx, cancel := context.WithTimeout(c, CreateInstanceTimeout)
+		defer cancel()
+
+		var cnt int
+
+		err = globals.Pool.QueryRowContext(ctx, "SELECT count(*) FROM instances WHERE deleted_at IS NULL").Scan(&cnt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if cnt > 0 {
+			return nil, helpers.HttpError{Code: http.StatusConflict, Details: "an instance already exists"}
 		}
 
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
@@ -80,6 +101,36 @@ func CreateInstance() gin.HandlerFunc {
 		}
 
 		createInstanceResponse, err := globals.EcsClient.CreateInstance(createInstanceRequest)
+
+		if err != nil {
+			return nil, err
+		}
+
+		tx, err := globals.Pool.BeginTx(ctx, nil)
+
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO instances (instance_id, instance_type, region_id, zone_id) VALUES (?, ?, ?, ?)
+`, *createInstanceResponse.Body.InstanceId, body.InstanceType, config.Cfg.Aliyun.RegionId, body.ZoneId)
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		_, err = tx.ExecContext(ctx, `
+INSERT INTO instance_statuses (instance_id, status) VALUES (?, ?)
+`, *createInstanceResponse.Body.InstanceId, "__created__")
+
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		err = tx.Commit()
 
 		if err != nil {
 			return nil, err
