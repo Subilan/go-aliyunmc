@@ -56,8 +56,19 @@ type Config struct {
 	Server   ServerConfig   `toml:"server"`
 	Aliyun   AliyunConfig   `toml:"aliyun"`
 	Database DatabaseConfig `toml:"database"`
+	Monitor  MonitorConfig  `toml:"monitor"`
 }
 
 func (c Config) GetAliyunEcsConfig() AliyunEcsConfig {
 	return c.Aliyun.Ecs
+}
+
+type MonitorConfig struct {
+	ActiveInstanceStatusMonitor ActiveInstanceStatusMonitor `toml:"active_instance_status"`
+}
+
+type ActiveInstanceStatusMonitor struct {
+	ExecutionTimeout  int  `toml:"execution_timeout"`
+	ExecutionInterval int  `toml:"execution_interval"`
+	Verbose           bool `toml:"verbose"`
 }

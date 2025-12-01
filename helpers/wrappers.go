@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/http"
@@ -66,6 +68,11 @@ func BasicHandler(f BasicHandlerFunc) gin.HandlerFunc {
 		var teaError *tea.SDKError
 
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				c.JSON(http.StatusNotFound, Details("no rows found"))
+				return
+			}
+
 			if errors.As(err, &httpError) {
 				c.JSON(httpError.Code, Details(err.Error()))
 				return
@@ -73,6 +80,11 @@ func BasicHandler(f BasicHandlerFunc) gin.HandlerFunc {
 
 			if errors.As(err, &teaError) {
 				c.JSON(*teaError.StatusCode, Details(fmt.Sprintf("sdk:%s", *teaError.Code)))
+				return
+			}
+
+			if errors.Is(err, context.DeadlineExceeded) {
+				c.JSON(http.StatusRequestTimeout, Details("request timeout"))
 				return
 			}
 

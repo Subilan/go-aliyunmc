@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -10,15 +12,40 @@ import (
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/handlers/describe"
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
+	"github.com/Subilan/gomc-server/handlers/get"
+	"github.com/Subilan/gomc-server/monitors"
+	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
 )
 
 func bindRoutes(r *gin.Engine) {
+	r.GET("/get/instance/:instanceId", get.Instance())
+	r.GET("/get/instance-status/:instanceId", get.InstanceStatus())
 	r.GET("/describe/instance-types-and-charge", describe.InstanceTypesAndSpotPricePerHour())
 	r.GET("/describe/instance/:instanceId", describe.Instance())
 	r.POST("/ecs-actions/create-instance", ecsActions.CreateInstance())
 	r.DELETE("/ecs-actions/delete-instance/:instanceId", ecsActions.DeleteInstance())
+}
+
+func runMonitors() {
+	var errChan = make(chan error)
+	monitors.GlobalActiveInstanceStatusMonitor = monitors.NewActiveInstanceStatusMonitor(context.Background(), errChan)
+	monitors.GlobalActiveInstanceStatusMonitor.Run()
+
+	go func() {
+		for {
+			currentErr := <-errChan
+
+			var sdkErr *tea.SDKError
+
+			if errors.As(currentErr, &sdkErr) {
+				monitors.GlobalActiveInstanceStatusMonitor.Logger.Printf("error, sdk:%s", *sdkErr.Code)
+			} else {
+				monitors.GlobalActiveInstanceStatusMonitor.Logger.Printf("error, %s", currentErr)
+			}
+		}
+	}()
 }
 
 func main() {
@@ -84,6 +111,8 @@ func main() {
 	}
 
 	log.Print("OK")
+
+	runMonitors()
 
 	log.Print("Loading gin...")
 
