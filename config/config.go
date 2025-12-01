@@ -11,6 +11,14 @@ type ServerConfig struct {
 	JwtSecret string `toml:"jwt_secret"`
 }
 
+type DatabaseConfig struct {
+	Host     string `toml:"host"`
+	Port     int    `toml:"port"`
+	Username string `toml:"username"`
+	Password string `toml:"password"`
+	Database string `toml:"database"`
+}
+
 type AliyunConfig struct {
 	RegionId        string          `toml:"region_id"`
 	AccessKeyId     string          `toml:"access_key_id"`
@@ -45,8 +53,9 @@ type EcsDiskConfig struct {
 }
 
 type Config struct {
-	Server ServerConfig `toml:"server"`
-	Aliyun AliyunConfig `toml:"aliyun"`
+	Server   ServerConfig   `toml:"server"`
+	Aliyun   AliyunConfig   `toml:"aliyun"`
+	Database DatabaseConfig `toml:"database"`
 }
 
 func (c Config) GetAliyunEcsConfig() AliyunEcsConfig {

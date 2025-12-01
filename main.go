@@ -37,6 +37,7 @@ func main() {
 	}
 
 	log.Print("OK")
+
 	log.Print("Loading global ECS client...")
 
 	globals.EcsClient, err = clients.ShouldCreateEcsClient()
@@ -70,6 +71,16 @@ func main() {
 
 	if err != nil {
 		log.Fatalln("Error getting VSwitchCache:", err)
+	}
+
+	log.Print("OK")
+
+	log.Print("Initializing database pool...")
+
+	err = globals.InitPool()
+
+	if err != nil {
+		log.Fatalln("Error initializing database:", err)
 	}
 
 	log.Print("OK")
