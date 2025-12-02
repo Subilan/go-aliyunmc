@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
 	"github.com/Subilan/gomc-server/handlers/get"
 	"github.com/Subilan/gomc-server/monitors"
-	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -29,23 +27,13 @@ func bindRoutes(r *gin.Engine) {
 }
 
 func runMonitors() {
-	var errChan = make(chan error)
-	monitors.GlobalActiveInstanceStatusMonitor = monitors.NewActiveInstanceStatusMonitor(context.Background(), errChan)
+	var activeInstanceStatusMonitorErrChan = make(chan error)
+	monitors.GlobalActiveInstanceStatusMonitor = monitors.NewActiveInstanceStatusMonitor(context.Background(), activeInstanceStatusMonitorErrChan)
 	monitors.GlobalActiveInstanceStatusMonitor.Run()
 
-	go func() {
-		for {
-			currentErr := <-errChan
-
-			var sdkErr *tea.SDKError
-
-			if errors.As(currentErr, &sdkErr) {
-				monitors.GlobalActiveInstanceStatusMonitor.Logger.Printf("error, sdk:%s", *sdkErr.Code)
-			} else {
-				monitors.GlobalActiveInstanceStatusMonitor.Logger.Printf("error, %s", currentErr)
-			}
-		}
-	}()
+	var automaticPublicIpAllocatorErrChan = make(chan error)
+	monitors.GlobalAutomaticPublicIPAllocator = monitors.NewAutomaticPublicIPAllocator(context.Background(), automaticPublicIpAllocatorErrChan)
+	monitors.GlobalAutomaticPublicIPAllocator.Run()
 }
 
 func main() {

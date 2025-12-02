@@ -15,12 +15,12 @@ import (
 )
 
 type ActiveInstanceStatusMonitor struct {
-	SkipSign    bool
-	StopSign    bool
-	RunningSign bool
-	Ctx         context.Context
-	ErrChan     chan error
-	Logger      *log.Logger
+	skipSign    bool
+	stopSign    bool
+	runningSign bool
+	ctx         context.Context
+	errChan     chan error
+	logger      *log.Logger
 }
 
 const ActiveInstanceStatusMonitorCycleTimeout = 30 * time.Second
@@ -28,31 +28,31 @@ const ActiveInstanceStatusMonitorCycleTimeout = 30 * time.Second
 var GlobalActiveInstanceStatusMonitor *ActiveInstanceStatusMonitor
 
 func NewActiveInstanceStatusMonitor(ctx context.Context, errChan chan error) *ActiveInstanceStatusMonitor {
-	logger := log.New(os.Stdout, "[ActiveInstanceStatusMonitor] ", 0)
+	logger := log.New(os.Stdout, "[ActiveInstanceStatusMonitor] ", log.LstdFlags)
 	return &ActiveInstanceStatusMonitor{
-		Ctx:     ctx,
-		ErrChan: errChan,
-		Logger:  logger,
+		ctx:     ctx,
+		errChan: errChan,
+		logger:  logger,
 	}
 }
 
 func (m *ActiveInstanceStatusMonitor) Run() {
-	m.Logger.Println("Starting")
-	m.StopSign = false
-	m.SkipSign = false
-	m.RunningSign = true
+	m.logger.Println("Starting")
+	m.stopSign = false
+	m.skipSign = false
+	m.runningSign = true
 	go m.Main()
 }
 
 func (m *ActiveInstanceStatusMonitor) Pause() {
-	m.Logger.Println("Pausing subsequent execution")
-	m.SkipSign = true
+	m.logger.Println("Pausing subsequent execution")
+	m.skipSign = true
 }
 
 func (m *ActiveInstanceStatusMonitor) Stop() {
-	m.Logger.Println("Stopping")
-	m.StopSign = true
-	m.RunningSign = false
+	m.logger.Println("Stopping")
+	m.stopSign = true
+	m.runningSign = false
 }
 
 func (m *ActiveInstanceStatusMonitor) Main() {
@@ -68,28 +68,28 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 		var describeInstanceStatusRequest *ecs20140526.DescribeInstanceStatusRequest
 		var describeInstanceStatusResponse *ecs20140526.DescribeInstanceStatusResponse
 
-		if m.StopSign {
+		if m.stopSign {
 			break
 		}
 
-		if m.SkipSign {
+		if m.skipSign {
 			goto end
 		}
 
-		ctx, cancel = context.WithTimeout(m.Ctx, ActiveInstanceStatusMonitorCycleTimeout)
+		ctx, cancel = context.WithTimeout(m.ctx, ActiveInstanceStatusMonitorCycleTimeout)
 
 		err = globals.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&activeInstanceId)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				if cfg.Verbose {
-					m.Logger.Println("No active instance found, skipping")
+					m.logger.Println("No active instance found, skipping")
 				}
 				goto end
 			}
 
-			m.Logger.Printf("Error querying active instance status: %v\n", err)
-			m.ErrChan <- err
+			m.logger.Printf("Error querying active instance status: %v\n", err)
+			m.errChan <- err
 			goto end
 		}
 
@@ -101,8 +101,8 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 		describeInstanceStatusResponse, err = globals.EcsClient.DescribeInstanceStatus(describeInstanceStatusRequest)
 
 		if err != nil {
-			m.Logger.Printf("Error describing active instance status: %v\n", err)
-			m.ErrChan <- err
+			m.logger.Printf("Error describing active instance status: %v\n", err)
+			m.errChan <- err
 			goto end
 		}
 
@@ -112,30 +112,30 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 			updateRes, err = globals.Pool.ExecContext(ctx, "UPDATE instance_statuses SET status = ? WHERE instance_id = ?", status, activeInstanceId)
 
 			if err != nil {
-				m.Logger.Printf("Error updating active instance status: %v\n", err)
-				m.ErrChan <- err
+				m.logger.Printf("Error updating active instance status: %v\n", err)
+				m.errChan <- err
 				goto end
 			}
 
 			rowsAffected, err = updateRes.RowsAffected()
 
 			if err != nil {
-				m.Logger.Printf("You don't seem to have RowsAffected! Updated active instance status to %s\n", status)
-				m.ErrChan <- err
+				m.logger.Printf("You don't seem to have RowsAffected! Updated active instance status to %s\n", status)
+				m.errChan <- err
 				goto end
 			}
 
 			if rowsAffected > 0 {
-				m.Logger.Printf("Updated active instance status to %s\n", status)
+				m.logger.Printf("Updated active instance status to %s\n", status)
 			}
 		} else {
 			if cfg.Verbose {
-				m.Logger.Println("No instance returned from remote")
+				m.logger.Println("No instance returned from remote")
 			}
 		}
 
 	end:
 		cancel()
-		time.Sleep(5 * time.Second)
+		time.Sleep(time.Duration(config.Cfg.Monitor.ActiveInstanceStatusMonitor.ExecutionInterval) * time.Second)
 	}
 }

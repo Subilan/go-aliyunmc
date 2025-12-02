@@ -65,10 +65,15 @@ func (c Config) GetAliyunEcsConfig() AliyunEcsConfig {
 
 type MonitorConfig struct {
 	ActiveInstanceStatusMonitor ActiveInstanceStatusMonitor `toml:"active_instance_status"`
+	AutomaticPublicIpAllocator  AutomaticPublicIpAllocator  `toml:"automatic_public_ip_allocator"`
 }
 
 type ActiveInstanceStatusMonitor struct {
-	ExecutionTimeout  int  `toml:"execution_timeout"`
+	ExecutionInterval int  `toml:"execution_interval"`
+	Verbose           bool `toml:"verbose"`
+}
+
+type AutomaticPublicIpAllocator struct {
 	ExecutionInterval int  `toml:"execution_interval"`
 	Verbose           bool `toml:"verbose"`
 }
