@@ -15,6 +15,7 @@ type StoredInstance struct {
 	InstanceType string     `json:"instanceType"`
 	RegionId     string     `json:"regionId"`
 	ZoneId       string     `json:"zoneId"`
+	Ip           *string    `json:"ip"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	DeletedAt    *time.Time `json:"deletedAt"`
 }
@@ -33,8 +34,8 @@ func Instance() gin.HandlerFunc {
 		var result StoredInstance
 
 		err := globals.Pool.QueryRowContext(ctx, `
-SELECT instance_id, instance_type, region_id, zone_id, created_at, deleted_at FROM instances WHERE instance_id = ?
-`, instanceId).Scan(&result.InstanceId, &result.InstanceType, &result.RegionId, &result.ZoneId, &result.CreatedAt, &result.DeletedAt)
+SELECT instance_id, instance_type, region_id, zone_id, ip, created_at, deleted_at FROM instances WHERE instance_id = ?
+`, instanceId).Scan(&result.InstanceId, &result.InstanceType, &result.RegionId, &result.ZoneId, &result.Ip, &result.CreatedAt, &result.DeletedAt)
 
 		if err != nil {
 			return nil, err

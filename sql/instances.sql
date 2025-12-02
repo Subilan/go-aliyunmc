@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS instances (
     -- 实例所在的可用区
     zone_id VARCHAR(20) NOT NULL,
 
+    -- 实例被分配的公网 IP 地址
+    ip VARCHAR(50) DEFAULT NULL,
+
     -- 实例被删除的时间。如果实例没有被删除，为空
     deleted_at TIMESTAMP DEFAULT NULL,
 
