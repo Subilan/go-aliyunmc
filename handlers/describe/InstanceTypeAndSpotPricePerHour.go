@@ -1,7 +1,6 @@
 package describe
 
 import (
-	"fmt"
 	"net/http"
 	"slices"
 	"sort"
@@ -16,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// InstanceTypeAndPricePerHourBody is the request structure of this handler.
+// InstanceTypeAndPricePerHourBody 是查询实例类型及价格接口的请求体结构
 type InstanceTypeAndPricePerHourBody struct {
 	ZoneId              string `json:"zoneId" form:"zoneId"`
 	MinimumMemorySize   int    `json:"minimumMemorySize,omitempty" form:"minimumMemorySize" binding:"required"`
@@ -28,31 +27,28 @@ type InstanceTypeAndPricePerHourBody struct {
 	helpers.Sorted
 }
 
-// InstanceTypeAndPricePerHourResponseItem is the response structure of this handler.
-// For the crucial part, see InstanceTypeAndTradePrice.
+// InstanceTypeAndPricePerHourResponseItem 是查询实例类型及价格接口的返回结构
 type InstanceTypeAndPricePerHourResponseItem struct {
-	ZoneId             string                      `json:"zoneId"`
+	// ZoneId 是可用区的代码，例如cn-shenzhen-c
+	ZoneId string `json:"zoneId"`
+
+	// TypesAndTradePrice 是查询的结果数组
 	TypesAndTradePrice []InstanceTypeAndTradePrice `json:"typesAndTradePrice"`
 }
 
-// InstanceTypeAndTradePrice describes an instance with its fundamental configurations (e.g. MemorySize and CpuCoreCount) and its TradePrice under SpotAsPriceGo spot strategy.
-// There might be a string Comment attached to indicate the reason of its possible unusual construction,
-// for example, there might be no informative field due to the fact that they cannot be retrieved as a whole under the given ECS settings defined in config.toml.
+// InstanceTypeAndTradePrice 用来表示一个实例的类型、配置信息和成交价格
 type InstanceTypeAndTradePrice struct {
-	// InstanceType, or instance type id, identifies an ECS instance type.
+	// InstanceType 是该实例的类型代码，例如 ecs.g6.xlarge
 	InstanceType string `json:"instanceType"`
 
-	// CpuCoreCount is the count of vCPU
+	// CpuCoreCount 是该实例的CPU核数
 	CpuCoreCount int32 `json:"cpuCoreCount,omitempty"`
 
-	// MemorySize is the memory size in GiB
+	// MemorySize 是该实例的内存大小，单位GiB
 	MemorySize float32 `json:"memorySize,omitempty"`
 
-	// TradePrice is the price in CNY of this type of ECS instance, calculated under SpotAsPriceGo spot strategy and current ECS settings defined in config.toml.
+	// TradePrice 是该实例在抢占式竞价策略下的每小时成交价格，单位CNY
 	TradePrice float32 `json:"tradePrice,omitempty"`
-
-	// Comment describes the detailed reason when the fields cannot be retrieved as a whole.
-	Comment string `json:"comment,omitempty"`
 }
 
 func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
@@ -78,6 +74,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 			describeInstanceTypesRequest.MaxResults = body.MaxResults
 		}
 
+		// 获取地域下所有满足需要的实例类型
 		describeInstanceTypesResponse, err := client.DescribeInstanceTypes(describeInstanceTypesRequest)
 
 		if err != nil {
@@ -96,6 +93,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 
 		var targetZoneItems []globals.ZoneCacheItem
 
+		// 若请求体指定了可用区，则只在该可用区内搜索；否则在当前地域的所有可用区搜索
 		if body.ZoneId != "" {
 			onlyZone := globals.GetZoneItemByZoneId(body.ZoneId)
 
@@ -111,10 +109,14 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 			targetZoneItems = globals.ZoneCache
 		}
 
+		// 对当前地域的每一个可用区
 		for _, zoneItem := range targetZoneItems {
 			var typesAndTradePrice = make([]InstanceTypeAndTradePrice, 0)
+
+			// 找出当前可用区内的实例类型与按参数搜索结果中的实例类型的交集
 			zoneAvailableFilteredInstanceTypes := helpers.IntersectHashGeneric(tea.StringSliceValue(zoneItem.AvailableInstanceTypes), instanceTypeIds)
 
+			// 对当前可用区满足要求的每一个实例类型
 			for _, instanceType := range zoneAvailableFilteredInstanceTypes {
 				describePriceRequest := &ecs20140526.DescribePriceRequest{
 					RegionId:                tea.String(regionId),
@@ -137,6 +139,9 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 					SpotDuration: tea.Int32(1),
 				}
 
+				// 获取价格
+				// Note: 由于查价接口传入的信息相比查询实例类型接口传入的信息多出了对系统盘和数据盘的参数
+				// 此处可能因为系统盘、数据盘的配置在指定实例上不受支持而报错
 				describePriceResponse, err := client.DescribePrice(describePriceRequest)
 
 				currentTypeAndTradePrice := InstanceTypeAndTradePrice{
@@ -144,8 +149,8 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 				}
 
 				if err != nil {
-					fmt.Printf("cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, regionId, *zoneItem.ZoneId)
-					currentTypeAndTradePrice.Comment = err.Error()
+					//fmt.Printf("warn: cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, regionId, *zoneItem.ZoneId)
+					continue
 				} else {
 					currentTypeAndTradePrice.TradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice
 				}
@@ -166,6 +171,7 @@ func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 			})
 		}
 
+		// 对结果按照指定字段进行排序
 		if body.SortBy != nil {
 			var sortBy = *body.SortBy
 			validFields := []string{"cpuCoreCount", "memorySize", "tradePrice"}
