@@ -16,10 +16,7 @@ func JWTAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, &helpers.HttpError{
-				Code:    http.StatusUnauthorized,
-				Details: "请求头中缺少Authorization字段",
-			})
+			c.JSON(http.StatusUnauthorized, helpers.Details("请求头中缺少Authorization字段"))
 			c.Abort()
 			return
 		}
@@ -27,10 +24,7 @@ func JWTAuth() gin.HandlerFunc {
 		// Bearer <token> 格式
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, &helpers.HttpError{
-				Code:    http.StatusUnauthorized,
-				Details: "Authorization头格式错误",
-			})
+			c.JSON(http.StatusUnauthorized, helpers.Details("Authorization头格式错误"))
 			c.Abort()
 			return
 		}
@@ -44,26 +38,17 @@ func JWTAuth() gin.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, jwt.ErrSignatureInvalid) {
-				c.JSON(http.StatusUnauthorized, &helpers.HttpError{
-					Code:    http.StatusUnauthorized,
-					Details: "无效的JWT签名",
-				})
+				c.JSON(http.StatusUnauthorized, helpers.Details("无效的JWT签名"))
 				c.Abort()
 				return
 			}
-			c.JSON(http.StatusUnauthorized, &helpers.HttpError{
-				Code:    http.StatusUnauthorized,
-				Details: "无法解析JWT令牌: " + err.Error(),
-			})
+			c.JSON(http.StatusUnauthorized, helpers.Details("无法解析JWT令牌: "+err.Error()))
 			c.Abort()
 			return
 		}
 
 		if !token.Valid {
-			c.JSON(http.StatusUnauthorized, &helpers.HttpError{
-				Code:    http.StatusUnauthorized,
-				Details: "JWT令牌无效",
-			})
+			c.JSON(http.StatusUnauthorized, helpers.Details("JWT令牌无效"))
 			c.Abort()
 			return
 		}
