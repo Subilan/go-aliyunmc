@@ -9,9 +9,13 @@ import (
 	"github.com/Subilan/gomc-server/clients"
 	"github.com/Subilan/gomc-server/config"
 	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/gomc-server/handlers/auth"
 	"github.com/Subilan/gomc-server/handlers/describe"
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
 	"github.com/Subilan/gomc-server/handlers/get"
+	"github.com/Subilan/gomc-server/handlers/simple"
+	"github.com/Subilan/gomc-server/handlers/users"
+	"github.com/Subilan/gomc-server/middlewares"
 	"github.com/Subilan/gomc-server/monitors"
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
@@ -24,6 +28,11 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/describe/instance/:instanceId", describe.Instance())
 	r.POST("/ecs-actions/create-instance", ecsActions.CreateInstance())
 	r.DELETE("/ecs-actions/delete-instance/:instanceId", ecsActions.DeleteInstance())
+	r.POST("/user/create", users.HandleCreateUser())
+	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.HandleUpdateUser())
+	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.HandleDeleteUser())
+	r.POST("/auth/get-token", auth.HandleGetToken())
+	r.GET("/auth/ping", middlewares.JWTAuth(), simple.HandleGenerate200())
 }
 
 func runMonitors() {
