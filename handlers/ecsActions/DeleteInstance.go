@@ -18,7 +18,7 @@ func DeleteInstance() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			return nil, helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
+			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
 		}
 
 		ctx, cancel := context.WithTimeout(c, DeleteInstanceTimeout)
@@ -33,7 +33,7 @@ func DeleteInstance() gin.HandlerFunc {
 		}
 
 		if cnt == 0 {
-			return nil, helpers.HttpError{Code: http.StatusNotFound, Details: "instance not found or already deleted"}
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "instance not found or already deleted"}
 		}
 
 		_, force := c.GetQuery("force")

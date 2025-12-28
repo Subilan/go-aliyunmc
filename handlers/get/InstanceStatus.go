@@ -21,7 +21,7 @@ func InstanceStatus() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			return nil, helpers.HttpError{Code: http.StatusBadRequest, Details: "instanceId not provided"}
+			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "instanceId not provided"}
 		}
 
 		ctx, cancel := context.WithTimeout(c, 1*time.Second)

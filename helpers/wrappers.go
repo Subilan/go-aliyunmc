@@ -37,7 +37,7 @@ func QueryHandler[T any](f QueryHandlerFunc[T]) gin.HandlerFunc {
 		var query T
 
 		if err := c.ShouldBindQuery(&query); err != nil {
-			return nil, HttpError{Code: 400, Details: err.Error()}
+			return nil, &HttpError{Code: 400, Details: err.Error()}
 		}
 
 		return f(query, c)
@@ -51,7 +51,7 @@ func BodyHandler[T any](f BodyHandlerFunc[T]) gin.HandlerFunc {
 		var body T
 
 		if err := c.ShouldBindBodyWithJSON(&body); err != nil {
-			return nil, HttpError{Code: http.StatusBadRequest, Details: err.Error()}
+			return nil, &HttpError{Code: http.StatusBadRequest, Details: err.Error()}
 		}
 
 		return f(body, c)

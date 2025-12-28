@@ -17,7 +17,7 @@ func Instance() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			return nil, helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
+			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
 		}
 
 		describeInstancesRequest := ecs20140526.DescribeInstancesRequest{

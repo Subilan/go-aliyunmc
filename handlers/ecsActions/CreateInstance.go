@@ -66,7 +66,7 @@ func CreateInstance() gin.HandlerFunc {
 		}
 
 		if cnt > 0 {
-			return nil, helpers.HttpError{Code: http.StatusConflict, Details: "an instance already exists"}
+			return nil, &helpers.HttpError{Code: http.StatusConflict, Details: "an instance already exists"}
 		}
 
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
