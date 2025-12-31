@@ -2,3 +2,4 @@ config.toml
 .idea
 
 LLM.md
+*.drawio.bkp
