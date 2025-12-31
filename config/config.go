@@ -19,6 +19,12 @@ type DatabaseConfig struct {
 	Database string `toml:"database"`
 }
 
+type DeployConfig struct {
+	Packages     []string `toml:"packages"`
+	SSHPublicKey string   `toml:"ssh_public_key"`
+	JavaVersion  uint     `toml:"java_version"`
+}
+
 type AliyunConfig struct {
 	RegionId        string          `toml:"region_id"`
 	AccessKeyId     string          `toml:"access_key_id"`
@@ -32,7 +38,8 @@ type AliyunEcsConfig struct {
 	SystemDisk               EcsDiskConfig `toml:"system_disk"`
 	DataDisk                 EcsDiskConfig `toml:"data_disk"`
 	HostName                 string        `toml:"hostname"`
-	Password                 string        `toml:"password"`
+	RootPassword             string        `toml:"root_password"`
+	ProdPassword             string        `toml:"prod_password"`
 	SpotInterruptionBehavior string        `toml:"spot_interruption_behavior"`
 	SecurityGroupId          string        `toml:"security_group_id"`
 }
@@ -57,6 +64,7 @@ type Config struct {
 	Aliyun   AliyunConfig   `toml:"aliyun"`
 	Database DatabaseConfig `toml:"database"`
 	Monitor  MonitorConfig  `toml:"monitor"`
+	Deploy   DeployConfig   `toml:"deploy"`
 }
 
 func (c Config) GetAliyunEcsConfig() AliyunEcsConfig {

@@ -9,6 +9,7 @@ import (
 	"github.com/Subilan/gomc-server/config"
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/monitors"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
@@ -81,15 +82,15 @@ func CreateInstance() gin.HandlerFunc {
 			},
 			DataDisk: []*ecs20140526.CreateInstanceRequestDataDisk{
 				{
-					Category: tea.String(ecsConfig.SystemDisk.Category),
-					Size:     tea.Int32(int32(ecsConfig.SystemDisk.Size)),
+					Category: tea.String(ecsConfig.DataDisk.Category),
+					Size:     tea.Int32(int32(ecsConfig.DataDisk.Size)),
 					DiskName: tea.String("data"),
 				},
 			},
 			InternetChargeType:       tea.String("PayByBandwidth"),
 			InternetMaxBandwidthOut:  tea.Int32(int32(ecsConfig.InternetMaxBandwidthOut)),
 			HostName:                 tea.String(ecsConfig.HostName),
-			Password:                 tea.String(ecsConfig.Password),
+			Password:                 tea.String(ecsConfig.RootPassword),
 			InstanceChargeType:       tea.String("PostPaid"),
 			SpotStrategy:             tea.String("SpotAsPriceGo"),
 			SpotDuration:             tea.Int32(1),
@@ -135,6 +136,8 @@ INSERT INTO instance_statuses (instance_id, status) VALUES (?, ?)
 		if err != nil {
 			return nil, err
 		}
+
+		go monitors.StartInstanceWhenReady()
 
 		return helpers.Data(CreateInstanceResponseBody{
 			InstanceId: tea.StringValue(createInstanceResponse.Body.InstanceId),

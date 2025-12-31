@@ -9,6 +9,7 @@ import (
 	"github.com/Subilan/gomc-server/clients"
 	"github.com/Subilan/gomc-server/config"
 	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/gomc-server/handlers"
 	"github.com/Subilan/gomc-server/handlers/auth"
 	"github.com/Subilan/gomc-server/handlers/describe"
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
@@ -29,13 +30,16 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/describe/instance/:instanceId", describe.Instance())
 	r.POST("/ecs-actions/create-instance", ecsActions.CreateInstance())
 	r.DELETE("/ecs-actions/delete-instance/:instanceId", ecsActions.DeleteInstance())
-	r.POST("/user/create", users.HandleCreateUser())
-	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.HandleUpdateUser())
-	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.HandleDeleteUser())
-	r.POST("/auth/get-token", auth.HandleGetToken())
-	r.GET("/auth/get-payload", middlewares.JWTAuth(), auth.HandleGetPayload())
-	r.GET("/auth/ping", middlewares.JWTAuth(), simple.HandleGenerate200())
-	r.GET("/ping", simple.HandleGenerate200())
+	r.DELETE("/ecs-actions/delete-instance", ecsActions.DeleteInstance())
+	r.GET("/ecs-actions/deploy-active-instance", middlewares.JWTAuth(), ecsActions.DeployInstance())
+	r.POST("/user/create", users.Create())
+	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.Update())
+	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.Delete())
+	r.POST("/auth/get-token", auth.GetToken())
+	r.GET("/auth/get-payload", middlewares.JWTAuth(), auth.GetPayload())
+	r.GET("/auth/ping", middlewares.JWTAuth(), simple.Gen200())
+	r.GET("/ping", simple.Gen200())
+	r.GET("/stream", middlewares.JWTAuth(), handlers.BeginStream())
 }
 
 func runMonitors() {

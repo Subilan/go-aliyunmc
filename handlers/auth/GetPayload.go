@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func HandleGetPayload() gin.HandlerFunc {
+func GetPayload() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		userId, exist := c.Get("user_id")
 

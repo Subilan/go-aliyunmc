@@ -2,6 +2,8 @@ package ecsActions
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -18,7 +20,15 @@ func DeleteInstance() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "no instanceId provided"}
+			err := globals.Pool.QueryRow("SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&instanceId)
+
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "找不到符合要求的instance id"}
+				}
+
+				return nil, err
+			}
 		}
 
 		ctx, cancel := context.WithTimeout(c, DeleteInstanceTimeout)

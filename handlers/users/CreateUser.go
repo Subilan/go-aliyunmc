@@ -14,7 +14,7 @@ type CreateUserRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func HandleCreateUser() gin.HandlerFunc {
+func Create() gin.HandlerFunc {
 	return helpers.BodyHandler[CreateUserRequest](func(body CreateUserRequest, c *gin.Context) (any, error) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
 
