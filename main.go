@@ -17,6 +17,7 @@ import (
 	"github.com/Subilan/gomc-server/handlers/users"
 	"github.com/Subilan/gomc-server/middlewares"
 	"github.com/Subilan/gomc-server/monitors"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -32,7 +33,9 @@ func bindRoutes(r *gin.Engine) {
 	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.HandleUpdateUser())
 	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.HandleDeleteUser())
 	r.POST("/auth/get-token", auth.HandleGetToken())
+	r.GET("/auth/get-payload", middlewares.JWTAuth(), auth.HandleGetPayload())
 	r.GET("/auth/ping", middlewares.JWTAuth(), simple.HandleGenerate200())
+	r.GET("/ping", simple.HandleGenerate200())
 }
 
 func runMonitors() {
@@ -114,6 +117,13 @@ func main() {
 	log.Print("Loading gin...")
 
 	engine := gin.New()
+
+	engine.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
 
 	bindRoutes(engine)
 
