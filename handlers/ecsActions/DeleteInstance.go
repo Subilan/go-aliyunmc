@@ -61,7 +61,7 @@ func DeleteInstance() gin.HandlerFunc {
 			return nil, err
 		}
 
-		_, err = globals.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = ? WHERE instance_id = ?", time.Now().Local(), instanceId)
+		_, err = globals.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = CURRENT_TIMESTAMP WHERE instance_id = ?", instanceId)
 
 		if err != nil {
 			return nil, err
