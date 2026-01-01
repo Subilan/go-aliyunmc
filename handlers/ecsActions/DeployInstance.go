@@ -24,7 +24,7 @@ func DeployInstance() gin.HandlerFunc {
 		userIdStr, exists := c.Get("user_id")
 
 		if !exists || userIdStr == "" {
-			return nil, helpers.HttpError{Code: http.StatusUnauthorized, Details: "无效用户ID"}
+			return nil, &helpers.HttpError{Code: http.StatusUnauthorized, Details: "无效用户ID"}
 		}
 
 		userId = int(userIdStr.(int64))
@@ -40,7 +40,7 @@ func DeployInstance() gin.HandlerFunc {
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return nil, helpers.HttpError{Code: http.StatusBadRequest, Details: "没有符合要求的实例"}
+				return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "没有符合要求的实例"}
 			}
 
 			return nil, err
@@ -56,7 +56,7 @@ func DeployInstance() gin.HandlerFunc {
 		}
 
 		if cnt != 0 {
-			return nil, helpers.HttpError{Code: http.StatusConflict, Details: "已经存在部署任务正在运行"}
+			return nil, &helpers.HttpError{Code: http.StatusConflict, Details: "已经存在部署任务正在运行"}
 		}
 
 		// 为新的部署任务分配UUID并插入记录
