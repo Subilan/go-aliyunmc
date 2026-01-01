@@ -24,6 +24,7 @@ type DeployTemplateData struct {
 	AccessKeySecret string
 	JavaVersion     uint
 	DataDiskSize    int
+	ArchiveOSSPath  string
 }
 
 func stripAnsiColorCodes(text []byte) []byte {
@@ -58,6 +59,7 @@ func RunRemoteScripts(
 		AccessKeySecret: config.Cfg.Aliyun.AccessKeySecret,
 		JavaVersion:     config.Cfg.Deploy.JavaVersion,
 		DataDiskSize:    config.Cfg.Aliyun.Ecs.DataDisk.Size,
+		ArchiveOSSPath:  config.Cfg.Deploy.ArchiveOSSPath,
 	})
 
 	if err != nil {

@@ -20,9 +20,10 @@ type DatabaseConfig struct {
 }
 
 type DeployConfig struct {
-	Packages     []string `toml:"packages"`
-	SSHPublicKey string   `toml:"ssh_public_key"`
-	JavaVersion  uint     `toml:"java_version"`
+	Packages       []string `toml:"packages"`
+	SSHPublicKey   string   `toml:"ssh_public_key"`
+	JavaVersion    uint     `toml:"java_version"`
+	ArchiveOSSPath string   `toml:"archive_oss_path"`
 }
 
 type AliyunConfig struct {
