@@ -5,6 +5,7 @@ import (
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/helpers/ginContextCheckers"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,7 +22,7 @@ func Update() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "无效用户id"}
 		}
 
-		ownErr := helpers.MustOwnUserId(userId, c)
+		ownErr := ginContextCheckers.MustOwnUserId(userId, c)
 
 		if ownErr != nil {
 			return nil, ownErr

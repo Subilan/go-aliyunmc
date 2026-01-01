@@ -1,4 +1,4 @@
-package helpers
+package store
 
 import "strings"
 

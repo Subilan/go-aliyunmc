@@ -5,6 +5,7 @@ import (
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/helpers/store"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -25,7 +26,7 @@ func Create() gin.HandlerFunc {
 		_, err = globals.Pool.ExecContext(c, "INSERT INTO users (username, password_hash) VALUES (?, ?)", body.Username, hash)
 
 		if err != nil {
-			if helpers.IsDuplicateEntryError(err) {
+			if store.IsDuplicateEntryError(err) {
 				return nil, &helpers.HttpError{
 					Code:    http.StatusBadRequest,
 					Details: "用户名重复",

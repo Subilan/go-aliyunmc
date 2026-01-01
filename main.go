@@ -14,7 +14,9 @@ import (
 	"github.com/Subilan/gomc-server/handlers/describe"
 	"github.com/Subilan/gomc-server/handlers/ecsActions"
 	"github.com/Subilan/gomc-server/handlers/get"
+	"github.com/Subilan/gomc-server/handlers/server"
 	"github.com/Subilan/gomc-server/handlers/simple"
+	"github.com/Subilan/gomc-server/handlers/tasks"
 	"github.com/Subilan/gomc-server/handlers/users"
 	"github.com/Subilan/gomc-server/middlewares"
 	"github.com/Subilan/gomc-server/monitors"
@@ -40,6 +42,8 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/auth/ping", middlewares.JWTAuth(), simple.Gen200())
 	r.GET("/ping", simple.Gen200())
 	r.GET("/stream", middlewares.JWTAuth(), handlers.BeginStream())
+	r.GET("/task/cancel/:taskId", middlewares.JWTAuth(), tasks.Cancel())
+	r.GET("/server/start", middlewares.JWTAuth(), server.Start())
 }
 
 func runMonitors() {

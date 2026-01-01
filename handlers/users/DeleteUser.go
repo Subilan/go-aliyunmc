@@ -5,6 +5,7 @@ import (
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/helpers/ginContextCheckers"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +20,7 @@ func Delete() gin.HandlerFunc {
 			}
 		}
 
-		ownErr := helpers.MustOwnUserId(userId, c)
+		ownErr := ginContextCheckers.MustOwnUserId(userId, c)
 
 		if ownErr != nil {
 			return nil, ownErr
