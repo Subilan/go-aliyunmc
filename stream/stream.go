@@ -2,12 +2,7 @@ package stream
 
 import (
 	"context"
-	"errors"
-	"strconv"
-	"strings"
 
-	"github.com/Subilan/gomc-server/globals"
-	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
 
@@ -22,14 +17,8 @@ func (s *Stream) State() *State {
 	return userStreamStates[s.UserId]
 }
 
-type Event struct {
-	State   *State
-	IsError bool
-	Content string
-}
-
 func BroadcastAndSave(wrapped Event) error {
-	_, err := globals.Pool.Exec("INSERT INTO `pushed_events` (task_id, ord, `type`, is_error, content) VALUES (?, ?, ?, ?, ?)", wrapped.State.TaskId, wrapped.State.Ord, wrapped.State.Type, wrapped.IsError, wrapped.Content)
+	err := wrapped.Save()
 
 	if err != nil {
 		return err
@@ -42,23 +31,12 @@ func BroadcastAndSave(wrapped Event) error {
 	return nil
 }
 
-func BuildEvent(wrapped Event) *sse.Event {
-	return &sse.Event{
-		ID: wrapped.State.String(),
-		Data: gin.H{
-			"type":     wrapped.State.Type,
-			"is_error": wrapped.IsError,
-			"content":  wrapped.Content,
-		},
-	}
-}
-
 func (s *Stream) Send(wrapped Event) {
-	s.Chan <- BuildEvent(wrapped)
+	s.Chan <- DataEvent(wrapped)
 }
 
 func (s *Stream) SendAndSave(wrapped Event) error {
-	_, err := globals.Pool.Exec("INSERT INTO `pushed_events` (task_id, ord, `type`, is_error, content) VALUES (?, ?, ?, ?, ?)", wrapped.State.TaskId, wrapped.State.Ord, wrapped.State.Type, wrapped.IsError, wrapped.Content)
+	err := wrapped.Save()
 
 	if err != nil {
 		return err
@@ -67,50 +45,6 @@ func (s *Stream) SendAndSave(wrapped Event) error {
 	s.Send(wrapped)
 
 	return nil
-}
-
-type State struct {
-	TaskId *string
-	Ord    *int
-	Type   Type
-}
-
-func (state *State) String() string {
-	if state.TaskId == nil || state.Ord == nil {
-		return ""
-	}
-	return *state.TaskId + "$" + strconv.Itoa(*state.Ord) + "$" + strconv.Itoa(int(state.Type))
-}
-
-func (state *State) IncrOrd() {
-	if state.Ord != nil {
-		*(state.Ord)++
-	}
-}
-
-func StateFromString(stateStr string) (*State, error) {
-	splitted := strings.Split(stateStr, "$")
-
-	if len(splitted) != 3 {
-		return nil, errors.New("invalid state string")
-	}
-
-	ord, err := strconv.Atoi(splitted[1])
-
-	if err != nil {
-		return nil, err
-	}
-
-	typ, err := strconv.Atoi(splitted[2])
-	if err != nil {
-		return nil, err
-	}
-
-	return &State{
-		TaskId: &splitted[0],
-		Ord:    &ord,
-		Type:   Type(typ),
-	}, nil
 }
 
 var userStreams = make(map[int]*Stream)
