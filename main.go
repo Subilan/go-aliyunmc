@@ -42,7 +42,8 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/stream", middlewares.JWTAuth(), handlers.HandleBeginStream())
 	r.GET("/task/:taskId", middlewares.JWTAuth(), tasks.HandleGetTask())
 	r.GET("/task/cancel/:taskId", middlewares.JWTAuth(), tasks.HandleCancelTask())
-	r.GET("/server/start", middlewares.JWTAuth(), server.HandleStartServer())
+	r.GET("/server/exec", middlewares.JWTAuth(), server.HandleServerExecute())
+	r.GET("/server/query", middlewares.JWTAuth(), server.HandleServerQuery())
 }
 
 func runMonitors() {

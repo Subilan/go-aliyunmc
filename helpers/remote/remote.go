@@ -15,7 +15,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func RunScriptOnHostAsync(
+// RunScriptAsRootAsync 在指定上下文 ctx 下，在远程服务器 host 上运行 templatePath 指定的脚本，
+// 使用 templateData 数据代入模板，将输出结果送入 sink，任意错误送入 errorHandler，在正常结束时调用 okHandler。
+//
+// 警告：该函数以 Root 身份运行脚本。禁止用于运行客户端提供的内容。
+func RunScriptAsRootAsync(
 	ctx context.Context,
 	host string,
 	templatePath string,
@@ -134,7 +138,10 @@ func relayWithContext(ctx context.Context, r io.Reader, sink func([]byte)) {
 	}
 }
 
-func RunCommandsOnHostSync(
+// RunCommandAsProdSync 在指定上下文 ctx 下，在远程服务器 host 上运行 commands 指定的指令，并在得到结果或错误时返回。
+//
+// 该函数以生产身份运行指令，请注意权限设置正确。
+func RunCommandAsProdSync(
 	ctx context.Context,
 	host string,
 	commands []string,

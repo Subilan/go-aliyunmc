@@ -82,7 +82,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 		tasks.Register(cancelRunCtx, taskId)
 
 		// 运行并借助全局流输出内容
-		go remote.RunScriptOnHostAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(), func(bytes []byte) {
+		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(), func(bytes []byte) {
 			log.Println("debug: deploy.sh stdout: ", string(bytes))
 			err = stream.BroadcastAndSave(stream.Event{
 				State:   stream.GetState(taskId),
