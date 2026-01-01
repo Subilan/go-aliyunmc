@@ -78,12 +78,14 @@ echo "6. 安装 ossutil"
 
 curl https://gosspublic.alicdn.com/ossutil/install.sh | bash
 
-echo "[Credentials]" >> "${USER_HOME}/.ossutilconfig"
-echo "endpoint=oss-{{ .RegionId }}-internal.aliyuncs.com" >> "${USER_HOME}/.ossutilconfig"
-echo "accessKeySecret={{ .AccessKeySecret }}" >> "${USER_HOME}/.ossutilconfig"
-echo "accessKeyID={{ .AccessKeyId }}" >> "${USER_HOME}/.ossutilconfig"
+echo "[Credentials]" >> "/root/.ossutilconfig"
+echo "endpoint=oss-{{ .RegionId }}-internal.aliyuncs.com" >> "/root/.ossutilconfig"
+echo "accessKeySecret={{ .AccessKeySecret }}" >> "/root/.ossutilconfig"
+echo "accessKeyID={{ .AccessKeyId }}" >> "/root/.ossutilconfig"
 
-echo "7. 挂载数据盘"
+cp /root/.ossutilconfig "${USER_HOME}"
+
+echo "7. 格式化并挂载数据盘"
 
 DATA_DISK_SIZE="{{ .DataDiskSize }} GiB"
 DATA_DISK=$(fdisk -l | grep "${DATA_DISK_SIZE}" | head -n 1 | awk '{print $2}' | sed 's/://')
@@ -98,4 +100,12 @@ echo "UUID=${DATA_DISK_UUID} ${DATA_DISK_MOUNT_POINT} ext4 defaults 0 0"
 echo "UUID=${DATA_DISK_UUID} ${DATA_DISK_MOUNT_POINT} ext4 defaults 0 0" >> /etc/fstab
 systemctl daemon-reload
 
-echo "部署成功完成"
+echo "8. 复制归档数据"
+
+ossutil cp -r "{{ .ArchiveOSSPath }}" "${USER_HOME}/server"
+chmod +x "${USER_HOME}/server/archive/boot.sh"
+chmod +x "${USER_HOME}/server/archive/start.sh"
+
+chown -R "${USERNAME}:${USERNAME}" "${USER_HOME}"
+
+echo "===== 部署成功完成 ====="
