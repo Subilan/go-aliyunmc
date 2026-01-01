@@ -27,7 +27,6 @@ func BeginStream() gin.HandlerFunc {
 
 		lastEventId := c.GetHeader("Last-Event-Id")
 		lastState, _ := stream.StateFromString(lastEventId)
-		lastStateSynchronized := false
 
 		conn, err := sse.Upgrade(ctx, c.Writer)
 		if err != nil {
@@ -36,8 +35,68 @@ func BeginStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		var userStream = stream.RegisterStream(userIdInt, conn, ctx)
+		userStream := stream.RegisterStream(userIdInt, conn, ctx)
 		defer stream.UnregisterStream(userIdInt)
+
+		lastOrd := 0
+		// 前端携带了Last-Event-Id，需要进行同步
+		if lastState != nil {
+			var taskStatus string
+			err = globals.Pool.QueryRow("SELECT `status` FROM tasks WHERE task_id = ?", lastState.TaskId).Scan(&taskStatus)
+
+			if err != nil {
+				log.Println("cannot get task status:", err)
+				_ = conn.SendEvent(ctx, stream.ErrorEvent("invalid last-event-id, cannot retrieve status from db", stream.EventErrorInvalidLastEventId))
+				return
+			}
+
+			if taskStatus != "running" {
+				_ = conn.SendEvent(ctx, stream.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", stream.EventErrorInvalidLastEventId))
+				return
+			}
+
+			// 获取当前数据库所有相关信息
+			var rows *sql.Rows
+			rows, err = globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? AND ord > ? ORDER BY ord", lastState.TaskId, lastState.Ord)
+
+			if err != nil {
+				log.Println("cannot get addendum from database", err.Error())
+			} else {
+				for rows.Next() {
+					var taskId string
+					var ord int
+					var typ stream.Type
+					var isError bool
+					var content string
+					err = rows.Scan(&taskId, &ord, &typ, &isError, &content)
+
+					if err != nil {
+						log.Println("cannot scan row: ", err.Error())
+						continue
+					}
+
+					log.Printf("sending addendum taskId=%v, ord=%v, type=%v, content=%v\n", taskId, ord, typ, content)
+
+					err = conn.SendEvent(ctx, stream.DataEvent(stream.Event{
+						State: &stream.State{
+							Ord:    &ord,
+							TaskId: &taskId,
+							Type:   typ,
+						},
+						IsError: isError,
+						Content: content,
+					}))
+
+					if err != nil {
+						log.Println("cannot send event: ", err.Error())
+						continue
+					}
+
+					lastOrd = ord
+					log.Printf("debug: lastOrd -> %v\n", lastOrd)
+				}
+			}
+		}
 
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -45,59 +104,25 @@ func BeginStream() gin.HandlerFunc {
 		for {
 			select {
 			case e := <-userStream.Chan:
-				// 判断是否存在有效的同步任务（出现在重连且存在task_id、ord信息时）
-				if lastState != nil && !lastStateSynchronized {
-					// 前端携带了Last-Event-Id，需要进行同步
+				state, _ := stream.StateFromString(e.ID)
 
-					// 获取当前传来信息的状态
-					currentState, err := stream.StateFromString(e.ID)
-
-					if err != nil {
-						log.Println("cannot get current state from string: ", currentState, "; error: ", err.Error())
-					} else {
-						var rows *sql.Rows
-						rows, err = globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? AND ord > ? AND ord < ?", lastState.TaskId, lastState.Ord, currentState.Ord)
-
-						if err != nil {
-							log.Println("cannot get addendum from database: ", err.Error())
-						} else {
-							for rows.Next() {
-								var taskId string
-								var ord int
-								var typ stream.Type
-								var isError bool
-								var content string
-								err = rows.Scan(&taskId, &ord, &typ, &isError, &content)
-
-								if err != nil {
-									log.Println("cannot scan row: ", err.Error())
-									continue
-								}
-
-								err = conn.SendEvent(ctx, stream.BuildEvent(stream.Event{
-									State: &stream.State{
-										Ord:    &ord,
-										TaskId: &taskId,
-										Type:   typ,
-									},
-									IsError: isError,
-									Content: content,
-								}))
-
-								if err != nil {
-									log.Println("cannot send event: ", err.Error())
-									continue
-								}
-							}
-							lastStateSynchronized = true
+				if lastState != nil {
+					if state != nil && state.TaskId != nil && state.Ord != nil {
+						if *state.TaskId == *lastState.TaskId && *state.Ord <= lastOrd {
+							continue
 						}
 					}
 				}
+
 				err = conn.SendEvent(ctx, e)
+
 				if err != nil {
 					log.Println("cannot send event:", err)
 					return
 				}
+
+				lastOrd = *state.Ord
+				log.Printf("debug: lastOrd -> %v\n", lastOrd)
 
 			case <-ticker.C:
 				if err := conn.SendComment(ctx, "ping"); err != nil {
