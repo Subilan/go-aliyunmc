@@ -8,12 +8,13 @@ import (
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
-	"github.com/Subilan/gomc-server/stream"
+	"github.com/Subilan/gomc-server/helpers/store"
+	stream2 "github.com/Subilan/gomc-server/helpers/stream"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
 
-func BeginStream() gin.HandlerFunc {
+func HandleBeginStream() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 		userId, exists := c.Get("user_id")
@@ -26,7 +27,7 @@ func BeginStream() gin.HandlerFunc {
 		userIdInt := int(userId.(int64))
 
 		lastEventId := c.GetHeader("Last-Event-Id")
-		lastState, _ := stream.StateFromString(lastEventId)
+		lastState, _ := stream2.StateFromString(lastEventId)
 
 		conn, err := sse.Upgrade(ctx, c.Writer)
 		if err != nil {
@@ -35,8 +36,8 @@ func BeginStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		userStream := stream.RegisterStream(userIdInt, conn, ctx)
-		defer stream.UnregisterStream(userIdInt)
+		userStream := stream2.RegisterStream(userIdInt, conn, ctx)
+		defer stream2.UnregisterStream(userIdInt)
 
 		lastOrd := 0
 		// 前端携带了Last-Event-Id，需要进行同步
@@ -46,12 +47,12 @@ func BeginStream() gin.HandlerFunc {
 
 			if err != nil {
 				log.Println("cannot get task status:", err)
-				_ = conn.SendEvent(ctx, stream.ErrorEvent("invalid last-event-id, cannot retrieve status from db", stream.EventErrorInvalidLastEventId))
+				_ = conn.SendEvent(ctx, stream2.ErrorEvent("invalid last-event-id, cannot retrieve status from db", stream2.EventErrorInvalidLastEventId))
 				return
 			}
 
 			if taskStatus != "running" {
-				_ = conn.SendEvent(ctx, stream.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", stream.EventErrorInvalidLastEventId))
+				_ = conn.SendEvent(ctx, stream2.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", stream2.EventErrorInvalidLastEventId))
 				return
 			}
 
@@ -65,7 +66,7 @@ func BeginStream() gin.HandlerFunc {
 				for rows.Next() {
 					var taskId string
 					var ord int
-					var typ stream.Type
+					var typ store.PushedEventType
 					var isError bool
 					var content string
 					err = rows.Scan(&taskId, &ord, &typ, &isError, &content)
@@ -77,8 +78,8 @@ func BeginStream() gin.HandlerFunc {
 
 					log.Printf("sending addendum taskId=%v, ord=%v, type=%v, content=%v\n", taskId, ord, typ, content)
 
-					err = conn.SendEvent(ctx, stream.DataEvent(stream.Event{
-						State: &stream.State{
+					err = conn.SendEvent(ctx, stream2.DataEvent(stream2.Event{
+						State: &stream2.State{
 							Ord:    &ord,
 							TaskId: &taskId,
 							Type:   typ,
@@ -104,7 +105,7 @@ func BeginStream() gin.HandlerFunc {
 		for {
 			select {
 			case e := <-userStream.Chan:
-				state, _ := stream.StateFromString(e.ID)
+				state, _ := stream2.StateFromString(e.ID)
 
 				if lastState != nil {
 					if state != nil && state.TaskId != nil && state.Ord != nil {

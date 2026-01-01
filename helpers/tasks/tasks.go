@@ -1,4 +1,4 @@
-package remote
+package tasks
 
 import (
 	"context"
@@ -8,13 +8,13 @@ import (
 var remoteTasks = make(map[string]context.CancelFunc)
 var mu sync.Mutex
 
-func RegisterTask(cancel context.CancelFunc, taskId string) {
+func Register(cancel context.CancelFunc, taskId string) {
 	mu.Lock()
 	defer mu.Unlock()
 	remoteTasks[taskId] = cancel
 }
 
-func CancelTask(taskId string) bool {
+func CancelById(taskId string) bool {
 	mu.Lock()
 	defer mu.Unlock()
 	cancel, ok := remoteTasks[taskId]

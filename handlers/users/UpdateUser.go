@@ -14,7 +14,7 @@ type UpdateUserRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func Update() gin.HandlerFunc {
+func HandleUserUpdate() gin.HandlerFunc {
 	return helpers.BodyHandler[UpdateUserRequest](func(body UpdateUserRequest, c *gin.Context) (any, error) {
 		userId := c.Param("userId")
 

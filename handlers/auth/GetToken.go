@@ -24,7 +24,7 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-func GetToken() gin.HandlerFunc {
+func HandleGetToken() gin.HandlerFunc {
 	return helpers.BodyHandler[GetTokenRequest](func(body GetTokenRequest, c *gin.Context) (any, error) {
 		// 查询用户信息
 		row := globals.Pool.QueryRowContext(c, "SELECT id, username, password_hash FROM users WHERE username = ?", body.Username)

@@ -1,4 +1,4 @@
-package ecsActions
+package instances
 
 import (
 	"context"
@@ -10,16 +10,16 @@ import (
 
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/helpers/remote"
+	"github.com/Subilan/gomc-server/helpers/store"
+	"github.com/Subilan/gomc-server/helpers/stream"
+	"github.com/Subilan/gomc-server/helpers/tasks"
 	"github.com/Subilan/gomc-server/helpers/templateData"
-	"github.com/Subilan/gomc-server/remote"
-	"github.com/Subilan/gomc-server/stream"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
-const TaskTypeInstanceDeployment = "instance_deployment"
-
-func DeployInstance() gin.HandlerFunc {
+func HandleDeployInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		var userId int
 
@@ -51,7 +51,7 @@ func DeployInstance() gin.HandlerFunc {
 		// 检查是否存在部署任务正在运行
 		var cnt int
 
-		err = globals.Pool.QueryRowContext(checkCtx, "SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = 'running'", TaskTypeInstanceDeployment).Scan(&cnt)
+		err = globals.Pool.QueryRowContext(checkCtx, "SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", store.TaskTypeInstanceDeployment, store.TaskStatusRunning).Scan(&cnt)
 
 		if err != nil {
 			return nil, err
@@ -64,7 +64,7 @@ func DeployInstance() gin.HandlerFunc {
 		// 为新的部署任务分配UUID并插入记录
 		taskIdU, err := uuid.NewRandom()
 
-		_, err = globals.Pool.ExecContext(checkCtx, "INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskIdU.String(), TaskTypeInstanceDeployment, userId)
+		_, err = globals.Pool.ExecContext(checkCtx, "INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskIdU.String(), store.TaskTypeInstanceDeployment, userId)
 
 		if err != nil {
 			return nil, err
@@ -75,21 +75,21 @@ func DeployInstance() gin.HandlerFunc {
 		cancelCheckCtx()
 
 		// 创建当前任务的全局流
-		stream.BeginGlobalStream(taskId, stream.Deployment)
+		stream.Create(taskId, store.EventTypeDeployment)
 
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
-		remote.RegisterTask(cancelRunCtx, taskId)
+		tasks.Register(cancelRunCtx, taskId)
 
 		// 运行并借助全局流输出内容
 		go remote.RunScriptOnHostAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(), func(bytes []byte) {
 			log.Println("debug: deploy.sh stdout: ", string(bytes))
 			err = stream.BroadcastAndSave(stream.Event{
-				State:   stream.GetGlobalStreamState(taskId),
+				State:   stream.GetState(taskId),
 				Content: string(bytes),
 			})
 
-			stream.IncrGlobalStreamOrd(taskId)
+			stream.IncrOrd(taskId)
 
 			if err != nil {
 				log.Println(err.Error())
@@ -98,7 +98,7 @@ func DeployInstance() gin.HandlerFunc {
 		}, func(err error) {
 			log.Println("dedug: deploy.sh stderr: ", err.Error())
 			sendAndSaveError := stream.BroadcastAndSave(stream.Event{
-				State:   stream.GetGlobalStreamState(taskId),
+				State:   stream.GetState(taskId),
 				IsError: true,
 				Content: err.Error(),
 			})

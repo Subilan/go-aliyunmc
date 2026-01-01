@@ -1,4 +1,4 @@
-package ecsActions
+package instances
 
 import (
 	"context"
@@ -37,7 +37,7 @@ type CreateInstanceResponseBody struct {
 
 const CreateInstanceTimeout = 15 * time.Second
 
-func CreateInstance() gin.HandlerFunc {
+func HandleCreateInstance() gin.HandlerFunc {
 	return helpers.BodyHandler(func(body CreateInstanceBody, c *gin.Context) (any, error) {
 		var err error
 

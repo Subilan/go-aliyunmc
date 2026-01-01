@@ -3,6 +3,7 @@ package stream
 import (
 	"context"
 
+	"github.com/Subilan/gomc-server/helpers/store"
 	"go.jetify.com/sse"
 )
 
@@ -51,41 +52,16 @@ var userStreams = make(map[int]*Stream)
 var userStreamStates = make(map[int]*State)
 var globalStreamStates = make(map[string]*State)
 
-type Type int
-
-const (
-	Deployment Type = iota
-	Server
-	Instance
-)
-
-func BeginUserStream(userId int, taskId string, streamType Type) {
+func Create(taskId string, eventType store.PushedEventType) {
 	var ord = 0
-	userStreamStates[userId] = &State{Type: streamType, TaskId: &taskId, Ord: &ord}
+	globalStreamStates[taskId] = &State{Type: eventType, TaskId: &taskId, Ord: &ord}
 }
 
-func GetUserStreamState(userId int) *State {
-	return userStreamStates[userId]
-}
-
-func GetUserStreamOrd(userId int) *int {
-	return userStreamStates[userId].Ord
-}
-
-func IncrUserStreamOrd(userId int) {
-	userStreamStates[userId].IncrOrd()
-}
-
-func BeginGlobalStream(taskId string, streamType Type) {
-	var ord = 0
-	globalStreamStates[taskId] = &State{Type: streamType, TaskId: &taskId, Ord: &ord}
-}
-
-func GetGlobalStreamState(taskId string) *State {
+func GetState(taskId string) *State {
 	return globalStreamStates[taskId]
 }
 
-func IncrGlobalStreamOrd(taskId string) {
+func IncrOrd(taskId string) {
 	globalStreamStates[taskId].IncrOrd()
 }
 

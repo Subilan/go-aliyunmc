@@ -11,9 +11,7 @@ import (
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/handlers"
 	"github.com/Subilan/gomc-server/handlers/auth"
-	"github.com/Subilan/gomc-server/handlers/describe"
-	"github.com/Subilan/gomc-server/handlers/ecsActions"
-	"github.com/Subilan/gomc-server/handlers/get"
+	"github.com/Subilan/gomc-server/handlers/instances"
 	"github.com/Subilan/gomc-server/handlers/server"
 	"github.com/Subilan/gomc-server/handlers/simple"
 	"github.com/Subilan/gomc-server/handlers/tasks"
@@ -26,24 +24,25 @@ import (
 )
 
 func bindRoutes(r *gin.Engine) {
-	r.GET("/get/instance/:instanceId", get.Instance())
-	r.GET("/get/instance-status/:instanceId", get.InstanceStatus())
-	r.GET("/describe/instance-types-and-charge", describe.InstanceTypesAndSpotPricePerHour())
-	r.GET("/describe/instance/:instanceId", describe.Instance())
-	r.POST("/ecs-actions/create-instance", ecsActions.CreateInstance())
-	r.DELETE("/ecs-actions/delete-instance/:instanceId", ecsActions.DeleteInstance())
-	r.DELETE("/ecs-actions/delete-instance", ecsActions.DeleteInstance())
-	r.GET("/ecs-actions/deploy-active-instance", middlewares.JWTAuth(), ecsActions.DeployInstance())
-	r.POST("/user/create", users.Create())
-	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.Update())
-	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.Delete())
-	r.POST("/auth/get-token", auth.GetToken())
-	r.GET("/auth/get-payload", middlewares.JWTAuth(), auth.GetPayload())
-	r.GET("/auth/ping", middlewares.JWTAuth(), simple.Gen200())
-	r.GET("/ping", simple.Gen200())
-	r.GET("/stream", middlewares.JWTAuth(), handlers.BeginStream())
-	r.GET("/task/cancel/:taskId", middlewares.JWTAuth(), tasks.Cancel())
-	r.GET("/server/start", middlewares.JWTAuth(), server.Start())
+	r.GET("/get/instance/:instanceId", instances.HandleGetInstance())
+	r.GET("/get/instance-status/:instanceId", instances.HandleGetInstanceStatus())
+	r.GET("/instance/types-and-charge", instances.HandleGetInstanceTypesAndSpotPricePerHour())
+	r.GET("/instance/:instanceId", instances.HandleDescribeInstance())
+	r.POST("/instance", instances.HandleCreateInstance())
+	r.DELETE("/instance/:instanceId", instances.HandleDeleteInstance())
+	r.DELETE("/instance", instances.HandleDeleteInstance())
+	r.GET("/instance/deploy", middlewares.JWTAuth(), instances.HandleDeployInstance())
+	r.POST("/user/create", users.HandleCreateUser())
+	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.HandleUserUpdate())
+	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.HandleUserDelete())
+	r.POST("/auth/token", auth.HandleGetToken())
+	r.GET("/auth/payload", middlewares.JWTAuth(), auth.HandleGetPayload())
+	r.GET("/auth/ping", middlewares.JWTAuth(), simple.HandleGenerate200())
+	r.GET("/ping", simple.HandleGenerate200())
+	r.GET("/stream", middlewares.JWTAuth(), handlers.HandleBeginStream())
+	r.GET("/task/:taskId", middlewares.JWTAuth(), tasks.HandleGetTask())
+	r.GET("/task/cancel/:taskId", middlewares.JWTAuth(), tasks.HandleCancelTask())
+	r.GET("/server/start", middlewares.JWTAuth(), server.HandleStartServer())
 }
 
 func runMonitors() {

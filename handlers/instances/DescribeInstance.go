@@ -1,4 +1,4 @@
-package describe
+package instances
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Instance() gin.HandlerFunc {
+func HandleDescribeInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 

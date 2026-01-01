@@ -1,4 +1,4 @@
-package describe
+package instances
 
 import (
 	"net/http"
@@ -51,7 +51,7 @@ type InstanceTypeAndTradePrice struct {
 	TradePrice float32 `json:"tradePrice,omitempty"`
 }
 
-func InstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
+func HandleGetInstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 	return helpers.QueryHandler(func(body InstanceTypeAndPricePerHourBody, c *gin.Context) (any, error) {
 		client, err := clients.ShouldCreateEcsClient()
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()

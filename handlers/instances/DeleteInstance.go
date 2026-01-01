@@ -1,4 +1,4 @@
-package ecsActions
+package instances
 
 import (
 	"context"
@@ -15,7 +15,7 @@ import (
 
 const DeleteInstanceTimeout = 15 * time.Second
 
-func DeleteInstance() gin.HandlerFunc {
+func HandleDeleteInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 

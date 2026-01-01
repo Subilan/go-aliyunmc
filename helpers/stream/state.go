@@ -4,12 +4,14 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+
+	"github.com/Subilan/gomc-server/helpers/store"
 )
 
 type State struct {
 	TaskId *string
 	Ord    *int
-	Type   Type
+	Type   store.PushedEventType
 }
 
 func (state *State) String() string {
@@ -46,6 +48,6 @@ func StateFromString(stateStr string) (*State, error) {
 	return &State{
 		TaskId: &splitted[0],
 		Ord:    &ord,
-		Type:   Type(typ),
+		Type:   store.PushedEventType(typ),
 	}, nil
 }

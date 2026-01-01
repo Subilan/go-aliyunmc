@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/Subilan/gomc-server/helpers"
-	"github.com/Subilan/gomc-server/remote"
+	"github.com/Subilan/gomc-server/helpers/tasks"
 	"github.com/gin-gonic/gin"
 )
 
-func Cancel() gin.HandlerFunc {
+func HandleCancelTask() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		taskId := c.Param("taskId")
 
@@ -16,7 +16,7 @@ func Cancel() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "未提供taskID"}
 		}
 
-		ok := remote.CancelTask(taskId)
+		ok := tasks.CancelById(taskId)
 
 		return helpers.Data(ok), nil
 	})

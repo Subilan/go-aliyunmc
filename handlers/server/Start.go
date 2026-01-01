@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/gomc-server/helpers/remote"
 	"github.com/Subilan/gomc-server/helpers/store"
-	"github.com/Subilan/gomc-server/remote"
 	"github.com/gin-gonic/gin"
 )
 
-func Start() gin.HandlerFunc {
+func HandleStartServer() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		activeInstance := store.GetActiveInstance()
 

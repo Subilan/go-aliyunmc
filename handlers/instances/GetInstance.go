@@ -1,4 +1,4 @@
-package get
+package instances
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type StoredInstance struct {
 	DeletedAt    *time.Time `json:"deletedAt"`
 }
 
-func Instance() gin.HandlerFunc {
+func HandleGetInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 

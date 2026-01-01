@@ -1,4 +1,4 @@
-package get
+package instances
 
 import (
 	"context"
@@ -16,7 +16,7 @@ type StoredInstanceStatus struct {
 	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
-func InstanceStatus() gin.HandlerFunc {
+func HandleGetInstanceStatus() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 
