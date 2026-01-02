@@ -15,9 +15,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// RunScriptAsRootAsync 在指定上下文 ctx 下，在远程服务器 host 上运行 templatePath 指定的脚本，
-// 使用 templateData 数据代入模板，将输出结果送入 sink，任意错误送入 errorHandler，在正常结束时调用 okHandler，被取消时调用 cancelHandler
-//
+// RunScriptAsRootAsync 用于在远程服务器上运行指定的脚本，运行过程的信息可通过传入回调函数实现。
 // 警告：该函数以 Root 身份运行脚本。禁止用于运行客户端提供的内容。
 func RunScriptAsRootAsync(
 	ctx context.Context,
@@ -27,7 +25,9 @@ func RunScriptAsRootAsync(
 	sink func([]byte),
 	errorHandler func(error),
 	okHandler func(),
+	finalHandler func(),
 ) {
+	defer finalHandler()
 	// 1. Read scripts in order
 	scriptsTempl, err := template.ParseFiles(templatePath)
 

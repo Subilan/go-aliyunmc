@@ -82,62 +82,66 @@ func HandleDeployInstance() gin.HandlerFunc {
 		tasks.Register(cancelRunCtx, taskId)
 
 		// 运行并借助全局流输出内容
-		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(), func(bytes []byte) {
-			log.Println("debug: deploy.sh stdout: ", string(bytes))
+		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(),
+			func(bytes []byte) {
+				log.Println("debug: deploy.sh stdout: ", string(bytes))
 
-			state := stream.GetState(taskId)
+				state := stream.GetState(taskId)
 
-			err = stream.BroadcastAndSave(store.PushedEvent{
-				PushedEventState: *state,
-				Content:          string(bytes),
-			})
+				err = stream.BroadcastAndSave(store.PushedEvent{
+					PushedEventState: *state,
+					Content:          string(bytes),
+				})
 
-			stream.IncrOrd(taskId)
+				stream.IncrOrd(taskId)
 
-			if err != nil {
-				log.Println(err.Error())
-				log.Printf("cannot send and save script step: userid=%v, deployment, is_error=false, content=%s\n", userId, string(bytes))
-			}
-		}, func(err error) {
-			tasks.Unregister(taskId)
+				if err != nil {
+					log.Println(err.Error())
+					log.Printf("cannot send and save script step: userid=%v, deployment, is_error=false, content=%s\n", userId, string(bytes))
+				}
+			},
+			func(err error) {
+				log.Println("dedug: deploy.sh stderr: ", err.Error())
 
-			log.Println("dedug: deploy.sh stderr: ", err.Error())
+				state := stream.GetState(taskId)
+				sendAndSaveError := stream.BroadcastAndSave(store.PushedEvent{
+					PushedEventState: *state,
+					IsError:          true,
+					Content:          err.Error(),
+				})
 
-			state := stream.GetState(taskId)
-			sendAndSaveError := stream.BroadcastAndSave(store.PushedEvent{
-				PushedEventState: *state,
-				IsError:          true,
-				Content:          err.Error(),
-			})
+				if sendAndSaveError != nil {
+					log.Println(sendAndSaveError.Error())
+					log.Printf("cannot send and save script step: userid=%v, deployment, is_error=true, content=%s\n", userId, err.Error())
+				}
 
-			if sendAndSaveError != nil {
-				log.Println(sendAndSaveError.Error())
-				log.Printf("cannot send and save script step: userid=%v, deployment, is_error=true, content=%s\n", userId, err.Error())
-			}
+				var status = store.TaskStatusFailed
 
-			var status = store.TaskStatusFailed
+				if errors.Is(err, context.Canceled) {
+					status = store.TaskStatusCancelled
+				}
 
-			if errors.Is(err, context.Canceled) {
-				status = store.TaskStatusCancelled
-			}
+				if errors.Is(err, context.DeadlineExceeded) {
+					status = store.TaskStatusTimedOut
+				}
 
-			if errors.Is(err, context.DeadlineExceeded) {
-				status = store.TaskStatusTimedOut
-			}
+				_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
 
-			_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
-
-			if err != nil {
-				log.Println("cannot update task status: " + err.Error())
-			}
-		}, func() {
-			tasks.Unregister(taskId)
-			_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
-
-			if err != nil {
-				log.Println("cannot update task status to success: " + err.Error())
-			}
-		})
+				if err != nil {
+					log.Println("cannot update task status: " + err.Error())
+				}
+			},
+			func() {
+				_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
+				if err != nil {
+					log.Println("cannot update task status to success: " + err.Error())
+				}
+			},
+			func() {
+				tasks.Unregister(taskId)
+				stream.Delete(taskId)
+			},
+		)
 
 		return helpers.Data(taskId), nil
 	})
