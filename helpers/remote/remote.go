@@ -16,7 +16,7 @@ import (
 )
 
 // RunScriptAsRootAsync 在指定上下文 ctx 下，在远程服务器 host 上运行 templatePath 指定的脚本，
-// 使用 templateData 数据代入模板，将输出结果送入 sink，任意错误送入 errorHandler，在正常结束时调用 okHandler。
+// 使用 templateData 数据代入模板，将输出结果送入 sink，任意错误送入 errorHandler，在正常结束时调用 okHandler，被取消时调用 cancelHandler
 //
 // 警告：该函数以 Root 身份运行脚本。禁止用于运行客户端提供的内容。
 func RunScriptAsRootAsync(
@@ -80,7 +80,21 @@ func RunScriptAsRootAsync(
 	// Run killer gorountine
 	go func() {
 		<-ctx.Done()
-		_ = session.Signal(ssh.SIGKILL)
+
+		// It's awkward that SIGTERM, SIGINT, SIGKILL do not work as expected. Nothing happens. The process continues
+		// and session.Wait just won't return.
+		// By calling session.Close here, the process is stopped after a few seconds (detected by ACK) due to pipe close.
+		// And according to
+		// https://github.com/golang/go/issues/21423#issuecomment-325966525
+		// https://github.com/golang/go/issues/21699#issue-254076414
+		// session.Close is expected to cause session.Wait to return, which matches the expected path of this function.
+		err := session.Close()
+
+		if err != nil {
+			log.Println("cannot close session:", err)
+		} else {
+			log.Println("session closed by context done")
+		}
 	}()
 
 	// 4. Start shell
@@ -96,14 +110,16 @@ func RunScriptAsRootAsync(
 		errorHandler(fmt.Errorf("copy script: %w", err))
 		return
 	}
+
 	stdin.Close()
 
 	// 6. Wait for completion or be killed due to ctx.Done() received
 	if err := session.Wait(); err != nil {
 		var exitErr *ssh.ExitError
 
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			errorHandler(fmt.Errorf("context deadline exceeded: %w", err))
+		// 如果此处有上下文error，极大可能是因为上下文导致的退出。优先传递此类错误
+		if ctx.Err() != nil {
+			errorHandler(ctx.Err())
 			return
 		}
 
@@ -193,7 +209,14 @@ func RunCommandAsProdSync(
 	// Context cancellation
 	go func() {
 		<-ctx.Done()
-		_ = session.Signal(ssh.SIGKILL)
+
+		err := session.Close()
+
+		if err != nil {
+			log.Println("cannot close session:", err)
+		} else {
+			log.Println("session closed by context done")
+		}
 	}()
 
 	if err := session.Start("bash -s"); err != nil {
@@ -203,7 +226,7 @@ func RunCommandAsProdSync(
 	if _, err := stdin.Write([]byte(script)); err != nil {
 		return nil, err
 	}
-	_ = stdin.Close()
+	stdin.Close()
 
 	if err := session.Wait(); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {

@@ -19,7 +19,9 @@ const (
 type TaskStatus string
 
 const (
-	TaskStatusRunning TaskStatus = "running"
-	TaskStatusSuccess            = "success"
-	TaskStatusFailed             = "failed"
+	TaskStatusRunning   TaskStatus = "running"
+	TaskStatusSuccess              = "success"
+	TaskStatusFailed               = "failed"
+	TaskStatusCancelled            = "cancelled"
+	TaskStatusTimedOut             = "timed_out"
 )

@@ -18,6 +18,14 @@ func Register(cancel context.CancelFunc, taskId string) {
 	remoteTasks[taskId] = cancel
 }
 
+// Unregister 从任务表中删除取消函数。
+// 用于不再需要该取消函数时，例如上下文被取消或超时等。
+func Unregister(taskId string) {
+	mu.Lock()
+	defer mu.Unlock()
+	delete(remoteTasks, taskId)
+}
+
 // CancelById 尝试将 taskId 指定的任务取消并从任务表中删除。如果找不到该任务，函数返回 false
 func CancelById(taskId string) bool {
 	mu.Lock()

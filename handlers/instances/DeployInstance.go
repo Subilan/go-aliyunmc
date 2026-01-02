@@ -96,6 +96,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 				log.Printf("cannot send and save script step: userid=%v, deployment, is_error=false, content=%s\n", userId, string(bytes))
 			}
 		}, func(err error) {
+			tasks.Unregister(taskId)
 			log.Println("dedug: deploy.sh stderr: ", err.Error())
 			sendAndSaveError := stream.BroadcastAndSave(stream.Event{
 				State:   stream.GetState(taskId),
@@ -108,13 +109,24 @@ func HandleDeployInstance() gin.HandlerFunc {
 				log.Printf("cannot send and save script step: userid=%v, deployment, is_error=true, content=%s\n", userId, err.Error())
 			}
 
-			_, err = globals.Pool.Exec("UPDATE tasks SET status = 'failed' WHERE task_id = ?", taskId)
+			var status = store.TaskStatusFailed
+
+			if errors.Is(err, context.Canceled) {
+				status = store.TaskStatusCancelled
+			}
+
+			if errors.Is(err, context.DeadlineExceeded) {
+				status = store.TaskStatusTimedOut
+			}
+
+			_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
 
 			if err != nil {
-				log.Println("cannot update task status to failed: " + err.Error())
+				log.Println("cannot update task status: " + err.Error())
 			}
 		}, func() {
-			_, err = globals.Pool.Exec("UPDATE tasks SET status = 'success' WHERE task_id = ?", taskId)
+			tasks.Unregister(taskId)
+			_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
 
 			if err != nil {
 				log.Println("cannot update task status to success: " + err.Error())
