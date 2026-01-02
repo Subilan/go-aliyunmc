@@ -46,7 +46,7 @@ func HandleServerQuery() gin.HandlerFunc {
 
 		cmd := query.QueryType.Command()
 
-		output, err := remote.RunCommandAsProdSync(ctx, activeInstance.Ip, cmd)
+		output, err := remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd)
 
 		if err != nil {
 			return helpers.Data(gin.H{"error": err.Error(), "output": string(output)}), nil

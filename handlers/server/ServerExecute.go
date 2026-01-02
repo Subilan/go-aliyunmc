@@ -100,7 +100,7 @@ func HandleServerExecute() gin.HandlerFunc {
 		var err error
 
 		if loc == ExecuteLocationShell {
-			output, err = remote.RunCommandAsProdSync(ctx, activeInstance.Ip, cmd)
+			output, err = remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd)
 		}
 
 		if loc == ExecuteLocationServer {
@@ -108,7 +108,7 @@ func HandleServerExecute() gin.HandlerFunc {
 				return nil, &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "server not running"}
 			}
 
-			rconClient, rconClientErr := rcon.Dial(activeInstance.Ip, 25575)
+			rconClient, rconClientErr := rcon.Dial(*activeInstance.Ip, 25575)
 
 			if rconClientErr != nil {
 				return nil, &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "cannot dial server"}

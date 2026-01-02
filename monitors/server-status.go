@@ -33,7 +33,7 @@ func ServerStatusMonitor() {
 			goto end
 		}
 
-		globals.ServerStatus, err = status.Modern(ctx, activeInstance.Ip, 25565)
+		globals.ServerStatus, err = status.Modern(ctx, *activeInstance.Ip, 25565)
 
 		if err != nil {
 			globals.IsServerRunning = false

@@ -40,7 +40,7 @@ func RefreshQueryFull(parentContext context.Context) error {
 	ctx, cancel := context.WithTimeout(parentContext, time.Second*5)
 	defer cancel()
 
-	info, err := query.Full(ctx, activeInstance.Ip, 25565)
+	info, err := query.Full(ctx, *activeInstance.Ip, 25565)
 
 	if err != nil {
 		return err
