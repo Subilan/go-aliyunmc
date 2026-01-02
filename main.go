@@ -44,6 +44,9 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/task-cancel/:taskId", middlewares.JWTAuth(), tasks.HandleCancelTask())
 	r.GET("/server/exec", middlewares.JWTAuth(), server.HandleServerExecute())
 	r.GET("/server/query", middlewares.JWTAuth(), server.HandleServerQuery())
+	r.GET("/server/players", middlewares.JWTAuth(), server.HandleGetServerPlayers())
+	r.GET("/server/refresh-players", middlewares.JWTAuth(), server.HandleRefreshServerPlayers())
+	r.GET("/server/info", middlewares.JWTAuth(), server.HandleGetServerInfo())
 }
 
 func runMonitors() {
@@ -54,6 +57,8 @@ func runMonitors() {
 	var automaticPublicIpAllocatorErrChan = make(chan error)
 	monitors.GlobalAutomaticPublicIPAllocator = monitors.NewAutomaticPublicIPAllocator(context.Background(), automaticPublicIpAllocatorErrChan)
 	monitors.GlobalAutomaticPublicIPAllocator.Run()
+
+	go monitors.ServerStatusMonitor()
 }
 
 func main() {
