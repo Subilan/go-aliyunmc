@@ -35,3 +35,15 @@ func GetActiveInstance() *Instance {
 
 	return &result
 }
+
+// GetRunningInstanceBrief 尝试获取一个处于运行状态的实例并返回其instance_id和ip信息
+func GetRunningInstanceBrief() (string, string, error) {
+	var instanceId, ip string
+	err := globals.Pool.QueryRow("SELECT i.instance_id, i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND s.status = 'Running'").Scan(&instanceId, &ip)
+
+	if err != nil {
+		return "", "", err
+	}
+
+	return instanceId, ip, nil
+}

@@ -2,7 +2,6 @@ package instances
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"github.com/Subilan/gomc-server/helpers/tasks"
 	"github.com/Subilan/gomc-server/helpers/templateData"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 func HandleDeployInstance() gin.HandlerFunc {
@@ -31,48 +29,30 @@ func HandleDeployInstance() gin.HandlerFunc {
 
 		userId = int(userIdStr.(int64))
 
-		var instanceId string
-		var ip string
-
-		checkCtx, cancelCheckCtx := context.WithTimeout(c, 10*time.Second)
-		defer cancelCheckCtx()
-
 		// 检查是否存在有ip且正在运行的实例可供部署
-		err := globals.Pool.QueryRowContext(checkCtx, "SELECT i.instance_id, i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND s.status = 'Running'").Scan(&instanceId, &ip)
+		_, ip, err := store.GetRunningInstanceBrief()
 
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "没有符合要求的实例"}
-			}
-
 			return nil, err
 		}
 
 		// 检查是否存在部署任务正在运行
-		var cnt int
-
-		err = globals.Pool.QueryRowContext(checkCtx, "SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", store.TaskTypeInstanceDeployment, store.TaskStatusRunning).Scan(&cnt)
+		runningTaskCnt, err := store.GetRunningTaskCount(store.TaskTypeInstanceDeployment)
 
 		if err != nil {
 			return nil, err
 		}
 
-		if cnt != 0 {
+		if runningTaskCnt != 0 {
 			return nil, &helpers.HttpError{Code: http.StatusConflict, Details: "已经存在部署任务正在运行"}
 		}
 
 		// 为新的部署任务分配UUID并插入记录
-		taskIdU, err := uuid.NewRandom()
-
-		_, err = globals.Pool.ExecContext(checkCtx, "INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskIdU.String(), store.TaskTypeInstanceDeployment, userId)
+		taskId, err := store.InsertTask(store.TaskTypeInstanceDeployment, userId)
 
 		if err != nil {
 			return nil, err
 		}
-
-		taskId := taskIdU.String()
-
-		cancelCheckCtx()
 
 		// 创建当前任务的全局流
 		stream.Create(taskId)

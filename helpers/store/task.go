@@ -1,6 +1,11 @@
 package store
 
-import "time"
+import (
+	"time"
+
+	"github.com/Subilan/gomc-server/globals"
+	"github.com/google/uuid"
+)
 
 type Task struct {
 	TaskId    string     `json:"taskId"`
@@ -25,3 +30,32 @@ const (
 	TaskStatusCancelled            = "cancelled"
 	TaskStatusTimedOut             = "timed_out"
 )
+
+func InsertTask(taskType TaskType, userId int) (string, error) {
+	uuidS, err := uuid.NewRandom()
+
+	if err != nil {
+		return "", err
+	}
+
+	taskId := uuidS.String()
+
+	_, err = globals.Pool.Exec("INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskId, taskType, userId)
+
+	if err != nil {
+		return "", err
+	}
+
+	return taskId, nil
+}
+
+func GetRunningTaskCount(taskType TaskType) (int, error) {
+	var cnt int
+	err := globals.Pool.QueryRow("SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", taskType, TaskStatusRunning).Scan(&cnt)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return cnt, nil
+}

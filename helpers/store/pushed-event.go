@@ -70,7 +70,7 @@ func (event *PushedEvent) SSE() *sse.Event {
 	}
 }
 
-func (event *PushedEvent) Save() error {
+func (event *PushedEvent) Insert() error {
 	_, err := globals.Pool.Exec("INSERT INTO `pushed_events` (task_id, ord, `type`, is_error, content) VALUES (?, ?, ?, ?, ?)", event.TaskId, event.Ord, event.Type, event.IsError, event.Content)
 
 	if err != nil {

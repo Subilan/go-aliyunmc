@@ -36,7 +36,7 @@ func Broadcast(wrapped store.PushedEvent) {
 
 // BroadcastAndSave 向所有已连接的用户推送信息，并保存到数据库中
 func BroadcastAndSave(wrapped store.PushedEvent) error {
-	err := wrapped.Save()
+	err := wrapped.Insert()
 
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (s *UserStream) Send(wrapped store.PushedEvent) {
 
 // SendAndSave 向该用户的 Chan 传递一个推送，并保存到数据库中
 func (s *UserStream) SendAndSave(wrapped store.PushedEvent) error {
-	err := wrapped.Save()
+	err := wrapped.Insert()
 
 	if err != nil {
 		return err
