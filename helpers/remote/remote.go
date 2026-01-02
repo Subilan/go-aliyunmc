@@ -213,6 +213,11 @@ func RunCommandAsProdSync(
 		err := session.Close()
 
 		if err != nil {
+			// Session already closed
+			if err.Error() == "EOF" {
+				return
+			}
+
 			log.Println("cannot close session:", err)
 		} else {
 			log.Println("session closed by context done")
@@ -229,7 +234,7 @@ func RunCommandAsProdSync(
 	stdin.Close()
 
 	if err := session.Wait(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		if ctx.Err() != nil {
 			return outBuf.Bytes(), ctx.Err()
 		}
 
