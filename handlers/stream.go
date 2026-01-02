@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"time"
@@ -9,7 +8,7 @@ import (
 	"github.com/Subilan/gomc-server/globals"
 	"github.com/Subilan/gomc-server/helpers"
 	"github.com/Subilan/gomc-server/helpers/store"
-	stream2 "github.com/Subilan/gomc-server/helpers/stream"
+	"github.com/Subilan/gomc-server/helpers/stream"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
@@ -27,7 +26,7 @@ func HandleBeginStream() gin.HandlerFunc {
 		userIdInt := int(userId.(int64))
 
 		lastEventId := c.GetHeader("Last-Event-Id")
-		lastState, _ := stream2.StateFromString(lastEventId)
+		lastState, _ := store.PushedEventStateFromString(lastEventId)
 
 		conn, err := sse.Upgrade(ctx, c.Writer)
 		if err != nil {
@@ -36,8 +35,8 @@ func HandleBeginStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		userStream := stream2.RegisterStream(userIdInt, conn, ctx)
-		defer stream2.UnregisterStream(userIdInt)
+		userStream := stream.RegisterStream(userIdInt, conn, ctx)
+		defer stream.UnregisterStream(userIdInt)
 
 		lastOrd := 0
 		// 前端携带了Last-Event-Id，需要进行同步
@@ -47,53 +46,29 @@ func HandleBeginStream() gin.HandlerFunc {
 
 			if err != nil {
 				log.Println("cannot get task status:", err)
-				_ = conn.SendEvent(ctx, stream2.ErrorEvent("invalid last-event-id, cannot retrieve status from db", stream2.EventErrorInvalidLastEventId))
+				_ = conn.SendEvent(ctx, helpers.ErrorEvent("invalid last-event-id, cannot retrieve status from db", helpers.EventErrorInvalidLastEventId))
 				return
 			}
 
 			if taskStatus != "running" {
-				_ = conn.SendEvent(ctx, stream2.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", stream2.EventErrorInvalidLastEventId))
+				_ = conn.SendEvent(ctx, helpers.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", helpers.EventErrorInvalidLastEventId))
 				return
 			}
 
 			// 获取当前数据库所有相关信息
-			var rows *sql.Rows
-			rows, err = globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? AND ord > ? ORDER BY ord", lastState.TaskId, lastState.Ord)
+			pushedEvents, err := store.GetPushedEventsAfterOrd(*lastState.TaskId, *lastState.Ord)
 
 			if err != nil {
 				log.Println("cannot get addendum from database", err.Error())
 			} else {
-				for rows.Next() {
-					var taskId string
-					var ord int
-					var typ store.PushedEventType
-					var isError bool
-					var content string
-					err = rows.Scan(&taskId, &ord, &typ, &isError, &content)
-
-					if err != nil {
-						log.Println("cannot scan row: ", err.Error())
-						continue
-					}
-
-					log.Printf("sending addendum taskId=%v, ord=%v, type=%v, content=%v\n", taskId, ord, typ, content)
-
-					err = conn.SendEvent(ctx, stream2.DataEvent(stream2.Event{
-						State: &stream2.State{
-							Ord:    &ord,
-							TaskId: &taskId,
-							Type:   typ,
-						},
-						IsError: isError,
-						Content: content,
-					}))
-
+				for _, event := range pushedEvents {
+					log.Printf("sending addendum %v\n", event)
+					err = conn.SendEvent(ctx, event.SSE())
 					if err != nil {
 						log.Println("cannot send event: ", err.Error())
 						continue
 					}
-
-					lastOrd = ord
+					lastOrd = *event.Ord
 					log.Printf("debug: lastOrd -> %v\n", lastOrd)
 				}
 			}
@@ -105,7 +80,7 @@ func HandleBeginStream() gin.HandlerFunc {
 		for {
 			select {
 			case e := <-userStream.Chan:
-				state, _ := stream2.StateFromString(e.ID)
+				state, _ := store.PushedEventStateFromString(e.ID)
 
 				if lastState != nil {
 					if state != nil && state.TaskId != nil && state.Ord != nil {

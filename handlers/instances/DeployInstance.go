@@ -75,7 +75,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 		cancelCheckCtx()
 
 		// 创建当前任务的全局流
-		stream.Create(taskId, store.EventTypeDeployment)
+		stream.Create(taskId)
 
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -84,9 +84,12 @@ func HandleDeployInstance() gin.HandlerFunc {
 		// 运行并借助全局流输出内容
 		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(), func(bytes []byte) {
 			log.Println("debug: deploy.sh stdout: ", string(bytes))
-			err = stream.BroadcastAndSave(stream.Event{
-				State:   stream.GetState(taskId),
-				Content: string(bytes),
+
+			state := stream.GetState(taskId)
+
+			err = stream.BroadcastAndSave(store.PushedEvent{
+				PushedEventState: *state,
+				Content:          string(bytes),
 			})
 
 			stream.IncrOrd(taskId)
@@ -97,11 +100,14 @@ func HandleDeployInstance() gin.HandlerFunc {
 			}
 		}, func(err error) {
 			tasks.Unregister(taskId)
+
 			log.Println("dedug: deploy.sh stderr: ", err.Error())
-			sendAndSaveError := stream.BroadcastAndSave(stream.Event{
-				State:   stream.GetState(taskId),
-				IsError: true,
-				Content: err.Error(),
+
+			state := stream.GetState(taskId)
+			sendAndSaveError := stream.BroadcastAndSave(store.PushedEvent{
+				PushedEventState: *state,
+				IsError:          true,
+				Content:          err.Error(),
 			})
 
 			if sendAndSaveError != nil {

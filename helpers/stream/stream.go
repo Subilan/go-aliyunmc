@@ -14,11 +14,11 @@ type Stream struct {
 	Ctx    context.Context
 }
 
-func (s *Stream) State() *State {
+func (s *Stream) State() *store.PushedEventState {
 	return userStreamStates[s.UserId]
 }
 
-func BroadcastAndSave(wrapped Event) error {
+func BroadcastAndSave(wrapped store.PushedEvent) error {
 	err := wrapped.Save()
 
 	if err != nil {
@@ -32,11 +32,11 @@ func BroadcastAndSave(wrapped Event) error {
 	return nil
 }
 
-func (s *Stream) Send(wrapped Event) {
-	s.Chan <- DataEvent(wrapped)
+func (s *Stream) Send(wrapped store.PushedEvent) {
+	s.Chan <- wrapped.SSE()
 }
 
-func (s *Stream) SendAndSave(wrapped Event) error {
+func (s *Stream) SendAndSave(wrapped store.PushedEvent) error {
 	err := wrapped.Save()
 
 	if err != nil {
@@ -49,15 +49,15 @@ func (s *Stream) SendAndSave(wrapped Event) error {
 }
 
 var userStreams = make(map[int]*Stream)
-var userStreamStates = make(map[int]*State)
-var globalStreamStates = make(map[string]*State)
+var userStreamStates = make(map[int]*store.PushedEventState)
+var globalStreamStates = make(map[string]*store.PushedEventState)
 
-func Create(taskId string, eventType store.PushedEventType) {
+func Create(taskId string) {
 	var ord = 0
-	globalStreamStates[taskId] = &State{Type: eventType, TaskId: &taskId, Ord: &ord}
+	globalStreamStates[taskId] = &store.PushedEventState{TaskId: &taskId, Ord: &ord}
 }
 
-func GetState(taskId string) *State {
+func GetState(taskId string) *store.PushedEventState {
 	return globalStreamStates[taskId]
 }
 
