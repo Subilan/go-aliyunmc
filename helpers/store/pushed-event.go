@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )

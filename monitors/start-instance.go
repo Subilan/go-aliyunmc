@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 )

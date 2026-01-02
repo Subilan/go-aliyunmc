@@ -1,6 +1,6 @@
 package templateData
 
-import "github.com/Subilan/gomc-server/config"
+import "github.com/Subilan/go-aliyunmc/config"
 
 type DeployTemplateData struct {
 	Username        string

@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Subilan/gomc-server/globals"
-	"github.com/Subilan/gomc-server/helpers"
-	"github.com/Subilan/gomc-server/helpers/remote"
-	"github.com/Subilan/gomc-server/helpers/store"
-	"github.com/Subilan/gomc-server/helpers/stream"
-	"github.com/Subilan/gomc-server/helpers/tasks"
-	"github.com/Subilan/gomc-server/helpers/templateData"
+	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/remote"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/helpers/tasks"
+	"github.com/Subilan/go-aliyunmc/helpers/templateData"
 	"github.com/gin-gonic/gin"
 )
 

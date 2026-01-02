@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Subilan/gomc-server/globals"
-	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/gin-gonic/gin"
 )
 

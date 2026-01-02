@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/Subilan/gomc-server/config"
-	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/globals"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
 

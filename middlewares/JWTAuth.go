@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Subilan/gomc-server/config"
-	"github.com/Subilan/gomc-server/handlers/auth"
-	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/handlers/auth"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )

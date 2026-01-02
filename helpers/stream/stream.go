@@ -3,7 +3,7 @@ package stream
 import (
 	"context"
 
-	"github.com/Subilan/gomc-server/helpers/store"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"go.jetify.com/sse"
 )
 

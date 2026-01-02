@@ -1,7 +1,7 @@
 package clients
 
 import (
-	"github.com/Subilan/gomc-server/config"
+	"github.com/Subilan/go-aliyunmc/config"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"github.com/alibabacloud-go/tea/tea"
 	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v6/client"

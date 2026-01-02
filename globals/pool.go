@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/Subilan/gomc-server/config"
+	"github.com/Subilan/go-aliyunmc/config"
 )
 
 var Pool *sql.DB

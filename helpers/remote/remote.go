@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Subilan/gomc-server/config"
+	"github.com/Subilan/go-aliyunmc/config"
 	"golang.org/x/crypto/ssh"
 )
 

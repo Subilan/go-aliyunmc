@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Subilan/gomc-server/globals"
-	"github.com/Subilan/gomc-server/helpers"
-	"github.com/Subilan/gomc-server/helpers/store"
+	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
 

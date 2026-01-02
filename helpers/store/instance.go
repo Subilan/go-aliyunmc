@@ -3,7 +3,7 @@ package store
 import (
 	"time"
 
-	"github.com/Subilan/gomc-server/globals"
+	"github.com/Subilan/go-aliyunmc/globals"
 )
 
 type Instance struct {

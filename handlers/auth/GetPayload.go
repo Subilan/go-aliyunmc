@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/Subilan/gomc-server/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/gin-gonic/gin"
 )
 

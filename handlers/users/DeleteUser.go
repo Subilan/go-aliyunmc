@@ -3,9 +3,9 @@ package users
 import (
 	"net/http"
 
-	"github.com/Subilan/gomc-server/globals"
-	"github.com/Subilan/gomc-server/helpers"
-	"github.com/Subilan/gomc-server/helpers/ginContextCheckers"
+	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/ginContextCheckers"
 	"github.com/gin-gonic/gin"
 )
 

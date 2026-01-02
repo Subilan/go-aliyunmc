@@ -1,7 +1,7 @@
 package clients
 
 import (
-	"github.com/Subilan/gomc-server/config"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/aliyun/credentials-go/credentials"
 )
 
