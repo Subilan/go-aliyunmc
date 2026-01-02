@@ -60,11 +60,13 @@ apt update -y
 echo "4. 配置 Zulu Java 源"
 apt install -y gnupg ca-certificates curl
 
+rm /usr/share/keyrings/azul.gpg || true
+
 curl -s https://repos.azul.com/azul-repo.key \
-  | sudo gpg --dearmor -o /usr/share/keyrings/azul.gpg
+  | gpg --batch --dearmor -o /usr/share/keyrings/azul.gpg
 
 echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
-  | sudo tee /etc/apt/sources.list.d/zulu.list
+  | tee /etc/apt/sources.list.d/zulu.list
   
 chmod 644 /usr/share/keyrings/azul.gpg
 
