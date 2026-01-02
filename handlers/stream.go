@@ -35,8 +35,8 @@ func HandleBeginStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		userStream := stream.RegisterStream(userIdInt, conn, ctx)
-		defer stream.UnregisterStream(userIdInt)
+		userStream := stream.RegisterUser(userIdInt, conn, ctx)
+		defer stream.UnregisterUser(userIdInt)
 
 		lastOrd := 0
 		// 前端携带了Last-Event-Id，需要进行同步
