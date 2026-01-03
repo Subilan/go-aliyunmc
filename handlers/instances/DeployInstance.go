@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/globals"
@@ -17,8 +18,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var deployInstanceMutex sync.Mutex
+
 func HandleDeployInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
+		deployInstanceMutex.Lock()
+		defer deployInstanceMutex.Unlock()
+
 		var userId int
 
 		userIdStr, exists := c.Get("user_id")
@@ -60,6 +66,14 @@ func HandleDeployInstance() gin.HandlerFunc {
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
 		tasks.Register(cancelRunCtx, taskId)
+
+		event, err := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, store.TaskStatusRunning)
+
+		if err != nil {
+			log.Println("cannot build instance event", err)
+		}
+
+		err = stream.BroadcastAndSave(event)
 
 		// 运行并借助全局流输出内容
 		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(),
@@ -110,11 +124,36 @@ func HandleDeployInstance() gin.HandlerFunc {
 				if err != nil {
 					log.Println("cannot update task status: " + err.Error())
 				}
+
+				event, err = store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, status)
+
+				if err != nil {
+					log.Println("cannot build instance event", err)
+				}
+
+				err = stream.BroadcastAndSave(event)
+
+				if err != nil {
+					log.Println("cannot send and save instance event", err)
+				}
 			},
 			func() {
 				_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
+
 				if err != nil {
 					log.Println("cannot update task status to success: " + err.Error())
+				}
+
+				event, err = store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, store.TaskStatusSuccess)
+
+				if err != nil {
+					log.Println("cannot build instance event", err)
+				}
+
+				err = stream.BroadcastAndSave(event)
+
+				if err != nil {
+					log.Println("cannot send and save instance event", err)
 				}
 			},
 			func() {
