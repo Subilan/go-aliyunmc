@@ -55,7 +55,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 		}
 
 		// 创建当前任务的全局流
-		stream.Create(taskId)
+		stream.CreateState(taskId)
 
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -73,7 +73,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 					Content:          string(bytes),
 				})
 
-				stream.IncrOrd(taskId)
+				stream.IncrStateOrd(taskId)
 
 				if err != nil {
 					log.Println(err.Error())
@@ -119,7 +119,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 			},
 			func() {
 				tasks.Unregister(taskId)
-				stream.Delete(taskId)
+				stream.DeleteState(taskId)
 			},
 		)
 

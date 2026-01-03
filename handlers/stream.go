@@ -97,9 +97,6 @@ func HandleBeginStream() gin.HandlerFunc {
 					return
 				}
 
-				lastOrd = *state.Ord
-				log.Printf("debug: lastOrd -> %v\n", lastOrd)
-
 			case <-ticker.C:
 				if err := conn.SendComment(ctx, "ping"); err != nil {
 					// 心跳的错误处理应该保持简单

@@ -3,12 +3,16 @@ package instances
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -37,8 +41,14 @@ type CreateInstanceResponseBody struct {
 
 const CreateInstanceTimeout = 15 * time.Second
 
+var createInstanceMutex sync.Mutex
+
 func HandleCreateInstance() gin.HandlerFunc {
 	return helpers.BodyHandler(func(body CreateInstanceBody, c *gin.Context) (any, error) {
+		// 长耗时任务，避免重复执行
+		createInstanceMutex.Lock()
+		defer createInstanceMutex.Unlock()
+
 		var err error
 
 		zone := globals.GetZoneItemByZoneId(body.ZoneId)
@@ -137,11 +147,29 @@ INSERT INTO instance_statuses (instance_id, status) VALUES (?, ?)
 			return nil, err
 		}
 
+		// 将实例创建广播给所有用户
+		event, err := store.BuildInstanceEvent(store.InstanceEventCreated, store.Instance{
+			InstanceId:   *createInstanceResponse.Body.InstanceId,
+			InstanceType: body.InstanceType,
+			RegionId:     config.Cfg.Aliyun.RegionId,
+			ZoneId:       body.ZoneId,
+			DeletedAt:    nil,
+			CreatedAt:    time.Now(),
+			Ip:           nil,
+		})
+
+		if err != nil {
+			log.Println("cannot build event:", err)
+		}
+
+		err = stream.BroadcastAndSave(event)
+
+		if err != nil {
+			log.Println("cannot broadcast and save event:", err)
+		}
+
 		go monitors.StartInstanceWhenReady()
 
-		return helpers.Data(CreateInstanceResponseBody{
-			InstanceId: tea.StringValue(createInstanceResponse.Body.InstanceId),
-			TradePrice: tea.Float32Value(createInstanceResponse.Body.TradePrice),
-		}), nil
+		return gin.H{}, nil
 	})
 }

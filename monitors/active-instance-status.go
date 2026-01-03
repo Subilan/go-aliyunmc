@@ -10,6 +10,8 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 )
@@ -55,19 +57,38 @@ func (m *ActiveInstanceStatusMonitor) Stop() {
 	m.runningSign = false
 }
 
+func (m *ActiveInstanceStatusMonitor) syncWithUser(status string, save bool) {
+	event, err := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, status)
+
+	if err != nil {
+		m.logger.Printf("Error building event: %v", err)
+		return
+	}
+
+	if save {
+		err = stream.BroadcastAndSave(event)
+
+		if err != nil {
+			m.logger.Printf("Error sending event: %v", err)
+		}
+	} else {
+		stream.Broadcast(event)
+	}
+}
+
 func (m *ActiveInstanceStatusMonitor) Main() {
 	var err error
+	var updateRes sql.Result
+	var rowsAffected int64
+	var ctx context.Context
+	var cancel context.CancelFunc
+	var activeInstanceId string
+	var describeInstanceStatusRequest *ecs20140526.DescribeInstanceStatusRequest
+	var describeInstanceStatusResponse *ecs20140526.DescribeInstanceStatusResponse
+
 	cfg := config.Cfg.Monitor.ActiveInstanceStatusMonitor
 
 	for {
-		var updateRes sql.Result
-		var rowsAffected int64
-		var ctx context.Context
-		var cancel context.CancelFunc
-		var activeInstanceId string
-		var describeInstanceStatusRequest *ecs20140526.DescribeInstanceStatusRequest
-		var describeInstanceStatusResponse *ecs20140526.DescribeInstanceStatusResponse
-
 		if m.stopSign {
 			break
 		}
@@ -101,6 +122,7 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 		describeInstanceStatusResponse, err = globals.EcsClient.DescribeInstanceStatus(describeInstanceStatusRequest)
 
 		if err != nil {
+			m.syncWithUser("unable_to_get", false)
 			m.logger.Printf("Error describing active instance status: %v\n", err)
 			m.errChan <- err
 			goto end
@@ -120,12 +142,14 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 			rowsAffected, err = updateRes.RowsAffected()
 
 			if err != nil {
-				m.logger.Printf("You don't seem to have RowsAffected! Updated active instance status to %s\n", status)
+				m.logger.Printf("Why is this even possible? Updated active instance status to %s\n", status)
 				m.errChan <- err
 				goto end
 			}
 
 			if rowsAffected > 0 {
+				// 推送并记录实例状态的更新
+				m.syncWithUser(status, true)
 				m.logger.Printf("Updated active instance status to %s\n", status)
 			}
 		} else {

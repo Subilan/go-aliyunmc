@@ -1,6 +1,7 @@
 package store
 
 import (
+	"log"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/globals"
@@ -13,13 +14,31 @@ type Instance struct {
 	ZoneId       string     `json:"zoneId"`
 	DeletedAt    *time.Time `json:"deletedAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
-	Ip           string     `json:"ip"`
+	Ip           *string    `json:"ip"`
 }
 
-func GetActiveInstance() *Instance {
+type InstanceStatus struct {
+	InstanceId     string    `json:"instanceId"`
+	InstanceStatus string    `json:"instanceStatus"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+func GetInstanceStatus(instanceId string) *InstanceStatus {
+	var result InstanceStatus
+
+	err := globals.Pool.QueryRow("SELECT instance_id, status, updated_at FROM instance_statuses WHERE instance_id = ?", instanceId).Scan(&result.InstanceId, &result.InstanceStatus, &result.UpdatedAt)
+
+	if err != nil {
+		return nil
+	}
+
+	return &result
+}
+
+func getInstance(cond string) *Instance {
 	var result Instance
 
-	err := globals.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip FROM instances WHERE deleted_at IS NULL").Scan(
+	err := globals.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip FROM instances "+cond).Scan(
 		&result.InstanceId,
 		&result.InstanceType,
 		&result.RegionId,
@@ -34,6 +53,33 @@ func GetActiveInstance() *Instance {
 	}
 
 	return &result
+}
+
+// GetActiveInstance 从数据库获取当前的活动实例
+// 如果找不到实例，或者活动实例没有分配IP地址，返回 nil
+func GetActiveInstance() *Instance {
+	result := getInstance("WHERE deleted_at IS NULL")
+
+	if result == nil {
+		return nil
+	}
+
+	if result.Ip == nil {
+		log.Println("ip not allocated on active instance")
+		return nil
+	}
+
+	return result
+}
+
+func GetLatestInstance() *Instance {
+	result := getInstance("ORDER BY created_at DESC LIMIT 1")
+
+	if result == nil {
+		return nil
+	}
+
+	return result
 }
 
 // GetRunningInstanceBrief 尝试获取一个处于运行状态的实例并返回其instance_id和ip信息

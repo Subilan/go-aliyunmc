@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -113,3 +114,36 @@ const (
 	EventTypeServer
 	EventTypeInstance
 )
+
+func BuildStatelessEvent(data any, typ PushedEventType) (PushedEvent, error) {
+	marshalledData, err := json.Marshal(data)
+
+	if err != nil {
+		return PushedEvent{}, err
+	}
+
+	return PushedEvent{
+		PushedEventState: PushedEventState{},
+		Type:             typ,
+		IsError:          false,
+		Content:          string(marshalledData),
+		CreatedAt:        time.Now(),
+	}, nil
+}
+
+type InstanceEventType string
+
+const (
+	InstanceEventNotify             InstanceEventType = "notify"
+	InstanceEventActiveStatusUpdate InstanceEventType = "active_status_update"
+	InstanceEventActiveIpUpdate     InstanceEventType = "active_ip_update"
+	InstanceEventCreated            InstanceEventType = "created"
+)
+
+const (
+	InstanceNotificationDeleted = "instance_deleted"
+)
+
+func BuildInstanceEvent(typ InstanceEventType, data any) (PushedEvent, error) {
+	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeInstance)
+}

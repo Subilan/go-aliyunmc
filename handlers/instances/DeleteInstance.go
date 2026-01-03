@@ -4,11 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/gin-gonic/gin"
 )
@@ -65,6 +68,19 @@ func HandleDeleteInstance() gin.HandlerFunc {
 
 		if err != nil {
 			return nil, err
+		}
+
+		// 将实例删除广播给所有用户
+		event, err := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
+
+		if err != nil {
+			log.Println("cannot build event:", err)
+		}
+
+		err = stream.BroadcastAndSave(event)
+
+		if err != nil {
+			log.Println("cannot broadcast and save event:", err)
 		}
 
 		return gin.H{}, nil
