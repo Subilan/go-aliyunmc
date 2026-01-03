@@ -81,10 +81,10 @@ func (event *PushedEvent) Insert() error {
 	return nil
 }
 
-func GetPushedEventsAfterOrd(taskId string, ord int) ([]PushedEvent, error) {
+func GetPushedEvents(taskId string) ([]PushedEvent, error) {
 	var result = make([]PushedEvent, 0)
 
-	rows, err := globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? AND ord > ? ORDER BY ord", taskId, ord)
+	rows, err := globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? ORDER BY ord", taskId)
 
 	if err != nil {
 		return nil, err
@@ -134,10 +134,11 @@ func BuildStatelessEvent(data any, typ PushedEventType) (PushedEvent, error) {
 type InstanceEventType string
 
 const (
-	InstanceEventNotify             InstanceEventType = "notify"
-	InstanceEventActiveStatusUpdate InstanceEventType = "active_status_update"
-	InstanceEventActiveIpUpdate     InstanceEventType = "active_ip_update"
-	InstanceEventCreated            InstanceEventType = "created"
+	InstanceEventNotify                     InstanceEventType = "notify"
+	InstanceEventActiveStatusUpdate         InstanceEventType = "active_status_update"
+	InstanceEventActiveIpUpdate             InstanceEventType = "active_ip_update"
+	InstanceEventCreated                    InstanceEventType = "created"
+	InstanceEventDeploymentTaskStatusUpdate InstanceEventType = "deployment_task_status_update"
 )
 
 const (

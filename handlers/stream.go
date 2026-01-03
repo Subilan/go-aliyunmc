@@ -50,13 +50,8 @@ func HandleBeginStream() gin.HandlerFunc {
 				return
 			}
 
-			if taskStatus != "running" {
-				_ = conn.SendEvent(ctx, helpers.ErrorEvent("invalid last-event-id, corresponding task is not running, please use dedicated GET handlers instead", helpers.EventErrorInvalidLastEventId))
-				return
-			}
-
 			// 获取当前数据库所有相关信息
-			pushedEvents, err := store.GetPushedEventsAfterOrd(*lastState.TaskId, *lastState.Ord)
+			pushedEvents, err := store.GetPushedEvents(*lastState.TaskId)
 
 			if err != nil {
 				log.Println("cannot get addendum from database", err.Error())
