@@ -1,16 +1,20 @@
 package instances
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
+	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
 )
@@ -53,6 +57,9 @@ type InstanceTypeAndTradePrice struct {
 
 func HandleGetInstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 	return helpers.QueryHandler(func(body InstanceTypeAndPricePerHourBody, c *gin.Context) (any, error) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 1*time.Minute)
+		defer cancel()
+
 		client, err := clients.ShouldCreateEcsClient()
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
 		regionId := config.Cfg.Aliyun.RegionId
@@ -67,26 +74,38 @@ func HandleGetInstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 			MaximumCpuCoreCount: tea.Int32(int32(body.MaximumCpuCoreCount)),
 			MinimumCpuCoreCount: tea.Int32(int32(body.MinimumMemorySize)),
 			CpuArchitecture:     tea.String(body.CpuArchitecture),
-			NextToken:           body.NextToken,
 		}
 
 		if body.MaxResults != nil {
 			describeInstanceTypesRequest.MaxResults = body.MaxResults
 		}
 
+		var responses []*ecs20140526.DescribeInstanceTypesResponse
+
 		// 获取地域下所有满足需要的实例类型
-		describeInstanceTypesResponse, err := client.DescribeInstanceTypes(describeInstanceTypesRequest)
+		describeInstanceTypesResponse, err := client.DescribeInstanceTypesWithContext(ctx, describeInstanceTypesRequest, &dara.RuntimeOptions{})
+		responses = append(responses, describeInstanceTypesResponse)
 
 		if err != nil {
 			return nil, err
 		}
 
+		if body.MaxResults != nil && int(*body.MaxResults) > len(describeInstanceTypesResponse.Body.InstanceTypes.InstanceType) {
+			for describeInstanceTypesResponse.Body != nil && describeInstanceTypesResponse.Body.NextToken != nil {
+				describeInstanceTypesRequest.NextToken = describeInstanceTypesResponse.Body.NextToken
+				describeInstanceTypesResponse, err = client.DescribeInstanceTypesWithContext(ctx, describeInstanceTypesRequest, &dara.RuntimeOptions{})
+				responses = append(responses, describeInstanceTypesResponse)
+			}
+		}
+
 		var instanceTypeIds = make([]string, 0)
 		var instanceTypeInfoMap = make(map[string]*ecs20140526.DescribeInstanceTypesResponseBodyInstanceTypesInstanceType)
 
-		for _, inst := range describeInstanceTypesResponse.Body.InstanceTypes.InstanceType {
-			instanceTypeIds = append(instanceTypeIds, *inst.InstanceTypeId)
-			instanceTypeInfoMap[*inst.InstanceTypeId] = inst
+		for _, describeInstanceTypesResponse := range responses {
+			for _, inst := range describeInstanceTypesResponse.Body.InstanceTypes.InstanceType {
+				instanceTypeIds = append(instanceTypeIds, *inst.InstanceTypeId)
+				instanceTypeInfoMap[*inst.InstanceTypeId] = inst
+			}
 		}
 
 		var result = make([]InstanceTypeAndPricePerHourResponseItem, 0)
@@ -142,13 +161,17 @@ func HandleGetInstanceTypesAndSpotPricePerHour() gin.HandlerFunc {
 				// 获取价格
 				// Note: 由于查价接口传入的信息相比查询实例类型接口传入的信息多出了对系统盘和数据盘的参数
 				// 此处可能因为系统盘、数据盘的配置在指定实例上不受支持而报错
-				describePriceResponse, err := client.DescribePrice(describePriceRequest)
+				describePriceResponse, err := client.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
 
 				currentTypeAndTradePrice := InstanceTypeAndTradePrice{
 					InstanceType: instanceType,
 				}
 
 				if err != nil {
+					if errors.Is(err, context.DeadlineExceeded) {
+						return nil, err
+					}
+
 					//fmt.Printf("warn: cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, regionId, *zoneItem.ZoneId)
 					continue
 				} else {

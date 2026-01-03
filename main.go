@@ -25,7 +25,7 @@ import (
 
 func bindRoutes(r *gin.Engine) {
 	r.GET("/instance/:instanceId", instances.HandleGetInstance())
-	r.GET("/instance-status/:instanceId", instances.HandleGetInstanceStatus())
+	r.GET("/active-or-latest-instance", instances.HandleGetActiveOrLatestInstance())
 	r.GET("/instance-types-and-charge", instances.HandleGetInstanceTypesAndSpotPricePerHour())
 	r.GET("/instance-description/:instanceId", instances.HandleDescribeInstance())
 	r.POST("/instance", instances.HandleCreateInstance())
