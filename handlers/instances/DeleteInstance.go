@@ -18,8 +18,13 @@ import (
 
 const DeleteInstanceTimeout = 15 * time.Second
 
+type DeleteInstanceQuery struct {
+	Force     bool `form:"force"`
+	ForceStop bool `form:"forceStop"`
+}
+
 func HandleDeleteInstance() gin.HandlerFunc {
-	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
+	return helpers.QueryHandler[DeleteInstanceQuery](func(query DeleteInstanceQuery, c *gin.Context) (any, error) {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
@@ -49,13 +54,10 @@ func HandleDeleteInstance() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "instance not found or already deleted"}
 		}
 
-		_, force := c.GetQuery("force")
-		_, forceStop := c.GetQuery("forceStop")
-
 		deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
 			InstanceId: &instanceId,
-			Force:      &force,
-			ForceStop:  &forceStop,
+			Force:      &query.Force,
+			ForceStop:  &query.ForceStop,
 		}
 
 		_, err = globals.EcsClient.DeleteInstance(deleteInstanceRequest)
