@@ -97,7 +97,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 					DiskName: tea.String("data"),
 				},
 			},
-			InternetChargeType:       tea.String("PayByBandwidth"),
+			InternetChargeType:       tea.String("PayByTraffic"),
 			InternetMaxBandwidthOut:  tea.Int32(int32(ecsConfig.InternetMaxBandwidthOut)),
 			HostName:                 tea.String(ecsConfig.HostName),
 			Password:                 tea.String(ecsConfig.RootPassword),
