@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"go.jetify.com/sse"
@@ -66,35 +67,45 @@ func (s *UserStream) SendAndSave(wrapped store.PushedEvent) error {
 }
 
 var userStreams = make(map[int]*UserStream)
+var userStreamsMu sync.Mutex
 var userStreamStates = make(map[int]*store.PushedEventState)
 var globalStreamStates = make(map[string]*store.PushedEventState)
+var globalStreamStatesMu sync.Mutex
 
-// Create 创建一个全局流状态表项，并将顺序字段设置为 0。
-func Create(taskId string) {
+// CreateState 创建一个全局流状态表项，并将顺序字段设置为 0。
+func CreateState(taskId string) {
 	var ord = 0
 	globalStreamStates[taskId] = &store.PushedEventState{TaskId: &taskId, Ord: &ord}
 }
 
-// Delete 从全局流状态表中删除 taskId 对应的状态信息。
+// DeleteState 从全局流状态表中删除 taskId 对应的状态信息。
 // 该函数只应该在任务结束后调用。
-func Delete(taskId string) {
+func DeleteState(taskId string) {
+	globalStreamStatesMu.Lock()
+	defer globalStreamStatesMu.Unlock()
 	delete(globalStreamStates, taskId)
 }
 
 // GetState 从全局流状态表中获取 taskId 对应的状态信息。
 // 该方法不会对键的合法性做检查，调用时请确保该键未被删除。
 func GetState(taskId string) *store.PushedEventState {
+	globalStreamStatesMu.Lock()
+	defer globalStreamStatesMu.Unlock()
 	return globalStreamStates[taskId]
 }
 
-// IncrOrd 为全局流状态表对应状态信息的顺序字段增加 1。
+// IncrStateOrd 为全局流状态表对应状态信息的顺序字段增加 1。
 // 该方法不会对键的合法性做检查，调用时请确保该键未被删除。
-func IncrOrd(taskId string) {
+func IncrStateOrd(taskId string) {
+	globalStreamStatesMu.Lock()
+	defer globalStreamStatesMu.Unlock()
 	globalStreamStates[taskId].IncrOrd()
 }
 
 // RegisterUser 将用户的 SSE 连接信息记录到全局表中，用于后续推送信息
 func RegisterUser(userId int, conn *sse.Conn, ctx context.Context) *UserStream {
+	userStreamsMu.Lock()
+	defer userStreamsMu.Unlock()
 	var syncUser = &UserStream{
 		UserId: userId,
 		Conn:   conn,
@@ -108,5 +119,7 @@ func RegisterUser(userId int, conn *sse.Conn, ctx context.Context) *UserStream {
 
 // UnregisterUser 从全局表中删除指定用户的 SSE 连接信息
 func UnregisterUser(userId int) {
+	userStreamsMu.Lock()
+	defer userStreamsMu.Unlock()
 	delete(userStreams, userId)
 }
