@@ -97,7 +97,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 					DiskName: tea.String("data"),
 				},
 			},
-			InternetChargeType:       tea.String("PayByTraffic"), // This line costs CNY 360.
+			InternetChargeType:       tea.String("PayByTraffic"), // This line costs CNY 400.
 			InternetMaxBandwidthOut:  tea.Int32(int32(ecsConfig.InternetMaxBandwidthOut)),
 			HostName:                 tea.String(ecsConfig.HostName),
 			Password:                 tea.String(ecsConfig.RootPassword),
