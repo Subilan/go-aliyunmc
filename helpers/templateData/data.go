@@ -29,3 +29,15 @@ func Deploy() DeployTemplateData {
 		ArchiveOSSPath:  config.Cfg.Deploy.ArchiveOSSPath,
 	}
 }
+
+type ArchiveTemplateData struct {
+	ArchiveOSSPath string
+	BackupOSSPath  string
+}
+
+func Archive() ArchiveTemplateData {
+	return ArchiveTemplateData{
+		ArchiveOSSPath: config.Cfg.Deploy.ArchiveOSSPath,
+		BackupOSSPath:  config.Cfg.Deploy.BackupOSSPath,
+	}
+}

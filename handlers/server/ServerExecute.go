@@ -15,107 +15,59 @@ import (
 )
 
 type ExecuteQuery struct {
-	CommandType   CommandType `form:"commandType" binding:"required,oneof=start_server stop_server"`
-	WaitForOutput bool        `form:"waitForOutput"`
+	CommandType   globals.CommandType `form:"commandType" binding:"required"`
+	WaitForOutput bool                `form:"waitForOutput"`
 }
 
-type CommandExecuteLocation string
-
-const (
-	ExecuteLocationServer CommandExecuteLocation = "server"
-	ExecuteLocationShell                         = "shell"
-)
-
-type CommandType string
-
-var commandTypeStartServerCooldownLeft = 0
-var commandTypeStopServerCooldownLeft = 0
-
-func (c CommandType) Prerequisite() error {
-	switch c {
-	case CmdTypeStartServer:
-		if globals.IsServerRunning {
-			return &helpers.HttpError{Code: http.StatusConflict, Details: "server is already running"}
-		}
-		if commandTypeStartServerCooldownLeft > 0 {
-			return &helpers.HttpError{Code: http.StatusForbidden, Details: "this command is still in cooldown"}
-		}
-	case CmdTypeStopServer:
-		if !globals.IsServerRunning {
-			return &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "server is not running"}
-		}
-		if commandTypeStopServerCooldownLeft > 0 {
-			return &helpers.HttpError{Code: http.StatusForbidden, Details: "this command is still in cooldown"}
-		}
-	}
-
-	return nil
-}
-
-func (c CommandType) Command() (CommandExecuteLocation, []string) {
-	switch c {
-	case CmdTypeStartServer:
-		// TODO: 必须先cd到目录下，再执行start.sh，因为start.sh里面写的很可能是相对路径
-		return ExecuteLocationShell, []string{"cd /home/mc/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || echo 'server cannot be started'"}
-	case CmdTypeStopServer:
-		return ExecuteLocationServer, []string{"stop"}
-	}
-
-	return "", nil
-}
-
-func (c CommandType) SetupCooldown() {
-	switch c {
-	case CmdTypeStartServer:
-		commandTypeStartServerCooldownLeft = 60
-		go func() {
-			for commandTypeStartServerCooldownLeft > 0 {
-				commandTypeStartServerCooldownLeft -= 1
-				time.Sleep(time.Second)
-			}
-		}()
-	case CmdTypeStopServer:
-		commandTypeStopServerCooldownLeft = 60
-		go func() {
-			for commandTypeStopServerCooldownLeft > 0 {
-				commandTypeStopServerCooldownLeft -= 1
-				time.Sleep(time.Second)
-			}
-		}()
-	}
-}
-
-const (
-	CmdTypeStartServer CommandType = "start_server"
-	CmdTypeStopServer  CommandType = "stop_server"
-)
-
-// HandleServerExecute 尝试在活动实例上运行一个操作，该操作必须在预先固定的有限操作中选取一个。无论运行成功还是失败，该接口总是返回输出的内容。
+// HandleServerExecute 尝试在活动实例上运行一个操作，该操作必须在预先固定的有限操作中选取一个。
 func HandleServerExecute() gin.HandlerFunc {
 	return helpers.QueryHandler[ExecuteQuery](func(body ExecuteQuery, c *gin.Context) (any, error) {
+		userId, exists := c.Get("user_id")
+
+		if !exists {
+			return nil, &helpers.HttpError{Code: http.StatusUnauthorized, Details: "cannot get user id"}
+		}
+
 		activeInstance := store.GetActiveInstance()
 
 		if activeInstance == nil {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active instance present"}
 		}
 
-		if err := body.CommandType.Prerequisite(); err != nil {
+		cmd, ok := globals.Commands[body.CommandType]
+
+		if !ok {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "command not found"}
+		}
+
+		if cmd.IsCoolingDown() {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "cooling down"}
+		}
+
+		if cmd.Prerequisite != nil {
+			if !cmd.Prerequisite() {
+				return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "prerequisite not met"}
+			}
+		}
+
+		ctx, cancel := context.WithTimeout(c, time.Duration(cmd.Timeout)*time.Second)
+		defer cancel()
+
+		row, err := globals.Pool.Exec("INSERT INTO command_exec (`type`, `by`, `status`) VALUES (?, ?, ?)", cmd.Type, userId, "created")
+
+		if err != nil {
 			return nil, err
 		}
 
-		ctx, cancel := context.WithTimeout(c, 10*time.Second)
-		defer cancel()
-
-		loc, cmd := body.CommandType.Command()
+		recordId, _ := row.LastInsertId()
 
 		var output []byte
-		var err error
 
-		if loc == ExecuteLocationShell {
-			output, err = remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd)
+		if cmd.ExecInShell() {
+			output, err = remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd.Content)
 		}
 
-		if loc == ExecuteLocationServer {
+		if cmd.ExecInServer() {
 			if !globals.IsServerRunning {
 				return nil, &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "server not running"}
 			}
@@ -132,7 +84,7 @@ func HandleServerExecute() gin.HandlerFunc {
 
 			var messages strings.Builder
 
-			for _, serverCmd := range cmd {
+			for _, serverCmd := range cmd.Content {
 				if err := rconClient.Run(serverCmd); err != nil {
 					return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot execute command"}
 				}
@@ -149,12 +101,14 @@ func HandleServerExecute() gin.HandlerFunc {
 			}
 		}
 
-		body.CommandType.SetupCooldown()
-
 		if err != nil {
+			_, _ = globals.Pool.Exec("UPDATE `command_exec` SET `status` = ? WHERE id = ?", "error", recordId)
 			return helpers.Data(gin.H{"error": err.Error(), "output": string(output)}), nil
 		}
 
+		cmd.StartCooldown()
+
+		_, _ = globals.Pool.Exec("UPDATE `command_exec` SET `status` = ? WHERE id = ?", "success", recordId)
 		return helpers.Data(gin.H{"error": nil, "output": string(output)}), nil
 	})
 }

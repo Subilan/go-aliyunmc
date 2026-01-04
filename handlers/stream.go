@@ -45,7 +45,7 @@ func HandleBeginStream() gin.HandlerFunc {
 			err = globals.Pool.QueryRow("SELECT `status` FROM tasks WHERE task_id = ?", lastState.TaskId).Scan(&taskStatus)
 
 			if err != nil {
-				log.Println("cannot get task status:", err)
+				log.Println("cannot get task status of task id", lastState.TaskId)
 				_ = conn.SendEvent(ctx, helpers.ErrorEvent("invalid last-event-id, cannot retrieve status from db", helpers.EventErrorInvalidLastEventId))
 				return
 			}

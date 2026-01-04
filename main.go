@@ -124,7 +124,13 @@ func main() {
 
 	log.Print("OK")
 
+	log.Println("Starting monitors...")
+
 	runMonitors()
+
+	log.Println("Loading commands...")
+
+	globals.LoadCommands()
 
 	log.Print("Loading gin...")
 

@@ -24,6 +24,7 @@ type DeployConfig struct {
 	SSHPublicKey   string   `toml:"ssh_public_key"`
 	JavaVersion    uint     `toml:"java_version"`
 	ArchiveOSSPath string   `toml:"archive_oss_path"`
+	BackupOSSPath  string   `toml:"backup_oss_path"`
 }
 
 type AliyunConfig struct {
