@@ -29,6 +29,7 @@ const (
 type CommandType string
 
 var commandTypeStartServerCooldownLeft = 0
+var commandTypeStopServerCooldownLeft = 0
 
 func (c CommandType) Prerequisite() error {
 	switch c {
@@ -42,6 +43,9 @@ func (c CommandType) Prerequisite() error {
 	case CmdTypeStopServer:
 		if !globals.IsServerRunning {
 			return &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "server is not running"}
+		}
+		if commandTypeStopServerCooldownLeft > 0 {
+			return &helpers.HttpError{Code: http.StatusForbidden, Details: "this command is still in cooldown"}
 		}
 	}
 
@@ -67,6 +71,14 @@ func (c CommandType) SetupCooldown() {
 		go func() {
 			for commandTypeStartServerCooldownLeft > 0 {
 				commandTypeStartServerCooldownLeft -= 1
+				time.Sleep(time.Second)
+			}
+		}()
+	case CmdTypeStopServer:
+		commandTypeStopServerCooldownLeft = 60
+		go func() {
+			for commandTypeStopServerCooldownLeft > 0 {
+				commandTypeStopServerCooldownLeft -= 1
 				time.Sleep(time.Second)
 			}
 		}()
