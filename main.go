@@ -46,6 +46,8 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/server/exec", middlewares.JWTAuth(), server.HandleServerExecute())
 	r.GET("/server/query", middlewares.JWTAuth(), server.HandleServerQuery())
 	r.GET("/server/info", middlewares.JWTAuth(), server.HandleGetServerInfo())
+	r.GET("/server/latest-success-backup", middlewares.JWTAuth(), server.HandleGetLatestSuccessBackup())
+	r.GET("/server/latest-success-archive", middlewares.JWTAuth(), server.HandleGetLatestSuccessArchive())
 }
 
 func runMonitors() {

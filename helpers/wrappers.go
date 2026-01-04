@@ -64,11 +64,17 @@ func BasicHandler(f BasicHandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		res, err := f(c)
 
+		ignoreEmptyRow := c.Query("ignoreEmptyRow") == "true"
+
 		var httpError *HttpError
 		var teaError *tea.SDKError
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
+				if ignoreEmptyRow {
+					c.JSON(http.StatusOK, gin.H{"_empty": true})
+					return
+				}
 				c.JSON(http.StatusNotFound, Details("no rows found"))
 				return
 			}
