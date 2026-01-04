@@ -19,5 +19,8 @@ CREATE TABLE IF NOT EXISTS instances
     deleted_at    TIMESTAMP            DEFAULT NULL,
 
     -- 实例被创建的时间，以该记录被插入的时间来替代表示
-    created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+    created_at    TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- 是否已部署
+    deployed      TINYINT(1)  NOT NULL DEFAULT 0
 );
