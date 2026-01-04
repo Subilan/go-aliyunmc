@@ -23,7 +23,12 @@ func Register(cancel context.CancelFunc, taskId string) {
 func Unregister(taskId string) {
 	mu.Lock()
 	defer mu.Unlock()
-	delete(remoteTasks, taskId)
+	cancel, ok := remoteTasks[taskId]
+
+	if ok {
+		cancel()
+		delete(remoteTasks, taskId)
+	}
 }
 
 // CancelById 尝试将 taskId 指定的任务取消并从任务表中删除。如果找不到该任务，函数返回 false
