@@ -39,6 +39,7 @@ func StartInstanceWhenReady() {
 		_, err = globals.EcsClient.StartInstance(&client.StartInstanceRequest{InstanceId: tea.String(instanceId)})
 
 		cancel()
+
 		if err != nil {
 			logger.Println("cannot start instance in StartInstanceWhenReady monitor")
 			break

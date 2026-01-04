@@ -14,6 +14,7 @@ type Instance struct {
 	ZoneId       string     `json:"zoneId"`
 	DeletedAt    *time.Time `json:"deletedAt"`
 	CreatedAt    time.Time  `json:"createdAt"`
+	Deployed     bool       `json:"deployed"`
 	Ip           *string    `json:"ip"`
 }
 
@@ -38,7 +39,7 @@ func GetInstanceStatus(instanceId string) *InstanceStatus {
 func getInstance(cond string) *Instance {
 	var result Instance
 
-	err := globals.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip FROM instances "+cond).Scan(
+	err := globals.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip, deployed FROM instances "+cond).Scan(
 		&result.InstanceId,
 		&result.InstanceType,
 		&result.RegionId,
@@ -46,6 +47,7 @@ func getInstance(cond string) *Instance {
 		&result.DeletedAt,
 		&result.CreatedAt,
 		&result.Ip,
+		&result.Deployed,
 	)
 
 	if err != nil {
@@ -80,16 +82,4 @@ func GetLatestInstance() *Instance {
 	}
 
 	return result
-}
-
-// GetRunningInstanceBrief 尝试获取一个处于运行状态的实例并返回其instance_id和ip信息
-func GetRunningInstanceBrief() (string, string, error) {
-	var instanceId, ip string
-	err := globals.Pool.QueryRow("SELECT i.instance_id, i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND s.status = 'Running'").Scan(&instanceId, &ip)
-
-	if err != nil {
-		return "", "", err
-	}
-
-	return instanceId, ip, nil
 }

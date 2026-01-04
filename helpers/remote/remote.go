@@ -231,6 +231,7 @@ func RunCommandAsProdSync(
 	if _, err := stdin.Write([]byte(script)); err != nil {
 		return nil, err
 	}
+
 	stdin.Close()
 
 	if err := session.Wait(); err != nil {

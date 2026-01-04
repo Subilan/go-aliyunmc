@@ -35,8 +35,9 @@ func HandleDeployInstance() gin.HandlerFunc {
 
 		userId = int(userIdStr.(int64))
 
-		// 检查是否存在有ip且正在运行的实例可供部署
-		_, ip, err := store.GetRunningInstanceBrief()
+		var ip string
+
+		err := globals.Pool.QueryRow("SELECT i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND i.deployed = 0 AND s.status = 'Running'").Scan(&ip)
 
 		if err != nil {
 			return nil, err
@@ -142,6 +143,12 @@ func HandleDeployInstance() gin.HandlerFunc {
 
 				if err != nil {
 					log.Println("cannot update task status to success: " + err.Error())
+				}
+
+				_, err = globals.Pool.Exec("UPDATE instances SET deployed = 1 WHERE deleted_at IS NULL")
+
+				if err != nil {
+					log.Println("cannot update instance deployed status: " + err.Error())
 				}
 
 				event, err = store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, store.TaskStatusSuccess)

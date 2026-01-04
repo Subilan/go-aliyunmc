@@ -41,11 +41,10 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/ping", simple.HandleGenerate200())
 	r.GET("/stream", middlewares.JWTAuth(), handlers.HandleBeginStream())
 	r.GET("/task/:taskId", middlewares.JWTAuth(), tasks.HandleGetTask())
+	r.GET("/task", middlewares.JWTAuth(), tasks.HandleGetActiveTaskByType())
 	r.GET("/task-cancel/:taskId", middlewares.JWTAuth(), tasks.HandleCancelTask())
 	r.GET("/server/exec", middlewares.JWTAuth(), server.HandleServerExecute())
 	r.GET("/server/query", middlewares.JWTAuth(), server.HandleServerQuery())
-	r.GET("/server/players", middlewares.JWTAuth(), server.HandleGetServerPlayers())
-	r.GET("/server/refresh-players", middlewares.JWTAuth(), server.HandleRefreshServerPlayers())
 	r.GET("/server/info", middlewares.JWTAuth(), server.HandleGetServerInfo())
 }
 
@@ -134,7 +133,7 @@ func main() {
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
 		AllowCredentials: true,
 	}))
 

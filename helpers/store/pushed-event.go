@@ -148,3 +148,20 @@ const (
 func BuildInstanceEvent(typ InstanceEventType, data any) (PushedEvent, error) {
 	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeInstance)
 }
+
+type ServerEventType string
+
+const (
+	ServerEventNotify              ServerEventType = "notify"
+	ServerEventOnlineCountUpdate   ServerEventType = "online_count_update"
+	ServerEventOnlinePlayersUpdate ServerEventType = "online_players_update"
+)
+
+const (
+	ServerNotificationClosed  ServerEventType = "closed"
+	ServerNotificationRunning ServerEventType = "running"
+)
+
+func BuildServerEvent(typ ServerEventType, data any) (PushedEvent, error) {
+	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeServer)
+}
