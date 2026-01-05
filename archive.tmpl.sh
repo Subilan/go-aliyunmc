@@ -4,8 +4,15 @@ set -euo pipefail
 
 # ===== 配置项 =====
 LOCAL_ARCHIVE_DIR="/home/mc/server/archive"
-OSS_BUCKET="{{ .ArchiveOSSPath }}"
-OSS_ARCHIVE_DIR="${OSS_BUCKET}/archive"
+OSS_BUCKET="{{ .OSSRoot }}"
+
+ARCHIVE="archive"
+ARCHIVE_NEW="archive-new"
+ARCHIVE_OLD="archive-old"
+
+has_objects() {
+    ossutil ls "$1" | awk '/Object Number is:/ {print $4}' | grep -qv '^0$'
+}
 
 # ===== 基本校验 =====
 if [[ ! -d "${LOCAL_ARCHIVE_DIR}" ]]; then
@@ -13,11 +20,40 @@ if [[ ! -d "${LOCAL_ARCHIVE_DIR}" ]]; then
     exit 1
 fi
 
-# ===== 执行归档 =====
-echo "开始归档：${LOCAL_ARCHIVE_DIR} -> ${OSS_ARCHIVE_DIR}"
+# ===== Step 1: 上传到 archive-new =====
+echo "上传新归档 -> ${ARCHIVE_NEW}"
 
 ossutil cp -r \
     "${LOCAL_ARCHIVE_DIR}" \
-    "${OSS_ARCHIVE_DIR}"
+    "${OSS_BUCKET}/${ARCHIVE_NEW}/"
 
-echo "归档完成"
+# ===== Step 2: 删除已有 archive-old =====
+if has_objects "${OSS_BUCKET}/${ARCHIVE_OLD}/"; then
+    echo "删除旧的 ${ARCHIVE_OLD}"
+    ossutil rm -rf "${OSS_BUCKET}/${ARCHIVE_OLD}/"
+fi
+
+# ===== Step 3: archive -> archive-old（复制）=====
+if has_objects "${OSS_BUCKET}/${ARCHIVE}/"; then
+    echo "复制 ${ARCHIVE} -> ${ARCHIVE_OLD}"
+    ossutil cp -r \
+        "${OSS_BUCKET}/${ARCHIVE}/" \
+        "${OSS_BUCKET}/${ARCHIVE_OLD}/"
+
+    echo "删除原 ${ARCHIVE}"
+    ossutil rm -rf "${OSS_BUCKET}/${ARCHIVE}/"
+else
+    echo "未发现 ${ARCHIVE}，跳过 archive-old 生成"
+fi
+
+# ===== Step 4: archive-new -> archive =====
+echo "复制 ${ARCHIVE_NEW} -> ${ARCHIVE}"
+
+ossutil cp -r \
+    "${OSS_BUCKET}/${ARCHIVE_NEW}/" \
+    "${OSS_BUCKET}/${ARCHIVE}/"
+
+echo "删除 ${ARCHIVE_NEW}"
+ossutil rm -rf "${OSS_BUCKET}/${ARCHIVE_NEW}/"
+
+echo "归档轮转完成"

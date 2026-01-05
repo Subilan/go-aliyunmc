@@ -66,7 +66,7 @@ if (( BACKUP_COUNT > MAX_BACKUPS )); then
     for ((i=0; i<DELETE_COUNT; i++)); do
         OLD_BACKUP="${BACKUPS[$i]}"
         echo "删除旧备份: ${OLD_BACKUP}"
-        ossutil rm "${OLD_BACKUP}"
+        ossutil rm -f "${OLD_BACKUP}"
     done
 else
     echo "当前备份数量 ${BACKUP_COUNT}，无需删除"

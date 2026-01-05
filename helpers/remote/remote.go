@@ -161,6 +161,7 @@ func RunCommandAsProdSync(
 	ctx context.Context,
 	host string,
 	commands []string,
+	output bool,
 ) ([]byte, error) {
 	script := strings.Join(commands, "\n") + "\n"
 
@@ -190,21 +191,36 @@ func RunCommandAsProdSync(
 	stdin, _ := session.StdinPipe()
 
 	var outBuf bytes.Buffer
-	mw := io.MultiWriter(&outBuf)
+	if output {
+		mw := io.MultiWriter(&outBuf)
 
-	// Read output concurrently
-	go func() {
-		_, err := io.Copy(mw, stdout)
-		if err != nil {
-			log.Println("cannot copy stdout to outBuf:", err)
-		}
-	}()
-	go func() {
-		_, err := io.Copy(mw, stderr)
-		if err != nil {
-			log.Println("cannot copy stderr to outBuf:", err)
-		}
-	}()
+		// Read output concurrently
+		go func() {
+			_, err := io.Copy(mw, stdout)
+			if err != nil {
+				log.Println("cannot copy stdout to outBuf:", err)
+			}
+		}()
+		go func() {
+			_, err := io.Copy(mw, stderr)
+			if err != nil {
+				log.Println("cannot copy stderr to outBuf:", err)
+			}
+		}()
+	} else {
+		go func() {
+			_, err := io.Copy(io.Discard, stdout)
+			if err != nil {
+				log.Println("cannot copy stdout to outBuf:", err)
+			}
+		}()
+		go func() {
+			_, err := io.Copy(&outBuf, stderr)
+			if err != nil {
+				log.Println("cannot copy stderr to outBuf:", err)
+			}
+		}()
+	}
 
 	// Context cancellation
 	go func() {
@@ -213,11 +229,6 @@ func RunCommandAsProdSync(
 		err := session.Close()
 
 		if err != nil {
-			// Session already closed
-			if err.Error() == "EOF" {
-				return
-			}
-
 			log.Println("cannot close session:", err)
 		} else {
 			log.Println("session closed by context done")

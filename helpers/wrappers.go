@@ -72,7 +72,7 @@ func BasicHandler(f BasicHandlerFunc) gin.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				if ignoreEmptyRow {
-					c.JSON(http.StatusOK, gin.H{"_empty": true})
+					c.JSON(http.StatusOK, Data(gin.H{"_empty": true}))
 					return
 				}
 				c.JSON(http.StatusNotFound, Details("no rows found"))

@@ -1,6 +1,10 @@
 package templateData
 
-import "github.com/Subilan/go-aliyunmc/config"
+import (
+	"log"
+
+	"github.com/Subilan/go-aliyunmc/config"
+)
 
 type DeployTemplateData struct {
 	Username        string
@@ -26,18 +30,21 @@ func Deploy() DeployTemplateData {
 		AccessKeySecret: config.Cfg.Aliyun.AccessKeySecret,
 		JavaVersion:     config.Cfg.Deploy.JavaVersion,
 		DataDiskSize:    config.Cfg.Aliyun.Ecs.DataDisk.Size,
-		ArchiveOSSPath:  config.Cfg.Deploy.ArchiveOSSPath,
+		ArchiveOSSPath:  config.Cfg.Deploy.ArchiveOSSPath(),
 	}
 }
 
 type ArchiveTemplateData struct {
 	ArchiveOSSPath string
 	BackupOSSPath  string
+	OSSRoot        string
 }
 
 func Archive() ArchiveTemplateData {
+	log.Println(config.Cfg.Deploy.BackupOSSPath())
 	return ArchiveTemplateData{
-		ArchiveOSSPath: config.Cfg.Deploy.ArchiveOSSPath,
-		BackupOSSPath:  config.Cfg.Deploy.BackupOSSPath,
+		ArchiveOSSPath: config.Cfg.Deploy.ArchiveOSSPath(),
+		BackupOSSPath:  config.Cfg.Deploy.BackupOSSPath(),
+		OSSRoot:        config.Cfg.Deploy.OSSRoot,
 	}
 }

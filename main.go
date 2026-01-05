@@ -60,6 +60,7 @@ func runMonitors() {
 	monitors.GlobalAutomaticPublicIPAllocator.Run()
 
 	go monitors.ServerStatusMonitor()
+	go monitors.Backup()
 }
 
 func main() {
@@ -126,13 +127,13 @@ func main() {
 
 	log.Print("OK")
 
-	log.Println("Starting monitors...")
-
-	runMonitors()
-
 	log.Println("Loading commands...")
 
 	globals.LoadCommands()
+
+	log.Println("Starting monitors...")
+
+	runMonitors()
 
 	log.Print("Loading gin...")
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 )
 
 var Cfg Config
@@ -20,11 +21,20 @@ type DatabaseConfig struct {
 }
 
 type DeployConfig struct {
-	Packages       []string `toml:"packages"`
-	SSHPublicKey   string   `toml:"ssh_public_key"`
-	JavaVersion    uint     `toml:"java_version"`
-	ArchiveOSSPath string   `toml:"archive_oss_path"`
-	BackupOSSPath  string   `toml:"backup_oss_path"`
+	Packages     []string `toml:"packages"`
+	SSHPublicKey string   `toml:"ssh_public_key"`
+	JavaVersion  uint     `toml:"java_version"`
+	OSSRoot      string   `toml:"oss_root"`
+	BackupPath   string   `toml:"backup_path"`
+	ArchivePath  string   `toml:"archive_path"`
+}
+
+func (d DeployConfig) BackupOSSPath() string {
+	return "oss://" + filepath.Join(d.OSSRoot[6:], d.BackupPath)
+}
+
+func (d DeployConfig) ArchiveOSSPath() string {
+	return "oss://" + filepath.Join(d.OSSRoot[6:], d.ArchivePath)
 }
 
 type AliyunConfig struct {

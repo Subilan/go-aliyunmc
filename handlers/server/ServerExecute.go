@@ -15,8 +15,8 @@ import (
 )
 
 type ExecuteQuery struct {
-	CommandType   globals.CommandType `form:"commandType" binding:"required"`
-	WaitForOutput bool                `form:"waitForOutput"`
+	CommandType globals.CommandType `form:"commandType" binding:"required"`
+	WithOutput  bool                `form:"withOutput"`
 }
 
 // HandleServerExecute 尝试在活动实例上运行一个操作，该操作必须在预先固定的有限操作中选取一个。
@@ -64,7 +64,7 @@ func HandleServerExecute() gin.HandlerFunc {
 		var output []byte
 
 		if cmd.ExecInShell() {
-			output, err = remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd.Content)
+			output, err = remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd.Content, body.WithOutput)
 		}
 
 		if cmd.ExecInServer() {
@@ -89,12 +89,12 @@ func HandleServerExecute() gin.HandlerFunc {
 					return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot execute command"}
 				}
 
-				if body.WaitForOutput {
+				if body.WithOutput {
 					messages.WriteString(<-rconClient.Messages)
 				}
 			}
 
-			if body.WaitForOutput {
+			if body.WithOutput {
 				output = []byte(messages.String())
 			} else {
 				output = []byte{}
