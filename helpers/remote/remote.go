@@ -76,34 +76,13 @@ func RunScriptAsRootAsync(
 	// 3. Stream output in real time
 	go relayWithContext(ctx, stdout, sink)
 	go relayWithContext(ctx, stderr, sink)
-
-	// Run killer gorountine
-	go func() {
-		<-ctx.Done()
-
-		// It's awkward that SIGTERM, SIGINT, SIGKILL do not work as expected. Nothing happens. The process continues
-		// and session.Wait just won't return.
-		// By calling session.Close here, the process is stopped after a few seconds (detected by ACK) due to pipe close.
-		// And according to
-		// https://github.com/golang/go/issues/21423#issuecomment-325966525
-		// https://github.com/golang/go/issues/21699#issue-254076414
-		// session.Close is expected to cause session.Wait to return, which matches the expected path of this function.
-		err := session.Close()
-
-		if err != nil {
-			log.Println("cannot close session:", err)
-		} else {
-			log.Println("session closed by context done")
-		}
-	}()
+	go closeSessionOnContextDone(ctx, session)
 
 	// 4. Start shell
 	if err := session.Start("bash -s"); err != nil {
 		errorHandler(fmt.Errorf("start shell: %w", err))
 		return
 	}
-
-	log.Println(scriptBuf.String())
 
 	// 5. Send scripts
 	if _, err := stdin.Write(scriptBuf.Bytes()); err != nil {
@@ -191,49 +170,9 @@ func RunCommandAsProdSync(
 	stdin, _ := session.StdinPipe()
 
 	var outBuf bytes.Buffer
-	if output {
-		mw := io.MultiWriter(&outBuf)
 
-		// Read output concurrently
-		go func() {
-			_, err := io.Copy(mw, stdout)
-			if err != nil {
-				log.Println("cannot copy stdout to outBuf:", err)
-			}
-		}()
-		go func() {
-			_, err := io.Copy(mw, stderr)
-			if err != nil {
-				log.Println("cannot copy stderr to outBuf:", err)
-			}
-		}()
-	} else {
-		go func() {
-			_, err := io.Copy(io.Discard, stdout)
-			if err != nil {
-				log.Println("cannot copy stdout to outBuf:", err)
-			}
-		}()
-		go func() {
-			_, err := io.Copy(&outBuf, stderr)
-			if err != nil {
-				log.Println("cannot copy stderr to outBuf:", err)
-			}
-		}()
-	}
-
-	// Context cancellation
-	go func() {
-		<-ctx.Done()
-
-		err := session.Close()
-
-		if err != nil {
-			log.Println("cannot close session:", err)
-		} else {
-			log.Println("session closed by context done")
-		}
-	}()
+	go copyStdinAndStderr(&outBuf, stdout, stderr, output)
+	go closeSessionOnContextDone(ctx, session)
 
 	if err := session.Start("bash -s"); err != nil {
 		return nil, err
@@ -259,4 +198,54 @@ func RunCommandAsProdSync(
 	}
 
 	return outBuf.Bytes(), nil
+}
+
+func closeSessionOnContextDone(ctx context.Context, session *ssh.Session) {
+	<-ctx.Done()
+
+	// It's awkward that SIGTERM, SIGINT, SIGKILL do not work as expected. Nothing happens. The process continues
+	// and session.Wait just won't return.
+	// By calling session.Close here, the process is stopped after a few seconds (detected by ACK) due to pipe close.
+	// And according to
+	// https://github.com/golang/go/issues/21423#issuecomment-325966525
+	// https://github.com/golang/go/issues/21699#issue-254076414
+	// session.Close is expected to cause session.Wait to return, which matches the expected path of this function.
+	err := session.Close()
+
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return
+		}
+		log.Println("cannot close session:", err)
+	} else {
+		log.Println("session closed by context done")
+	}
+}
+
+func copyStdinAndStderr(buf io.Writer, stdout io.Reader, stderr io.Reader, output bool) {
+	if output {
+		mw := io.MultiWriter(buf)
+		go func() {
+			_, err := io.Copy(mw, stdout)
+			if err != nil {
+				log.Println("cannot copy stdout to outBuf:", err)
+			}
+		}()
+		go func() {
+			_, err := io.Copy(mw, stderr)
+			if err != nil {
+				log.Println("cannot copy stderr to outBuf:", err)
+			}
+		}()
+	} else {
+		go func() {
+			_, _ = io.Copy(io.Discard, stdout)
+		}()
+		go func() {
+			_, err := io.Copy(buf, stderr)
+			if err != nil {
+				log.Println("cannot copy stderr to outBuf:", err)
+			}
+		}()
+	}
 }
