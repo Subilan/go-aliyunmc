@@ -59,10 +59,10 @@ func Backup() {
 			goto end
 		}
 
-		row, err = globals.Pool.ExecContext(ctx, "INSERT INTO `auto_command_exec` (`type`, `status`) VALUES (?, ?)", globals.CmdTypeBackupWorlds, "created")
+		row, err = globals.Pool.ExecContext(ctx, "INSERT INTO `command_exec` (`type`, `by`, `status`, `auto`) VALUES (?, ?, ?, 1)", globals.CmdTypeBackupWorlds, nil, "created")
 
 		if err != nil {
-			logger.Println("cannot insert into auto_command_exec table: " + err.Error())
+			logger.Println("cannot insert into command_exec table: " + err.Error())
 			goto end
 		}
 
@@ -72,11 +72,11 @@ func Backup() {
 
 		if err != nil {
 			logger.Println("backup command failed: ", err)
-			_, _ = globals.Pool.ExecContext(ctx, "UPDATE `auto_command_exec` SET `status` = ? WHERE `id` = ?", "error", recordId)
+			_, _ = globals.Pool.ExecContext(ctx, "UPDATE `command_exec` SET `status` = ? WHERE `id` = ?", "error", recordId)
 			goto end
 		}
 
-		_, _ = globals.Pool.ExecContext(ctx, "UPDATE `auto_command_exec` SET `status` = ? WHERE `id` = ?", "success", recordId)
+		_, _ = globals.Pool.ExecContext(ctx, "UPDATE `command_exec` SET `status` = ? WHERE `id` = ?", "success", recordId)
 
 		logger.Println("successfully backed up")
 
