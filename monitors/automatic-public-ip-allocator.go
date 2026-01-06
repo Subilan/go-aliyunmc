@@ -10,6 +10,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
@@ -75,7 +76,7 @@ func (m *AutomaticPublicIPAllocator) Main() {
 
 		ctx, cancel = context.WithTimeout(m.ctx, AutomaticPublicIPAllocatorCycleTimeout)
 
-		err = globals.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL AND ip IS NULL").Scan(&activeInstanceId)
+		err = db.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL AND ip IS NULL").Scan(&activeInstanceId)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -104,7 +105,7 @@ func (m *AutomaticPublicIPAllocator) Main() {
 
 		ip = *allocatePublicIpAddressResponse.Body.IpAddress
 
-		_, err = globals.Pool.ExecContext(ctx, "UPDATE instances SET ip = ? WHERE instance_id = ?", ip, activeInstanceId)
+		_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET ip = ? WHERE instance_id = ?", ip, activeInstanceId)
 
 		if err != nil {
 			m.logger.Printf("Cannot update public ip: %v", err)

@@ -3,8 +3,8 @@ package users
 import (
 	"net/http"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/ginContextCheckers"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -33,7 +33,7 @@ func HandleUserUpdate() gin.HandlerFunc {
 			return nil, err
 		}
 
-		result, err := globals.Pool.ExecContext(c, "UPDATE users SET password_hash = ? WHERE id = ?", hash, userId)
+		result, err := db.Pool.ExecContext(c, "UPDATE users SET password_hash = ? WHERE id = ?", hash, userId)
 		if err != nil {
 			return nil, err
 		}

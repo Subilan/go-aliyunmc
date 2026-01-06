@@ -3,8 +3,8 @@ package users
 import (
 	"net/http"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -23,7 +23,7 @@ func HandleCreateUser() gin.HandlerFunc {
 			return nil, err
 		}
 
-		_, err = globals.Pool.ExecContext(c, "INSERT INTO users (username, password_hash) VALUES (?, ?)", body.Username, hash)
+		_, err = db.Pool.ExecContext(c, "INSERT INTO users (username, password_hash) VALUES (?, ?)", body.Username, hash)
 
 		if err != nil {
 			if store.IsDuplicateEntryError(err) {

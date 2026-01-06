@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
@@ -72,7 +72,7 @@ func (event *PushedEvent) SSE() *sse.Event {
 }
 
 func (event *PushedEvent) Insert() error {
-	_, err := globals.Pool.Exec("INSERT INTO `pushed_events` (task_id, ord, `type`, is_error, content) VALUES (?, ?, ?, ?, ?)", event.TaskId, event.Ord, event.Type, event.IsError, event.Content)
+	_, err := db.Pool.Exec("INSERT INTO `pushed_events` (task_id, ord, `type`, is_error, content) VALUES (?, ?, ?, ?, ?)", event.TaskId, event.Ord, event.Type, event.IsError, event.Content)
 
 	if err != nil {
 		return err
@@ -84,7 +84,7 @@ func (event *PushedEvent) Insert() error {
 func GetPushedEvents(taskId string) ([]PushedEvent, error) {
 	var result = make([]PushedEvent, 0)
 
-	rows, err := globals.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? ORDER BY ord", taskId)
+	rows, err := db.Pool.Query("SELECT task_id, ord, type, is_error, content FROM pushed_events WHERE task_id = ? ORDER BY ord", taskId)
 
 	if err != nil {
 		return nil, err

@@ -1,4 +1,4 @@
-package globals
+package commands
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
 	"github.com/mcstatus-io/mcutil/v4/rcon"
@@ -140,7 +142,7 @@ func (c *Command) Run(ctx context.Context, host string, by *int, option *Command
 	var recordId int64
 
 	if doRecord {
-		row, err := Pool.Exec("INSERT INTO command_exec (`type`, `by`, `status`, `auto`) VALUES (?, ?, ?, ?)", c.Type, by, "created", by == nil)
+		row, err := db.Pool.Exec("INSERT INTO command_exec (`type`, `by`, `status`, `auto`) VALUES (?, ?, ?, ?)", c.Type, by, "created", by == nil)
 
 		if err != nil {
 			return "", err
@@ -198,10 +200,10 @@ func (c *Command) Run(ctx context.Context, host string, by *int, option *Command
 
 	if doRecord {
 		if err != nil {
-			_, _ = Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "error", err.Error(), recordId)
+			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "error", err.Error(), recordId)
 			return outputStr, err
 		} else {
-			_, _ = Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "success", option.Comment, recordId)
+			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "success", option.Comment, recordId)
 			return outputStr, nil
 		}
 	} else {
@@ -211,7 +213,7 @@ func (c *Command) Run(ctx context.Context, host string, by *int, option *Command
 
 var commandCooldownLeft = make(map[CommandType]int)
 
-func LoadCommands() {
+func Load() {
 	Commands[CmdTypeStartServer] = &Command{
 		Type:            CmdTypeStartServer,
 		ExecuteLocation: ExecuteLocationShell,
@@ -219,7 +221,7 @@ func LoadCommands() {
 		Content:         []string{"cd /home/mc/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || echo 'server cannot be started'"},
 		Timeout:         5,
 		Prerequisite: func() bool {
-			return !IsServerRunning
+			return !globals.IsServerRunning
 		},
 	}
 	Commands[CmdTypeStopServer] = &Command{
@@ -229,7 +231,7 @@ func LoadCommands() {
 		Content:         []string{"stop"},
 		Timeout:         5,
 		Prerequisite: func() bool {
-			return IsServerRunning
+			return globals.IsServerRunning
 		},
 	}
 	Commands[CmdTypeGetServerSizes] = &Command{
@@ -244,7 +246,7 @@ func LoadCommands() {
 		Type:            CmdTypeScreenfetch,
 		ExecuteLocation: ExecuteLocationShell,
 		Cooldown:        0,
-		Content:         []string{"screenfetch"},
+		Content:         []string{"screenfetch -N"},
 		Timeout:         5,
 		IsQuery:         true,
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/monitors"
@@ -70,7 +71,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 
 		var cnt int
 
-		err = globals.Pool.QueryRowContext(ctx, "SELECT count(*) FROM instances WHERE deleted_at IS NULL").Scan(&cnt)
+		err = db.Pool.QueryRowContext(ctx, "SELECT count(*) FROM instances WHERE deleted_at IS NULL").Scan(&cnt)
 
 		if err != nil {
 			return nil, err
@@ -117,7 +118,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 			return nil, err
 		}
 
-		tx, err := globals.Pool.BeginTx(ctx, nil)
+		tx, err := db.Pool.BeginTx(ctx, nil)
 
 		if err != nil {
 			return nil, err

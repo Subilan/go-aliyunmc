@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -27,7 +27,7 @@ type TokenClaims struct {
 func HandleGetToken() gin.HandlerFunc {
 	return helpers.BodyHandler[GetTokenRequest](func(body GetTokenRequest, c *gin.Context) (any, error) {
 		// 查询用户信息
-		row := globals.Pool.QueryRowContext(c, "SELECT id, username, password_hash FROM users WHERE username = ?", body.Username)
+		row := db.Pool.QueryRowContext(c, "SELECT id, username, password_hash FROM users WHERE username = ?", body.Username)
 
 		var id int64
 		var username string

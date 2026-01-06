@@ -16,6 +16,8 @@ import (
 	"github.com/Subilan/go-aliyunmc/handlers/simple"
 	"github.com/Subilan/go-aliyunmc/handlers/tasks"
 	"github.com/Subilan/go-aliyunmc/handlers/users"
+	"github.com/Subilan/go-aliyunmc/helpers/commands"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/middlewares"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
@@ -120,7 +122,7 @@ func main() {
 
 	log.Print("Initializing database pool...")
 
-	err = globals.InitPool()
+	err = db.InitPool()
 
 	if err != nil {
 		log.Fatalln("Error initializing database:", err)
@@ -130,7 +132,7 @@ func main() {
 
 	log.Println("Loading commands...")
 
-	globals.LoadCommands()
+	commands.Load()
 
 	log.Println("Starting monitors...")
 

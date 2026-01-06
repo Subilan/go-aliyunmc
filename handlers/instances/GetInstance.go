@@ -3,8 +3,8 @@ package instances
 import (
 	"net/http"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +19,7 @@ func HandleGetInstance() gin.HandlerFunc {
 
 		var result store.Instance
 
-		err := globals.Pool.QueryRow(`
+		err := db.Pool.QueryRow(`
 SELECT instance_id, instance_type, region_id, zone_id, ip, created_at, deleted_at FROM instances WHERE instance_id = ?
 `, instanceId).Scan(&result.InstanceId, &result.InstanceType, &result.RegionId, &result.ZoneId, &result.Ip, &result.CreatedAt, &result.DeletedAt)
 

@@ -6,14 +6,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
 
 type QueryOnServerQuery struct {
-	QueryType globals.CommandType `form:"queryType" binding:"required,oneof=sizes screenfetch"`
+	QueryType commands.CommandType `form:"queryType" binding:"required,oneof=get_server_sizes screenfetch"`
 }
 
 func HandleServerQuery() gin.HandlerFunc {
@@ -27,7 +27,7 @@ func HandleServerQuery() gin.HandlerFunc {
 		ctx, cancel := context.WithTimeout(c, 10*time.Second)
 		defer cancel()
 
-		cmd, ok := globals.ShouldGetCommand(query.QueryType)
+		cmd, ok := commands.ShouldGetCommand(query.QueryType)
 
 		if !ok {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "query type not found"}

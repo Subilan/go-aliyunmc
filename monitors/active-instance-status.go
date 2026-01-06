@@ -10,6 +10,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
@@ -99,7 +100,7 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 
 		ctx, cancel = context.WithTimeout(m.ctx, ActiveInstanceStatusMonitorCycleTimeout)
 
-		err = globals.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&activeInstanceId)
+		err = db.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&activeInstanceId)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -131,7 +132,7 @@ func (m *ActiveInstanceStatusMonitor) Main() {
 		if len(describeInstanceStatusResponse.Body.InstanceStatuses.InstanceStatus) > 0 {
 			status := tea.StringValue(describeInstanceStatusResponse.Body.InstanceStatuses.InstanceStatus[0].Status)
 
-			updateRes, err = globals.Pool.ExecContext(ctx, "UPDATE instance_statuses SET status = ? WHERE instance_id = ?", status, activeInstanceId)
+			updateRes, err = db.Pool.ExecContext(ctx, "UPDATE instance_statuses SET status = ? WHERE instance_id = ?", status, activeInstanceId)
 
 			if err != nil {
 				m.logger.Printf("Error updating active instance status: %v\n", err)

@@ -3,8 +3,8 @@ package users
 import (
 	"net/http"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/ginContextCheckers"
 	"github.com/gin-gonic/gin"
 )
@@ -26,7 +26,7 @@ func HandleUserDelete() gin.HandlerFunc {
 			return nil, ownErr
 		}
 
-		result, err := globals.Pool.ExecContext(c, "DELETE FROM users WHERE id = ?", userId)
+		result, err := db.Pool.ExecContext(c, "DELETE FROM users WHERE id = ?", userId)
 		if err != nil {
 			return nil, err
 		}

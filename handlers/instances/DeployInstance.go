@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
@@ -37,7 +37,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 
 		var ip string
 
-		err := globals.Pool.QueryRow("SELECT i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND i.deployed = 0 AND s.status = 'Running'").Scan(&ip)
+		err := db.Pool.QueryRow("SELECT i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND i.deployed = 0 AND s.status = 'Running'").Scan(&ip)
 
 		if err != nil {
 			return nil, err
@@ -120,7 +120,7 @@ func HandleDeployInstance() gin.HandlerFunc {
 					status = store.TaskStatusTimedOut
 				}
 
-				_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
+				_, err = db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
 
 				if err != nil {
 					log.Println("cannot update task status: " + err.Error())
@@ -139,13 +139,13 @@ func HandleDeployInstance() gin.HandlerFunc {
 				}
 			},
 			func() {
-				_, err = globals.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
+				_, err = db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
 
 				if err != nil {
 					log.Println("cannot update task status to success: " + err.Error())
 				}
 
-				_, err = globals.Pool.Exec("UPDATE instances SET deployed = 1 WHERE deleted_at IS NULL")
+				_, err = db.Pool.Exec("UPDATE instances SET deployed = 1 WHERE deleted_at IS NULL")
 
 				if err != nil {
 					log.Println("cannot update instance deployed status: " + err.Error())

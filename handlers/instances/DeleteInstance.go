@@ -10,6 +10,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
@@ -28,7 +29,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			err := globals.Pool.QueryRow("SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&instanceId)
+			err := db.Pool.QueryRow("SELECT instance_id FROM instances WHERE deleted_at IS NULL").Scan(&instanceId)
 
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
@@ -44,7 +45,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 
 		var cnt int
 
-		err := globals.Pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM instances WHERE deleted_at IS NULL AND instance_id = ?", instanceId).Scan(&cnt)
+		err := db.Pool.QueryRowContext(ctx, "SELECT COUNT(*) FROM instances WHERE deleted_at IS NULL AND instance_id = ?", instanceId).Scan(&cnt)
 
 		if err != nil {
 			return nil, err
@@ -66,7 +67,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 			return nil, err
 		}
 
-		_, err = globals.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = CURRENT_TIMESTAMP WHERE instance_id = ?", instanceId)
+		_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = CURRENT_TIMESTAMP WHERE instance_id = ?", instanceId)
 
 		if err != nil {
 			return nil, err

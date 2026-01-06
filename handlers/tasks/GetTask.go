@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
@@ -53,7 +53,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 		args = append(args, retrievalArg, store.TaskStatusRunning)
 	}
 
-	err := globals.Pool.QueryRow(stmt, args...).Scan(&task.TaskId, &task.TaskType, &task.UserId, &task.Status, &task.CreatedAt)
+	err := db.Pool.QueryRow(stmt, args...).Scan(&task.TaskId, &task.TaskType, &task.UserId, &task.Status, &task.CreatedAt)
 
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 	var joinedPushedEvents string
 
 	if withPushedEvents || withJoinedPushedEvents {
-		rows, err := globals.Pool.Query("SELECT task_id, ord, type, content, created_at FROM pushed_events ev WHERE task_id = ? ORDER BY ord", task.TaskId)
+		rows, err := db.Pool.Query("SELECT task_id, ord, type, content, created_at FROM pushed_events ev WHERE task_id = ? ORDER BY ord", task.TaskId)
 
 		if err != nil {
 			return nil, err

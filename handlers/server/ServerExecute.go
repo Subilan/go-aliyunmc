@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
 
 type ExecuteOnServerQuery struct {
-	CommandType globals.CommandType `form:"commandType" binding:"required"`
-	WithOutput  bool                `form:"withOutput"`
+	CommandType commands.CommandType `form:"commandType" binding:"required"`
+	WithOutput  bool                 `form:"withOutput"`
 }
 
 // HandleServerExecute 尝试在活动实例上运行一个操作，该操作必须在预先固定的有限操作中选取一个。
@@ -32,7 +32,7 @@ func HandleServerExecute() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active ip-allocated instance present"}
 		}
 
-		cmd, ok := globals.ShouldGetCommand(body.CommandType)
+		cmd, ok := commands.ShouldGetCommand(body.CommandType)
 
 		if !ok {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "command not found"}
@@ -41,7 +41,7 @@ func HandleServerExecute() gin.HandlerFunc {
 		ctx, cancel := cmd.TimeoutContext()
 		defer cancel()
 
-		output, err := cmd.Run(ctx, *activeInstance.Ip, &userIdInt, &globals.CommandRunOption{Output: body.WithOutput})
+		output, err := cmd.Run(ctx, *activeInstance.Ip, &userIdInt, &commands.CommandRunOption{Output: body.WithOutput})
 
 		if err != nil {
 			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s\noutput:\n%s", err.Error(), output)}

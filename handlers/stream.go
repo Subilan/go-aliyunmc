@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/gin-gonic/gin"
@@ -42,7 +42,7 @@ func HandleBeginStream() gin.HandlerFunc {
 		// 前端携带了Last-Event-Id，需要进行同步
 		if lastState != nil {
 			var taskStatus string
-			err = globals.Pool.QueryRow("SELECT `status` FROM tasks WHERE task_id = ?", lastState.TaskId).Scan(&taskStatus)
+			err = db.Pool.QueryRow("SELECT `status` FROM tasks WHERE task_id = ?", lastState.TaskId).Scan(&taskStatus)
 
 			if err != nil {
 				log.Println("cannot get task status of task id", lastState.TaskId)

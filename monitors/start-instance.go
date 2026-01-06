@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 )
@@ -24,7 +25,7 @@ func StartInstanceWhenReady() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 		var instanceId string
-		err = globals.Pool.QueryRowContext(ctx, "SELECT i.instance_id FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.deleted_at IS NULL AND s.status = 'Stopped'").Scan(&instanceId)
+		err = db.Pool.QueryRowContext(ctx, "SELECT i.instance_id FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.deleted_at IS NULL AND s.status = 'Stopped'").Scan(&instanceId)
 
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {

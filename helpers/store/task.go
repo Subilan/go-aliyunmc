@@ -3,7 +3,7 @@ package store
 import (
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/google/uuid"
 )
 
@@ -40,7 +40,7 @@ func InsertTask(taskType TaskType, userId int) (string, error) {
 
 	taskId := uuidS.String()
 
-	_, err = globals.Pool.Exec("INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskId, taskType, userId)
+	_, err = db.Pool.Exec("INSERT INTO tasks (task_id, `type`, user_id) VALUES (?, ?, ?)", taskId, taskType, userId)
 
 	if err != nil {
 		return "", err
@@ -51,7 +51,7 @@ func InsertTask(taskType TaskType, userId int) (string, error) {
 
 func GetRunningTaskCount(taskType TaskType) (int, error) {
 	var cnt int
-	err := globals.Pool.QueryRow("SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", taskType, TaskStatusRunning).Scan(&cnt)
+	err := db.Pool.QueryRow("SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", taskType, TaskStatusRunning).Scan(&cnt)
 
 	if err != nil {
 		return 0, err
