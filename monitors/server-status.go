@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/mcstatus-io/mcutil/v4/query"
@@ -76,26 +77,6 @@ func syncOnlinePlayersWithUser() {
 	}
 }
 
-func sameStringSlice(x, y []string) bool {
-	if len(x) != len(y) {
-		return false
-	}
-	diff := make(map[string]int, len(x))
-	for _, _x := range x {
-		diff[_x]++
-	}
-	for _, _y := range y {
-		if _, ok := diff[_y]; !ok {
-			return false
-		}
-		diff[_y]--
-		if diff[_y] == 0 {
-			delete(diff, _y)
-		}
-	}
-	return len(diff) == 0
-}
-
 func ServerStatusMonitor() {
 	var activeInstance *store.Instance
 	var ctx context.Context
@@ -130,7 +111,7 @@ func ServerStatusMonitor() {
 		}
 
 		if globals.ServerStatus.Players.Online == nil {
-			log.Println("warn: online player being nil")
+			log.Println("warn: unexpected online player count being nil")
 		} else {
 			if globals.PlayerCount != *globals.ServerStatus.Players.Online {
 				globals.PlayerCount = *globals.ServerStatus.Players.Online
@@ -143,7 +124,7 @@ func ServerStatusMonitor() {
 				if err != nil {
 					log.Println("cannot query full:", err)
 				} else {
-					if !sameStringSlice(globals.OnlinePlayers, queryFull.Players) {
+					if !helpers.SameStringSlice(globals.OnlinePlayers, queryFull.Players) {
 						globals.OnlinePlayers = queryFull.Players
 						syncOnlinePlayersWithUser()
 					}
