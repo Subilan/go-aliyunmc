@@ -2,56 +2,43 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
-	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
 
-type QueryQuery struct {
-	QueryType QueryType `form:"queryType" binding:"required,oneof=sizes screenfetch"`
-}
-
-type QueryType string
-
-const (
-	QuerySizes       QueryType = "sizes"
-	QueryScreenfetch           = "screenfetch"
-)
-
-func (q QueryType) Command() []string {
-	switch q {
-	case QueryScreenfetch:
-		return []string{"screenfetch -N"}
-	case QuerySizes:
-		return []string{"du -sh /home/mc/server/archive", "du -sh /home/mc/server/archive/world", "du -sh /home/mc/server/archive/world_nether", "du -sh /home/mc/server/archive/world_the_end"}
-	}
-
-	return nil
+type QueryOnServerQuery struct {
+	QueryType globals.CommandType `form:"queryType" binding:"required,oneof=sizes screenfetch"`
 }
 
 func HandleServerQuery() gin.HandlerFunc {
-	return helpers.QueryHandler[QueryQuery](func(query QueryQuery, c *gin.Context) (any, error) {
+	return helpers.QueryHandler[QueryOnServerQuery](func(query QueryOnServerQuery, c *gin.Context) (any, error) {
 		activeInstance := store.GetActiveInstance()
 
-		if activeInstance == nil {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active instance present"}
+		if activeInstance == nil || activeInstance.Ip == nil {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active ip-allocated instance present"}
 		}
 
 		ctx, cancel := context.WithTimeout(c, 10*time.Second)
 		defer cancel()
 
-		cmd := query.QueryType.Command()
+		cmd, ok := globals.ShouldGetCommand(query.QueryType)
 
-		output, err := remote.RunCommandAsProdSync(ctx, *activeInstance.Ip, cmd, true)
-
-		if err != nil {
-			return helpers.Data(gin.H{"error": err.Error(), "output": string(output)}), nil
+		if !ok {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "query type not found"}
 		}
 
-		return helpers.Data(gin.H{"error": nil, "output": string(output)}), nil
+		output, err := cmd.Run(ctx, *activeInstance.Ip, nil, nil)
+
+		if err != nil {
+			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s\noutput:\n%s", err.Error(), output)}
+		}
+
+		return helpers.Data(output), nil
 	})
 }
