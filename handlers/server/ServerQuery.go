@@ -18,10 +18,10 @@ type QueryOnServerQuery struct {
 
 func HandleServerQuery() gin.HandlerFunc {
 	return helpers.QueryHandler[QueryOnServerQuery](func(query QueryOnServerQuery, c *gin.Context) (any, error) {
-		activeInstance := store.GetActiveInstance()
+		activeInstance, err := store.GetIpAllocatedActiveInstance()
 
-		if activeInstance == nil || activeInstance.Ip == nil {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active ip-allocated instance present"}
+		if err != nil {
+			return nil, err
 		}
 
 		ctx, cancel := context.WithTimeout(c, 10*time.Second)

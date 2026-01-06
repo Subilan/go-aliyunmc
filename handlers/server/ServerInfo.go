@@ -1,8 +1,6 @@
 package server
 
 import (
-	"net/http"
-
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -18,10 +16,10 @@ type GetServerInfoResponse struct {
 
 func HandleGetServerInfo() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
-		activeInstance := store.GetActiveInstance()
+		_, err := store.GetIpAllocatedActiveInstance()
 
-		if activeInstance == nil {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "no active instance found"}
+		if err != nil {
+			return nil, err
 		}
 
 		if !globals.IsServerRunning {

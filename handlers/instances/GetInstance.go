@@ -33,12 +33,12 @@ SELECT instance_id, instance_type, region_id, zone_id, ip, created_at, deleted_a
 
 func HandleGetActiveOrLatestInstance() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
-		activeInstance := store.GetActiveInstance()
+		activeInstance, err := store.GetIpAllocatedActiveInstance()
 
-		if activeInstance == nil {
-			latestInstance := store.GetLatestInstance()
+		if err != nil {
+			latestInstance, err := store.GetLatestInstance()
 
-			if latestInstance == nil {
+			if err != nil {
 				return helpers.Data(gin.H{"instance": gin.H{}, "status": gin.H{}}), nil
 			}
 

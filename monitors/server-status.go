@@ -90,9 +90,9 @@ func ServerStatusMonitor() {
 	for {
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 
-		activeInstance = store.GetActiveInstance()
+		activeInstance, err = store.GetIpAllocatedActiveInstance()
 
-		if activeInstance == nil {
+		if err != nil {
 			if globals.IsServerRunning != false {
 				globals.IsServerRunning = false
 				syncServerStatusWithUser()

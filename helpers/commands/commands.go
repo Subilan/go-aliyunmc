@@ -46,7 +46,7 @@ type Command struct {
 	IsQuery         bool
 }
 
-func (c *Command) TimeoutContext() (context.Context, context.CancelFunc) {
+func (c *Command) DefaultContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), c.TimeoutDuration())
 }
 
@@ -123,7 +123,7 @@ type CommandRunOption struct {
 // 传入的上下文只会影响该指令的执行过程，不会影响数据库的记录过程。
 // 如果by参数填nil，表示该运行是自动发起。
 // 如果运行的指令为查询类，则始终不会记录过程，始终会返回输出内容。
-func (c *Command) Run(ctx context.Context, host string, by *int, option *CommandRunOption) (string, error) {
+func (c *Command) Run(ctx context.Context, host string, by *int64, option *CommandRunOption) (string, error) {
 	if option == nil {
 		option = &CommandRunOption{}
 	}
@@ -211,6 +211,15 @@ func (c *Command) Run(ctx context.Context, host string, by *int, option *Command
 	}
 }
 
+func (c *Command) RunWithoutCooldown(ctx context.Context, host string, by *int64, output bool, comment string) (string, error) {
+	return c.Run(ctx, host, by, &CommandRunOption{
+		DisableResetCooldown: true,
+		IgnoreCooldown:       true,
+		Output:               output,
+		Comment:              comment,
+	})
+}
+
 var commandCooldownLeft = make(map[CommandType]int)
 
 func Load() {
@@ -277,7 +286,7 @@ func Load() {
 			ExecuteLocation: ExecuteLocationShell,
 			Cooldown:        30,
 			Content:         []string{buf.String()},
-			Timeout:         60,
+			Timeout:         120,
 		}
 	}
 

@@ -34,14 +34,9 @@ func Backup() {
 
 		ctx, cancel = context.WithTimeout(context.Background(), backupTimeout)
 
-		activeInstance = store.GetActiveInstance()
+		activeInstance, err = store.GetIpAllocatedActiveInstance()
 
-		if activeInstance == nil {
-			goto end
-		}
-
-		if activeInstance.Ip == nil {
-			logger.Println("active instance does not have an ip allocated, skipping")
+		if err != nil {
 			goto end
 		}
 

@@ -1,7 +1,7 @@
 package store
 
 import (
-	"log"
+	"errors"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/helpers/db"
@@ -36,7 +36,7 @@ func GetInstanceStatus(instanceId string) *InstanceStatus {
 	return &result
 }
 
-func getInstance(cond string) *Instance {
+func getInstance(cond string) (*Instance, error) {
 	var result Instance
 
 	err := db.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip, deployed FROM instances "+cond).Scan(
@@ -51,35 +51,28 @@ func getInstance(cond string) *Instance {
 	)
 
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return &result
+	return &result, nil
 }
 
-// GetActiveInstance 从数据库获取当前的活动实例
+// GetIpAllocatedActiveInstance 从数据库获取当前的活动实例
 // 如果找不到实例，或者活动实例没有分配IP地址，返回 nil
-func GetActiveInstance() *Instance {
-	result := getInstance("WHERE deleted_at IS NULL")
+func GetIpAllocatedActiveInstance() (*Instance, error) {
+	result, err := getInstance("WHERE deleted_at IS NULL")
 
-	if result == nil {
-		return nil
+	if err != nil {
+		return nil, err
 	}
 
 	if result.Ip == nil {
-		log.Println("ip not allocated on active instance")
-		return nil
+		return nil, errors.New("ip not allocated on active instance")
 	}
 
-	return result
+	return result, nil
 }
 
-func GetLatestInstance() *Instance {
-	result := getInstance("ORDER BY created_at DESC LIMIT 1")
-
-	if result == nil {
-		return nil
-	}
-
-	return result
+func GetLatestInstance() (*Instance, error) {
+	return getInstance("ORDER BY created_at DESC LIMIT 1")
 }

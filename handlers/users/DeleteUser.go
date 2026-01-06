@@ -5,7 +5,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/helpers/ginContextCheckers"
+	"github.com/Subilan/go-aliyunmc/helpers/gctx"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +20,7 @@ func HandleUserDelete() gin.HandlerFunc {
 			}
 		}
 
-		ownErr := ginContextCheckers.MustOwnUserId(userId, c)
+		ownErr := gctx.MustOwnUserId(userId, c)
 
 		if ownErr != nil {
 			return nil, ownErr

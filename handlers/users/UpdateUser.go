@@ -5,7 +5,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/helpers/ginContextCheckers"
+	"github.com/Subilan/go-aliyunmc/helpers/gctx"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,7 +22,7 @@ func HandleUserUpdate() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "无效用户id"}
 		}
 
-		ownErr := ginContextCheckers.MustOwnUserId(userId, c)
+		ownErr := gctx.MustOwnUserId(userId, c)
 
 		if ownErr != nil {
 			return nil, ownErr
