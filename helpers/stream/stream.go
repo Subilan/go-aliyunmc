@@ -2,6 +2,7 @@ package stream
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -30,6 +31,8 @@ func (s *UserStream) State() *store.PushedEventState {
 
 // Broadcast 向所有已连接的用户传递相同的推送
 func Broadcast(wrapped store.PushedEvent) {
+	log.Printf("debug: broadcasting event: type: %d, content: %s", wrapped.Type, wrapped.Content)
+
 	for _, syncUser := range userStreams {
 		syncUser.Send(wrapped)
 	}

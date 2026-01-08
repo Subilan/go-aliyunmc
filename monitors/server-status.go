@@ -61,8 +61,6 @@ func syncServerStatusWithUser() {
 			data = store.ServerNotificationClosed
 		}
 
-		log.Println("syncing server status with user: ", data)
-
 		event, err := store.BuildServerEvent(store.ServerEventNotify, data)
 
 		if err != nil {

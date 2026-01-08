@@ -63,6 +63,8 @@ func runMonitors() {
 
 	_ = db.Pool.QueryRow("SELECT ip FROM instances WHERE deleted_at IS NULL").Scan(&ip)
 
+	monitors.RestoreInstanceIp(ip)
+
 	go monitors.ActiveInstance(quitActiveInstance)
 	go monitors.PublicIP(quitPublicIP)
 	go monitors.ServerStatus(quitServerStatus)
