@@ -8,13 +8,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
+	"github.com/Subilan/go-aliyunmc/helpers/gctx"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/helpers/tasks"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
+	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,19 +28,20 @@ func HandleDeployInstance() gin.HandlerFunc {
 		deployInstanceMutex.Lock()
 		defer deployInstanceMutex.Unlock()
 
-		var userId int
+		userId, err := gctx.ShouldGetUserId(c)
 
-		userIdStr, exists := c.Get("user_id")
-
-		if !exists || userIdStr == "" {
-			return nil, &helpers.HttpError{Code: http.StatusUnauthorized, Details: "无效用户ID"}
+		if err != nil {
+			return nil, err
 		}
 
-		userId = int(userIdStr.(int64))
+		// 检查实例是否处于运行状态
+		if monitors.SnapshotInstanceStatus() != consts.InstanceRunning {
+			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "instance is not running"}
+		}
 
 		var ip string
 
-		err := db.Pool.QueryRow("SELECT i.ip FROM instances i JOIN instance_statuses s ON i.instance_id = s.instance_id WHERE i.ip IS NOT NULL AND i.deleted_at IS NULL AND i.deployed = 0 AND s.status = 'Running'").Scan(&ip)
+		err = db.Pool.QueryRow("SELECT ip FROM instances WHERE ip IS NOT NULL AND deleted_at IS NULL AND deployed = 0").Scan(&ip)
 
 		if err != nil {
 			return nil, err

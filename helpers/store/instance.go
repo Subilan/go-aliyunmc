@@ -18,24 +18,6 @@ type Instance struct {
 	Ip           *string    `json:"ip"`
 }
 
-type InstanceStatus struct {
-	InstanceId     string    `json:"instanceId"`
-	InstanceStatus string    `json:"instanceStatus"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-}
-
-func GetInstanceStatus(instanceId string) *InstanceStatus {
-	var result InstanceStatus
-
-	err := db.Pool.QueryRow("SELECT instance_id, status, updated_at FROM instance_statuses WHERE instance_id = ?", instanceId).Scan(&result.InstanceId, &result.InstanceStatus, &result.UpdatedAt)
-
-	if err != nil {
-		return nil
-	}
-
-	return &result
-}
-
 func getInstance(cond string) (*Instance, error) {
 	var result Instance
 
