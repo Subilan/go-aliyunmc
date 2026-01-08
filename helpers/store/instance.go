@@ -55,6 +55,20 @@ func GetIpAllocatedActiveInstance() (*Instance, error) {
 	return result, nil
 }
 
+func GetDeployedActiveInstance() (*Instance, error) {
+	result, err := getInstance("WHERE deleted_at IS NULL AND deployed = 1")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Ip == nil {
+		return nil, errors.New("ip not allocated on active instance")
+	}
+
+	return result, nil
+}
+
 func GetLatestInstance() (*Instance, error) {
 	return getInstance("ORDER BY created_at DESC LIMIT 1")
 }

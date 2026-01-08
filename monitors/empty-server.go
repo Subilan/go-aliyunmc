@@ -69,7 +69,7 @@ func EmptyServer() {
 				// 注意，如果服务器因为某种原因被关闭没有运行，也认为玩家数量为0
 				timer = time.NewTimer(emptyTimeout)
 				state = emptyServerStateWatching
-				logger.Println("server empty, starting empty-server timer. the server will be safe deleted in", emptyTimeout)
+				logger.Println("server empty, starting empty-server timer. the server will be safely deleted in", emptyTimeout)
 			}
 
 		case <-func() <-chan time.Time {

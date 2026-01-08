@@ -89,8 +89,7 @@ type MonitorConfig struct {
 }
 
 type ActiveInstanceStatusMonitor struct {
-	ExecutionInterval int  `toml:"execution_interval"`
-	Verbose           bool `toml:"verbose"`
+	ExecutionInterval int `toml:"execution_interval"`
 }
 
 type AutomaticPublicIpAllocator struct {

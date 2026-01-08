@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
@@ -134,6 +135,8 @@ func setServerStatus(status bool) {
 }
 
 func ServerStatus(quit chan bool) {
+	var err error
+
 	ticker := time.NewTicker(5 * time.Second)
 
 	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
@@ -150,10 +153,10 @@ func ServerStatus(quit chan bool) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
-				// TODO: using internal active instance state instead of db retrieved.
-				activeInstance, err := store.GetIpAllocatedActiveInstance()
+				currentInstanceStatus := SnapshotInstanceStatus()
+				currentInstanceIp := SnapshotInstanceIp()
 
-				if err != nil {
+				if currentInstanceStatus != consts.InstanceRunning || currentInstanceIp == "" {
 					if isServerRunning.Load() == true {
 						setServerStatus(false)
 					}
@@ -161,7 +164,7 @@ func ServerStatus(quit chan bool) {
 				}
 
 				serverStatusMu.Lock()
-				serverStatus, err = status.Modern(ctx, *activeInstance.Ip, 25565)
+				serverStatus, err = status.Modern(ctx, currentInstanceIp, 25565)
 				serverStatusMu.Unlock()
 
 				if err != nil {
@@ -180,7 +183,7 @@ func ServerStatus(quit chan bool) {
 					}
 
 					if playerCount.Load() > 0 {
-						queryFull, err := query.Full(ctx, *activeInstance.Ip, 25565)
+						queryFull, err := query.Full(ctx, currentInstanceIp, 25565)
 
 						if err != nil {
 							log.Println("cannot query full:", err)
@@ -207,7 +210,7 @@ func ServerStatus(quit chan bool) {
 			}()
 
 		case <-quit:
-			break
+			return
 		}
 	}
 }

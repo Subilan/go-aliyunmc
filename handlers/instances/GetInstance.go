@@ -39,12 +39,12 @@ func HandleGetActiveOrLatestInstance() gin.HandlerFunc {
 			latestInstance, err := store.GetLatestInstance()
 
 			if err != nil {
-				return helpers.Data(gin.H{"instance": gin.H{}, "status": gin.H{}}), nil
+				return nil, err
 			}
 
-			return helpers.Data(gin.H{"instance": latestInstance, "status": gin.H{}}), nil
+			return helpers.Data(latestInstance), nil
 		}
 
-		return helpers.Data(gin.H{"instance": activeInstance, "status": store.GetInstanceStatus(activeInstance.InstanceId)}), nil
+		return helpers.Data(activeInstance), nil
 	})
 }

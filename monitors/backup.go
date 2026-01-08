@@ -33,7 +33,7 @@ func Backup(quit chan bool) {
 				ctx, cancel := context.WithTimeout(context.Background(), backupTimeout)
 				defer cancel()
 
-				activeInstance, err := store.GetIpAllocatedActiveInstance()
+				activeInstance, err := store.GetDeployedActiveInstance()
 
 				if err != nil {
 					logger.Println("no instance found, retry in", retryInterval)
@@ -55,7 +55,7 @@ func Backup(quit chan bool) {
 			}()
 
 		case <-quit:
-			break
+			return
 		}
 	}
 }

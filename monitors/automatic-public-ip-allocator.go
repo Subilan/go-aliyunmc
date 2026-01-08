@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
@@ -16,73 +17,110 @@ import (
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
 
-func broadcastIpUpdate(logger *log.Logger, ip string) {
-	event, err := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip)
+var instanceIpRestored bool
 
-	if err != nil {
-		logger.Println("cannot build event:", err)
+var instanceIp string
+var instanceIpMu sync.RWMutex
+
+var instanceIpUpdate = make(chan string)
+
+func RestoreInstanceIp(ip string) {
+	if instanceIpRestored {
+		log.Fatalln("double restoring instance ip is not permitted")
 	}
 
-	err = stream.BroadcastAndSave(event)
+	instanceIpMu.Lock()
+	defer instanceIpMu.Unlock()
+	instanceIp = ip
 
-	if err != nil {
-		logger.Println("cannot broadcast and save event:", err)
+	instanceIpUpdate <- ip
+}
+
+func SnapshotInstanceIp() string {
+	instanceIpMu.RLock()
+	defer instanceIpMu.RUnlock()
+
+	return instanceIp
+}
+
+func syncIpWithUser(logger *log.Logger) {
+	for ip := range instanceIpUpdate {
+		event, err := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip)
+
+		if err != nil {
+			logger.Println("cannot build event:", err)
+		}
+
+		err = stream.BroadcastAndSave(event)
+
+		if err != nil {
+			logger.Println("cannot broadcast and save event:", err)
+		}
 	}
 }
 
-func PublicIP() {
-	var err error
-	var activeInstanceId string
-	var cancel context.CancelFunc
-	var ctx context.Context
-	var allocatePublicIpAddressRequest *ecs20140526.AllocatePublicIpAddressRequest
-	var allocatePublicIpAddressResponse *ecs20140526.AllocatePublicIpAddressResponse
-	var ip string
-
+func PublicIP(quit chan bool) {
 	logger := log.New(os.Stdout, "[PublicIP] ", log.LstdFlags)
 	logger.Println("starting...")
 
+	ticker := time.NewTicker(time.Duration(config.Cfg.Monitor.AutomaticPublicIpAllocator.ExecutionInterval) * time.Second)
+
+	go syncIpWithUser(logger)
+
 	for {
-		ctx, cancel = context.WithTimeout(context.Background(), 20*time.Second)
+		select {
+		case <-ticker.C:
+			func() {
+				var activeInstanceId string
 
-		err = db.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL AND ip IS NULL").Scan(&activeInstanceId)
+				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				defer cancel()
 
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				if config.Cfg.Monitor.AutomaticPublicIpAllocator.Verbose {
-					logger.Println("No active instance without ip addr is found, skipping")
+				err := db.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL AND ip IS NULL").Scan(&activeInstanceId)
+
+				if err != nil {
+					if errors.Is(err, sql.ErrNoRows) {
+						if config.Cfg.Monitor.AutomaticPublicIpAllocator.Verbose {
+							logger.Println("No active instance without ip addr is found, skipping")
+						}
+						return
+					}
+
+					logger.Printf("Cannot get active instance id: %v", err)
+					return
 				}
-				goto end
-			}
 
-			logger.Printf("Cannot get active instance id: %v", err)
-			goto end
+				allocatePublicIpAddressRequest := &ecs20140526.AllocatePublicIpAddressRequest{
+					InstanceId: &activeInstanceId,
+				}
+
+				allocatePublicIpAddressResponse, err := globals.EcsClient.AllocatePublicIpAddress(allocatePublicIpAddressRequest)
+
+				if err != nil {
+					logger.Printf("Cannot allocate public ip: %v", err)
+					return
+				}
+
+				ip := *allocatePublicIpAddressResponse.Body.IpAddress
+
+				instanceIpMu.Lock()
+				instanceIp = ip
+				instanceIpMu.Unlock()
+
+				instanceIpUpdate <- ip
+
+				_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET ip = ? WHERE instance_id = ?", ip, activeInstanceId)
+
+				if err != nil {
+					logger.Printf("Cannot update public ip: %v", err)
+					return
+				}
+
+				logger.Printf("Successfully allocated public ip address: %v for instance %v", ip, activeInstanceId)
+			}()
+
+		case <-quit:
+			return
 		}
-
-		allocatePublicIpAddressRequest = &ecs20140526.AllocatePublicIpAddressRequest{
-			InstanceId: &activeInstanceId,
-		}
-
-		allocatePublicIpAddressResponse, err = globals.EcsClient.AllocatePublicIpAddress(allocatePublicIpAddressRequest)
-
-		if err != nil {
-			logger.Printf("Cannot allocate public ip: %v", err)
-			goto end
-		}
-
-		ip = *allocatePublicIpAddressResponse.Body.IpAddress
-
-		_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET ip = ? WHERE instance_id = ?", ip, activeInstanceId)
-
-		if err != nil {
-			logger.Printf("Cannot update public ip: %v", err)
-			goto end
-		}
-
-		logger.Printf("Successfully allocated public ip address: %v for instance %v", ip, activeInstanceId)
-		broadcastIpUpdate(logger, ip)
-	end:
-		cancel()
-		time.Sleep(time.Duration(config.Cfg.Monitor.AutomaticPublicIpAllocator.ExecutionInterval) * time.Second)
 	}
 }

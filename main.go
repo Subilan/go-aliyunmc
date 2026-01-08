@@ -27,6 +27,7 @@ import (
 func bindRoutes(r *gin.Engine) {
 	r.GET("/instance/:instanceId", instances.HandleGetInstance())
 	r.GET("/active-or-latest-instance", instances.HandleGetActiveOrLatestInstance())
+	r.GET("/instance-status", instances.HandleGetActiveInstanceStatus())
 	r.GET("/instance-types-and-charge", instances.HandleGetInstanceTypesAndSpotPricePerHour())
 	r.GET("/instance-description/:instanceId", instances.HandleDescribeInstance())
 	r.POST("/instance", middlewares.JWTAuth(), instances.HandleCreateInstance())
@@ -53,11 +54,17 @@ func bindRoutes(r *gin.Engine) {
 }
 
 func runMonitors() {
+	var quitActiveInstance = make(chan bool)
 	var quitServerStatus = make(chan bool)
+	var quitPublicIP = make(chan bool)
 	var quitBackup = make(chan bool)
 
-	go monitors.ActiveInstanceStatus()
-	go monitors.PublicIP()
+	var ip string
+
+	_ = db.Pool.QueryRow("SELECT ip FROM instances WHERE deleted_at IS NULL").Scan(&ip)
+
+	go monitors.ActiveInstance(quitActiveInstance)
+	go monitors.PublicIP(quitPublicIP)
 	go monitors.ServerStatus(quitServerStatus)
 	go monitors.Backup(quitBackup)
 }

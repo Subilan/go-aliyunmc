@@ -31,7 +31,7 @@ const (
 	TaskStatusTimedOut             = "timed_out"
 )
 
-func InsertTask(taskType TaskType, userId int) (string, error) {
+func InsertTask(taskType TaskType, userId int64) (string, error) {
 	uuidS, err := uuid.NewRandom()
 
 	if err != nil {

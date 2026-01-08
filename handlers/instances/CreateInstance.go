@@ -118,31 +118,9 @@ func HandleCreateInstance() gin.HandlerFunc {
 			return nil, err
 		}
 
-		tx, err := db.Pool.BeginTx(ctx, nil)
-
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = tx.ExecContext(ctx, `
+		_, err = db.Pool.ExecContext(ctx, `
 INSERT INTO instances (instance_id, instance_type, region_id, zone_id) VALUES (?, ?, ?, ?)
 `, *createInstanceResponse.Body.InstanceId, body.InstanceType, config.Cfg.Aliyun.RegionId, body.ZoneId)
-
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-
-		_, err = tx.ExecContext(ctx, `
-INSERT INTO instance_statuses (instance_id, status) VALUES (?, ?)
-`, *createInstanceResponse.Body.InstanceId, "__created__")
-
-		if err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-
-		err = tx.Commit()
 
 		if err != nil {
 			return nil, err
@@ -169,7 +147,7 @@ INSERT INTO instance_statuses (instance_id, status) VALUES (?, ?)
 			log.Println("cannot broadcast and save event:", err)
 		}
 
-		go monitors.StartInstanceWhenReady()
+		go monitors.StartActiveInstanceWhenReady()
 
 		return gin.H{}, nil
 	})
