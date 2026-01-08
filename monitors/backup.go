@@ -15,49 +15,47 @@ var backupInterval = 10 * time.Minute
 var retryInterval = 1 * time.Minute
 var backupTimeout = 2 * time.Minute
 
-func Backup() {
-	var ctx context.Context
-	var cancel context.CancelFunc
-	var activeInstance *store.Instance
-	var err error
-	var success bool
-
+func Backup(quit chan bool) {
 	logger := log.New(os.Stdout, "[Backup] ", log.LstdFlags)
 
 	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)
 
 	logger.Println("starting...")
 
+	ticker := time.NewTicker(backupInterval)
+
 	for {
-		success = false
+		select {
+		case <-ticker.C:
+			func() {
+				logger.Println("running new backup task")
 
-		logger.Println("running new backup task")
+				ctx, cancel := context.WithTimeout(context.Background(), backupTimeout)
+				defer cancel()
 
-		ctx, cancel = context.WithTimeout(context.Background(), backupTimeout)
+				activeInstance, err := store.GetIpAllocatedActiveInstance()
 
-		activeInstance, err = store.GetIpAllocatedActiveInstance()
+				if err != nil {
+					logger.Println("no instance found, retry in", retryInterval)
+					ticker.Reset(retryInterval)
+					return
+				}
 
-		if err != nil {
-			goto end
-		}
+				_, err = cmd.RunWithoutCooldown(ctx, *activeInstance.Ip, nil, nil)
 
-		_, err = cmd.RunWithoutCooldown(ctx, *activeInstance.Ip, nil, nil)
+				if err != nil {
+					logger.Println("error:", err, "retry in", retryInterval)
+					ticker.Reset(retryInterval)
+					return
+				}
 
-		if err != nil {
-			logger.Println("error:", err)
-		}
+				logger.Println("ok")
+				logger.Println("next backup in", backupInterval.String())
+				ticker.Reset(backupInterval)
+			}()
 
-		success = err == nil
-
-	end:
-		cancel()
-
-		if success {
-			logger.Println("next backup in", backupInterval.String())
-			time.Sleep(backupInterval)
-		} else {
-			logger.Println("retry in", retryInterval.String())
-			time.Sleep(retryInterval)
+		case <-quit:
+			break
 		}
 	}
 }

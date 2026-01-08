@@ -117,12 +117,24 @@ func syncOnlinePlayersWithUser() {
 	}
 }
 
-func ServerStatus() {
-	var activeInstance *store.Instance
-	var ctx context.Context
-	var cancel context.CancelFunc
-	var err error
-	var queryFull *response.QueryFull
+func setServerStatus(status bool) {
+	isServerRunning.Store(status)
+	serverRunningUpdate <- status
+
+	if !status {
+		playerCount.Store(0)
+		playerCountUpdate <- 0
+
+		onlinePlayersMu.Lock()
+		onlinePlayers = []string{}
+		onlinePlayersMu.Unlock()
+
+		onlinePlayersUpdate <- onlinePlayers
+	}
+}
+
+func ServerStatus(quit chan bool) {
+	ticker := time.NewTicker(5 * time.Second)
 
 	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
 	logger.Println("starting...")
@@ -132,62 +144,69 @@ func ServerStatus() {
 	go syncOnlinePlayersWithUser()
 
 	for {
-		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
+		select {
+		case <-ticker.C:
+			func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
 
-		activeInstance, err = store.GetIpAllocatedActiveInstance()
-
-		if err != nil {
-			if isServerRunning.Load() != false {
-				isServerRunning.Store(false)
-				serverRunningUpdate <- false
-			}
-			goto end
-		}
-
-		serverStatusMu.Lock()
-		serverStatus, err = status.Modern(ctx, *activeInstance.Ip, 25565)
-		serverStatusMu.Unlock()
-
-		if err != nil {
-			if isServerRunning.Load() != false {
-				isServerRunning.Store(false)
-				serverRunningUpdate <- false
-			}
-			goto end
-		}
-
-		if serverStatus.Players.Online == nil {
-			log.Println("warn: unexpected online player count being nil")
-		} else {
-			if playerCount.Load() != *serverStatus.Players.Online {
-				playerCount.Store(*serverStatus.Players.Online)
-				playerCountUpdate <- playerCount.Load()
-			}
-
-			if playerCount.Load() > 0 {
-				queryFull, err = query.Full(ctx, *activeInstance.Ip, 25565)
+				activeInstance, err := store.GetIpAllocatedActiveInstance()
 
 				if err != nil {
-					log.Println("cannot query full:", err)
+					if isServerRunning.Load() == true {
+						setServerStatus(false)
+					}
+					return
+				}
+
+				serverStatusMu.Lock()
+				serverStatus, err = status.Modern(ctx, *activeInstance.Ip, 25565)
+				serverStatusMu.Unlock()
+
+				if err != nil {
+					if isServerRunning.Load() == true {
+						setServerStatus(false)
+					}
+					return
+				}
+
+				if serverStatus.Players.Online == nil {
+					log.Println("warn: unexpected online player count being nil")
 				} else {
-					// rlock here?
-					if !helpers.SameStringSlice(onlinePlayers, queryFull.Players) {
+					if playerCount.Load() != *serverStatus.Players.Online {
+						playerCount.Store(*serverStatus.Players.Online)
+						playerCountUpdate <- playerCount.Load()
+					}
+
+					if playerCount.Load() > 0 {
+						queryFull, err := query.Full(ctx, *activeInstance.Ip, 25565)
+
+						if err != nil {
+							log.Println("cannot query full:", err)
+						} else {
+							// rlock here?
+							if !helpers.SameStringSlice(onlinePlayers, queryFull.Players) {
+								onlinePlayersMu.Lock()
+								onlinePlayers = queryFull.Players
+								onlinePlayersMu.Unlock()
+								onlinePlayersUpdate <- queryFull.Players
+							}
+						}
+					} else {
 						onlinePlayersMu.Lock()
-						onlinePlayers = queryFull.Players
+						onlinePlayers = []string{}
 						onlinePlayersMu.Unlock()
-						onlinePlayersUpdate <- queryFull.Players
+						onlinePlayersUpdate <- onlinePlayers
 					}
 				}
-			}
-		}
 
-		if isServerRunning.Load() == false {
-			isServerRunning.Store(true)
-			serverRunningUpdate <- true
-		}
+				if isServerRunning.Load() == false {
+					setServerStatus(true)
+				}
+			}()
 
-	end:
-		time.Sleep(5 * time.Second)
-		cancel()
+		case <-quit:
+			break
+		}
 	}
 }

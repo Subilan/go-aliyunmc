@@ -60,7 +60,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 		}
 
 		if query.ArchiveAndForce {
-			err = commands.StopAndArchiveServer(ctx, ip, &userId)
+			err = commands.StopAndArchiveServer(ctx, ip, &userId, "delete instance")
 
 			if err != nil {
 				return nil, err

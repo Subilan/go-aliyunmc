@@ -23,14 +23,14 @@ func safeDeleteServer(logger *log.Logger) {
 	activeInstance, err := store.GetIpAllocatedActiveInstance()
 
 	if err != nil {
-		logger.Println("cannot get ip allocated active instance:", err)
+		logger.Println("instance not found, skipping")
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	if err := commands.StopAndArchiveServer(ctx, *activeInstance.Ip, nil); err != nil {
+	if err := commands.StopAndArchiveServer(ctx, *activeInstance.Ip, nil, "empty server"); err != nil {
 		logger.Println("cannot stop and archive server:", err)
 		return
 	}
@@ -56,14 +56,9 @@ func EmptyServer() {
 		case cnt := <-playerCountUpdate:
 			switch {
 			case cnt > 0:
-				// 有玩家进入，取消空服计时
+				// 有玩家进入，取消计时
 				if timer != nil {
-					if !timer.Stop() {
-						select {
-						case <-timer.C:
-						default:
-						}
-					}
+					timer.Stop()
 					timer = nil
 				}
 				state = emptyServerStateIdle
@@ -71,9 +66,10 @@ func EmptyServer() {
 
 			case cnt == 0 && state == emptyServerStateIdle:
 				// 从非空转为空，启动计时
+				// 注意，如果服务器因为某种原因被关闭没有运行，也认为玩家数量为0
 				timer = time.NewTimer(emptyTimeout)
 				state = emptyServerStateWatching
-				logger.Println("server empty, start empty-server timer")
+				logger.Println("server empty, starting empty-server timer. the server will be safe deleted in", emptyTimeout)
 			}
 
 		case <-func() <-chan time.Time {

@@ -53,10 +53,13 @@ func bindRoutes(r *gin.Engine) {
 }
 
 func runMonitors() {
+	var quitServerStatus = make(chan bool)
+	var quitBackup = make(chan bool)
+
 	go monitors.ActiveInstanceStatus()
 	go monitors.PublicIP()
-	go monitors.ServerStatus()
-	go monitors.Backup()
+	go monitors.ServerStatus(quitServerStatus)
+	go monitors.Backup(quitBackup)
 }
 
 func main() {
