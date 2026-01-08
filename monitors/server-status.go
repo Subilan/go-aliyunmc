@@ -150,6 +150,7 @@ func ServerStatus(quit chan bool) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
+				// TODO: using internal active instance state instead of db retrieved.
 				activeInstance, err := store.GetIpAllocatedActiveInstance()
 
 				if err != nil {
@@ -192,7 +193,7 @@ func ServerStatus(quit chan bool) {
 								onlinePlayersUpdate <- queryFull.Players
 							}
 						}
-					} else {
+					} else if len(onlinePlayers) > 0 {
 						onlinePlayersMu.Lock()
 						onlinePlayers = []string{}
 						onlinePlayersMu.Unlock()
