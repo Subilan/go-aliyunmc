@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 )
@@ -23,7 +24,7 @@ func Backup() {
 
 	logger := log.New(os.Stdout, "[BackupMonitor] ", log.LstdFlags)
 
-	cmd := commands.MustGetCommand(commands.CmdTypeBackupWorlds)
+	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)
 
 	logger.Println("starting...")
 
@@ -40,7 +41,7 @@ func Backup() {
 			goto end
 		}
 
-		_, err = cmd.Run(ctx, *activeInstance.Ip, nil, &commands.CommandRunOption{IgnoreCooldown: true, DisableResetCooldown: true})
+		_, err = cmd.RunWithoutCooldown(ctx, *activeInstance.Ip, nil, nil)
 
 		if err != nil {
 			logger.Println("error:", err)

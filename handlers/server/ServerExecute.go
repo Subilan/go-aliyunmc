@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/gctx"
@@ -12,8 +13,8 @@ import (
 )
 
 type ExecuteOnServerQuery struct {
-	CommandType commands.CommandType `form:"commandType" binding:"required"`
-	WithOutput  bool                 `form:"withOutput"`
+	CommandType consts.CommandType `form:"commandType" binding:"required"`
+	WithOutput  bool               `form:"withOutput"`
 }
 
 // HandleServerExecute 尝试在活动实例上运行一个操作，该操作必须在预先固定的有限操作中选取一个。

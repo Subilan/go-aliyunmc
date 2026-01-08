@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -13,7 +14,7 @@ import (
 )
 
 type QueryOnServerQuery struct {
-	QueryType commands.CommandType `form:"queryType" binding:"required,oneof=get_server_sizes screenfetch"`
+	QueryType consts.CommandType `form:"queryType" binding:"required,oneof=get_server_sizes screenfetch"`
 }
 
 func HandleServerQuery() gin.HandlerFunc {

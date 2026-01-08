@@ -1,15 +1,15 @@
 package server
 
 import (
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
-	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 )
 
 func HandleGetLatestSuccessBackup() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
-		backup, err := store.GetLatestSuccessCommandExecByType(commands.CmdTypeBackupWorlds)
+		backup, err := store.GetLatestSuccessCommandExecByType(consts.CmdTypeBackupWorlds)
 
 		if err != nil {
 			return nil, err
@@ -21,7 +21,7 @@ func HandleGetLatestSuccessBackup() gin.HandlerFunc {
 
 func HandleGetLatestSuccessArchive() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
-		backup, err := store.GetLatestSuccessCommandExecByType(commands.CmdTypeArchiveServer)
+		backup, err := store.GetLatestSuccessCommandExecByType(consts.CmdTypeArchiveServer)
 
 		if err != nil {
 			return nil, err

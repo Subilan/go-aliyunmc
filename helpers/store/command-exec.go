@@ -3,23 +3,23 @@ package store
 import (
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/helpers/commands"
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 )
 
 type CommandExec struct {
-	Id        int64                `json:"id"`
-	Type      commands.CommandType `json:"type"`
-	By        *int64               `json:"by"`
-	Status    string               `json:"status"`
-	CreatedAt time.Time            `json:"createdAt"`
-	UpdatedAt time.Time            `json:"updatedAt"`
-	Auto      bool                 `json:"auto"`
+	Id        int64              `json:"id"`
+	Type      consts.CommandType `json:"type"`
+	By        *int64             `json:"by"`
+	Status    string             `json:"status"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
+	Auto      bool               `json:"auto"`
 }
 
 const q = "SELECT id, `type`, `by`, `status`, created_at, updated_at, auto FROM command_exec "
 
-func GetLatestSuccessCommandExecByType(typ commands.CommandType) (*CommandExec, error) {
+func GetLatestSuccessCommandExecByType(typ consts.CommandType) (*CommandExec, error) {
 	var result CommandExec
 
 	err := db.Pool.QueryRow(q+"WHERE type = ? AND status = 'success' ORDER BY updated_at DESC LIMIT 1", typ).
@@ -35,7 +35,7 @@ func GetLatestSuccessCommandExecByType(typ commands.CommandType) (*CommandExec, 
 func GetExistingBackups() ([]*CommandExec, error) {
 	var result = make([]*CommandExec, 0, 5)
 
-	rows, err := db.Pool.Query(q+"WHERE type = ? AND status = 'success' ORDER BY updated_at DESC LIMIT 5", commands.CmdTypeBackupWorlds)
+	rows, err := db.Pool.Query(q+"WHERE type = ? AND status = 'success' ORDER BY updated_at DESC LIMIT 5", consts.CmdTypeBackupWorlds)
 
 	if err != nil {
 		return nil, err
