@@ -30,10 +30,9 @@ func RestoreInstanceIp(ip string) {
 	}
 
 	instanceIpMu.Lock()
-	defer instanceIpMu.Unlock()
 	instanceIp = ip
-
-	instanceIpUpdate <- ip
+	instanceIpMu.Unlock()
+	instanceIpRestored = true
 }
 
 func SnapshotInstanceIp() string {
