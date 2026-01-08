@@ -40,7 +40,7 @@ type CreateInstanceResponseBody struct {
 	TradePrice float32 `json:"tradePrice"`
 }
 
-const CreateInstanceTimeout = 15 * time.Second
+const createInstanceTimeout = 15 * time.Second
 
 var createInstanceMutex sync.Mutex
 
@@ -66,7 +66,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("vSwitch %s not found in region %s", body.VSwitchId, body.ZoneId)}
 		}
 
-		ctx, cancel := context.WithTimeout(c, CreateInstanceTimeout)
+		ctx, cancel := context.WithTimeout(c, createInstanceTimeout)
 		defer cancel()
 
 		var cnt int

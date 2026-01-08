@@ -22,7 +22,7 @@ func Backup() {
 	var err error
 	var success bool
 
-	logger := log.New(os.Stdout, "[BackupMonitor] ", log.LstdFlags)
+	logger := log.New(os.Stdout, "[Backup] ", log.LstdFlags)
 
 	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)
 

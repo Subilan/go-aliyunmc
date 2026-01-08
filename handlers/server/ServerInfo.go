@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-gonic/gin"
 	"github.com/mcstatus-io/mcutil/v4/response"
 )
@@ -22,10 +22,10 @@ func HandleGetServerInfo() gin.HandlerFunc {
 			return nil, err
 		}
 
-		if !globals.IsServerRunning {
+		if !monitors.SnapshotIsServerRunning() {
 			return helpers.Data(GetServerInfoResponse{Running: false}), nil
 		}
 
-		return helpers.Data(GetServerInfoResponse{Running: true, Data: globals.ServerStatus, OnlinePlayers: globals.OnlinePlayers}), nil
+		return helpers.Data(GetServerInfoResponse{Running: true, Data: monitors.SnapshotServerStatus(), OnlinePlayers: monitors.SnapshotOnlinePlayers()}), nil
 	})
 }

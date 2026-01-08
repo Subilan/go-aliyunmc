@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
@@ -54,15 +53,9 @@ func bindRoutes(r *gin.Engine) {
 }
 
 func runMonitors() {
-	var activeInstanceStatusMonitorErrChan = make(chan error)
-	monitors.GlobalActiveInstanceStatusMonitor = monitors.NewActiveInstanceStatusMonitor(context.Background(), activeInstanceStatusMonitorErrChan)
-	monitors.GlobalActiveInstanceStatusMonitor.Run()
-
-	var automaticPublicIpAllocatorErrChan = make(chan error)
-	monitors.GlobalAutomaticPublicIPAllocator = monitors.NewAutomaticPublicIPAllocator(context.Background(), automaticPublicIpAllocatorErrChan)
-	monitors.GlobalAutomaticPublicIPAllocator.Run()
-
-	go monitors.ServerStatusMonitor()
+	go monitors.ActiveInstanceStatus()
+	go monitors.PublicIP()
+	go monitors.ServerStatus()
 	go monitors.Backup()
 }
 

@@ -17,9 +17,8 @@ import (
 func StartInstanceWhenReady() {
 	var err error
 
-	logger := log.New(os.Stdout, "[StartInstanceWhenReadyMonitor] ", log.LstdFlags)
-
-	logger.Println("Starting")
+	logger := log.New(os.Stdout, "[StartInstanceWhenReady] ", log.LstdFlags)
+	logger.Println("starting...")
 
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

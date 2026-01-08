@@ -2,19 +2,13 @@ package instances
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/gctx"
-	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
-	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
-	"github.com/alibabacloud-go/tea/dara"
 	"github.com/gin-gonic/gin"
 )
 
@@ -33,42 +27,6 @@ type DeleteInstanceQuery struct {
 }
 
 var deleteInstanceMutex sync.Mutex
-
-// DeleteInstance 完成一次删除实例的业务流程，包括调用API进行删除、更新数据库以及向用户广播删除行为。
-func DeleteInstance(ctx context.Context, instanceId string, force bool) error {
-	deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
-		InstanceId: &instanceId,
-		Force:      &force,
-		ForceStop:  &force,
-	}
-
-	_, err := globals.EcsClient.DeleteInstanceWithContext(ctx, deleteInstanceRequest, &dara.RuntimeOptions{})
-
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET deleted_at = CURRENT_TIMESTAMP WHERE instance_id = ?", instanceId)
-
-	if err != nil {
-		return err
-	}
-
-	// 将实例删除广播给所有用户
-	event, err := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
-
-	if err != nil {
-		log.Println("cannot build event:", err)
-	}
-
-	err = stream.BroadcastAndSave(event)
-
-	if err != nil {
-		log.Println("cannot broadcast and save event:", err)
-	}
-
-	return nil
-}
 
 func HandleDeleteInstance() gin.HandlerFunc {
 	return helpers.QueryHandler[DeleteInstanceQuery](func(query DeleteInstanceQuery, c *gin.Context) (any, error) {
@@ -109,7 +67,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 			}
 		}
 
-		err = DeleteInstance(ctx, instanceId, query.ArchiveAndForce || query.Force)
+		err = helpers.DeleteInstance(ctx, instanceId, query.ArchiveAndForce || query.Force)
 
 		if err != nil {
 			return nil, err
