@@ -19,7 +19,7 @@ type QueryOnServerQuery struct {
 
 func HandleServerQuery() gin.HandlerFunc {
 	return helpers.QueryHandler[QueryOnServerQuery](func(query QueryOnServerQuery, c *gin.Context) (any, error) {
-		activeInstance, err := store.GetIpAllocatedActiveInstance()
+		activeInstance, err := store.GetDeployedActiveInstance()
 
 		if err != nil {
 			return nil, err

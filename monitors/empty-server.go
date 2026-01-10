@@ -21,7 +21,7 @@ const (
 )
 
 func safeDeleteServer(logger *log.Logger) {
-	activeInstance, err := store.GetIpAllocatedActiveInstance()
+	activeInstance, err := store.GetDeployedActiveInstance()
 
 	if err != nil {
 		logger.Println("instance not found, skipping")

@@ -26,7 +26,7 @@ func HandleServerExecute() gin.HandlerFunc {
 			return nil, err
 		}
 
-		activeInstance, err := store.GetIpAllocatedActiveInstance()
+		activeInstance, err := store.GetDeployedActiveInstance()
 
 		if err != nil {
 			return nil, err

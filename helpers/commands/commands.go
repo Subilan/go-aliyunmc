@@ -238,7 +238,7 @@ func Load() {
 		Content:         []string{"cd /home/mc/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || echo 'server cannot be started'"},
 		Timeout:         5,
 		Prerequisite: func() bool {
-			activeInstance, err := store.GetIpAllocatedActiveInstance()
+			activeInstance, err := store.GetDeployedActiveInstance()
 
 			if err != nil {
 				return false
@@ -260,7 +260,7 @@ func Load() {
 		Content:         []string{"stop"},
 		Timeout:         5,
 		Prerequisite: func() bool {
-			activeInstance, err := store.GetIpAllocatedActiveInstance()
+			activeInstance, err := store.GetDeployedActiveInstance()
 
 			if err != nil {
 				return false
