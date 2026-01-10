@@ -28,7 +28,7 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/instance/:instanceId", instances.HandleGetInstance())
 	r.GET("/active-or-latest-instance", instances.HandleGetActiveOrLatestInstance())
 	r.GET("/instance-status", instances.HandleGetActiveInstanceStatus())
-	r.GET("/instance-types-and-charge", instances.HandleGetInstanceTypesAndSpotPricePerHour())
+	r.GET("/preferred-instance-charge", instances.HandleGetPreferredInstanceCharge())
 	r.GET("/instance-description/:instanceId", instances.HandleDescribeInstance())
 	r.POST("/instance", middlewares.JWTAuth(), instances.HandleCreateInstance())
 	r.DELETE("/instance/:instanceId", middlewares.JWTAuth(), instances.HandleDeleteInstance())
@@ -58,6 +58,7 @@ func runMonitors() {
 	var quitServerStatus = make(chan bool)
 	var quitPublicIP = make(chan bool)
 	var quitBackup = make(chan bool)
+	var quitInstanceCharge = make(chan bool)
 
 	var ip string
 
@@ -69,6 +70,7 @@ func runMonitors() {
 	go monitors.PublicIP(quitPublicIP)
 	go monitors.ServerStatus(quitServerStatus)
 	go monitors.Backup(quitBackup)
+	go monitors.InstanceCharge(quitInstanceCharge)
 }
 
 func main() {
