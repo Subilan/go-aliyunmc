@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
@@ -21,7 +20,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/pelletier/go-toml/v2"
 )
 
 func bindRoutes(r *gin.Engine) {
@@ -74,21 +72,9 @@ func runMonitors() {
 }
 
 func main() {
-	log.Print("Loading config...")
+	var err error
 
-	configFileContent, err := os.ReadFile("config.toml")
-
-	if err != nil {
-		log.Fatalln("Error reading config file:", err)
-	}
-
-	err = toml.Unmarshal(configFileContent, &config.Cfg)
-
-	if err != nil {
-		log.Fatalln("cannot unmarshal config.toml:", err)
-	}
-
-	log.Print("OK")
+	config.Load("config.toml")
 
 	log.Print("Loading global ECS client...")
 
@@ -158,7 +144,7 @@ func main() {
 
 	bindRoutes(engine)
 
-	err = engine.Run(fmt.Sprintf(":%d", config.Cfg.Server.Expose))
+	err = engine.Run(fmt.Sprintf(":%d", config.Cfg.Base.Expose))
 
 	if err != nil {
 		log.Fatalln("cannot start server:", err)

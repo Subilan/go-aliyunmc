@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -42,9 +43,10 @@ func safeDeleteServer(logger *log.Logger) {
 }
 
 func EmptyServer() {
+	cfg := config.Cfg.Monitor.EmptyServer
 	logger := log.New(os.Stdout, "[EmptyServer] ", log.LstdFlags)
 
-	const emptyTimeout = 1 * time.Hour
+	var emptyTimeout = cfg.EmptyTimeoutDuration()
 
 	var (
 		state = emptyServerStateIdle

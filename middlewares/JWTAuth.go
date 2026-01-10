@@ -33,7 +33,7 @@ func JWTAuth() gin.HandlerFunc {
 
 		claims := &auth.TokenClaims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(config.Cfg.Server.JwtSecret), nil
+			return []byte(config.Cfg.Base.JwtSecret), nil
 		})
 
 		if err != nil {

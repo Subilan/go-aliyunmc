@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -135,7 +136,8 @@ func setServerStatus(status bool) {
 func ServerStatus(quit chan bool) {
 	var err error
 
-	ticker := time.NewTicker(5 * time.Second)
+	cfg := config.Cfg.Monitor.ServerStatus
+	ticker := time.NewTicker(cfg.IntervalDuration())
 
 	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
 	logger.Println("starting...")
@@ -148,7 +150,7 @@ func ServerStatus(quit chan bool) {
 		select {
 		case <-ticker.C:
 			func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), cfg.TimeoutDuration())
 				defer cancel()
 
 				currentInstanceStatus := SnapshotInstanceStatus()
@@ -162,7 +164,7 @@ func ServerStatus(quit chan bool) {
 				}
 
 				serverStatusMu.Lock()
-				serverStatus, err = status.Modern(ctx, currentInstanceIp, 25565)
+				serverStatus, err = status.Modern(ctx, currentInstanceIp, config.Cfg.GetGamePort())
 				serverStatusMu.Unlock()
 
 				if err != nil {
@@ -181,7 +183,7 @@ func ServerStatus(quit chan bool) {
 					}
 
 					if playerCount.Load() > 0 {
-						queryFull, err := query.Full(ctx, currentInstanceIp, 25565)
+						queryFull, err := query.Full(ctx, currentInstanceIp, config.Cfg.GetGamePort())
 
 						if err != nil {
 							log.Println("cannot query full:", err)

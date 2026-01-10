@@ -1,0 +1,79 @@
+[base]
+expose = 33791
+jwt_secret = 'abc'
+
+[database]
+host = '127.0.0.1'
+port = 3306
+database = 'gomc'
+username = 'root'
+password = 'abcdefg'
+
+[deploy]
+oss_root = "oss://seatide2"
+backup_path = "/backups"
+archive_path = "/archive"
+java_version = 7
+packages = ['screen', 'unzip', 'zip', 'screenfetch', 'vim', 'htop']
+ssh_public_key = '''
+abcdefg
+'''
+
+[aliyun]
+region_id = 'cn-shenzhen'
+access_key_id = 'abc'
+access_key_secret = 'abc'
+
+[aliyun.ecs]
+internet_max_bandwidth_out = 100
+image_id = 'debian_12_12_x64_20G_alibase_20251030.vhd'
+hostname = 'seatide'
+root_password = 'abc'
+prod_password = 'abc'
+spot_interruption_behavior = 'Stop'
+security_group_id = 'abc'
+
+[aliyun.ecs.system_disk]
+category = 'cloud_essd'
+size = 20
+
+[aliyun.ecs.data_disk]
+category = 'cloud_essd'
+size = 50
+
+[monitor.active_instance]
+interval = 5
+
+[monitor.public_ip]
+interval = 5
+timeout = 20
+
+[monitor.instance_charge]
+interval = 600
+retry_interval = 300
+timeout = 240
+mem_range = [10, 16]
+cpu_core_count_range = [4, 8]
+
+[monitor.instance_charge.filters]
+max_trade_price = 0.6
+
+[monitor.backup]
+interval = 600
+retry_interval = 60
+timeout = 120
+
+[monitor.empty_server]
+empty_timeout = 3600
+
+[monitor.server_status]
+interval = 5
+timeout = 10
+
+[monitor.start_instance]
+interval = 5
+timeout = 120
+
+[server]
+port = 25565
+rcon_port = 25575

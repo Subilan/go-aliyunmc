@@ -94,9 +94,9 @@ func ActiveInstance(quit chan bool) {
 	logger := log.New(os.Stdout, "[ActiveInstance] ", log.LstdFlags)
 	logger.Println("starting...")
 
-	cfg := config.Cfg.Monitor.ActiveInstanceStatusMonitor
+	cfg := config.Cfg.Monitor.ActiveInstance
 
-	ticker := time.NewTicker(time.Duration(cfg.ExecutionInterval) * time.Second)
+	ticker := time.NewTicker(time.Duration(cfg.Interval) * time.Second)
 
 	go syncInstanceExternalDeletionWithUser(logger)
 	go syncInstanceStatusWithUser(logger)

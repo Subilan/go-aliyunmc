@@ -59,11 +59,6 @@ type InstanceTypeAndTradePrice struct {
 //	SortBy              string `json:"sortBy,omitempty" form:"sortBy"`
 //}
 
-type IntRange struct {
-	Min int
-	Max int
-}
-
 func spec(it InstanceTypeAndTradePrice, sortBy consts.InstanceChargeSortBy) float64 {
 	switch sortBy {
 	case consts.ICSortByCpuCoreCount:
@@ -159,10 +154,10 @@ type GetInstanceChargeConfig struct {
 	ZoneIds []string
 
 	// MemRange 指定期望的服务器内存大小范围，单位GiB
-	MemRange IntRange
+	MemRange config.IntRange
 
 	// CpuCoreCountRange 指定期望的服务器虚拟CPU核数
-	CpuCoreCountRange IntRange
+	CpuCoreCountRange config.IntRange
 
 	// SortBy 为排序依据
 	SortBy consts.InstanceChargeSortBy
@@ -317,7 +312,8 @@ func SnapshotPreferredInstanceCharge() PreferredInstanceCharge {
 }
 
 func InstanceCharge(quit chan bool) {
-	ticker := time.NewTicker(10 * time.Minute)
+	cfg := config.Cfg.Monitor.InstanceCharge
+	ticker := time.NewTicker(cfg.IntervalDuration())
 	logger := log.New(os.Stdout, "[InstanceCharge] ", log.LstdFlags)
 	logger.Println("starting...")
 
@@ -325,14 +321,14 @@ func InstanceCharge(quit chan bool) {
 		func() {
 			logger.Println("getting instance charge")
 
-			ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+			ctx, cancel := context.WithTimeout(context.Background(), cfg.TimeoutDuration())
 			defer cancel()
 
 			result, err := GetInstanceCharge(
 				ctx,
 				GetInstanceChargeConfig{
-					MemRange:          IntRange{10, 16},
-					CpuCoreCountRange: IntRange{4, 8},
+					MemRange:          cfg.MemIntRange(),
+					CpuCoreCountRange: cfg.CpuCoreCountIntRange(),
 					SortBy:            consts.ICSortByTradePrice,
 					SortOrder:         consts.OrderByAsc,
 				},
@@ -356,7 +352,7 @@ func InstanceCharge(quit chan bool) {
 			filtered := make([]InstanceTypeAndTradePrice, 0, len(result[0].TypesAndTradePrice))
 
 			for _, instance := range result[0].TypesAndTradePrice {
-				if instance.TradePrice > 0.6 {
+				if instance.TradePrice > cfg.Filters.MaxTradePrice && cfg.Filters.MaxTradePrice > 0 {
 					continue
 				}
 				filtered = append(filtered, instance)
@@ -374,8 +370,8 @@ func InstanceCharge(quit chan bool) {
 					preferredInstanceChargePresent.Store(false)
 				}
 
-				logger.Println("next refresh in 5m")
-				ticker.Reset(5 * time.Minute)
+				logger.Println("next refresh in", cfg.RetryIntervalDuration())
+				ticker.Reset(cfg.RetryIntervalDuration())
 				return
 			}
 
@@ -398,12 +394,12 @@ func InstanceCharge(quit chan bool) {
 					preferredInstanceCharge.TypeAndTradePrice.MemorySize,
 					preferredInstanceCharge.TypeAndTradePrice.CpuCoreCount,
 				)
-				logger.Println("next refresh in 5m")
-				ticker.Reset(5 * time.Minute)
+				logger.Println("next refresh in", cfg.RetryIntervalDuration())
+				ticker.Reset(cfg.RetryIntervalDuration())
 			} else {
 				logger.Println("preferred instance type remains unchanged this time")
-				logger.Println("next refresh in 10m")
-				ticker.Reset(10 * time.Minute)
+				logger.Println("next refresh in", cfg.IntervalDuration())
+				ticker.Reset(cfg.IntervalDuration())
 			}
 		}()
 

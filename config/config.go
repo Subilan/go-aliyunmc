@@ -1,98 +1,75 @@
 package config
 
 import (
-	"fmt"
-	"path/filepath"
+	"log"
+	"os"
+
+	"github.com/go-playground/validator/v10"
+	"github.com/pelletier/go-toml/v2"
 )
 
 var Cfg Config
 
-type ServerConfig struct {
-	Expose    int    `toml:"expose"`
-	JwtSecret string `toml:"jwt_secret"`
-}
-
-type DatabaseConfig struct {
-	Host     string `toml:"host"`
-	Port     int    `toml:"port"`
-	Username string `toml:"username"`
-	Password string `toml:"password"`
-	Database string `toml:"database"`
-}
-
-type DeployConfig struct {
-	Packages     []string `toml:"packages"`
-	SSHPublicKey string   `toml:"ssh_public_key"`
-	JavaVersion  uint     `toml:"java_version"`
-	OSSRoot      string   `toml:"oss_root"`
-	BackupPath   string   `toml:"backup_path"`
-	ArchivePath  string   `toml:"archive_path"`
-}
-
-func (d DeployConfig) BackupOSSPath() string {
-	return "oss://" + filepath.Join(d.OSSRoot[6:], d.BackupPath)
-}
-
-func (d DeployConfig) ArchiveOSSPath() string {
-	return "oss://" + filepath.Join(d.OSSRoot[6:], d.ArchivePath)
-}
-
-type AliyunConfig struct {
-	RegionId        string          `toml:"region_id"`
-	AccessKeyId     string          `toml:"access_key_id"`
-	AccessKeySecret string          `toml:"access_key_secret"`
-	Ecs             AliyunEcsConfig `toml:"ecs"`
-}
-
-type AliyunEcsConfig struct {
-	InternetMaxBandwidthOut  int           `toml:"internet_max_bandwidth_out"`
-	ImageId                  string        `toml:"image_id"`
-	SystemDisk               EcsDiskConfig `toml:"system_disk"`
-	DataDisk                 EcsDiskConfig `toml:"data_disk"`
-	HostName                 string        `toml:"hostname"`
-	RootPassword             string        `toml:"root_password"`
-	ProdPassword             string        `toml:"prod_password"`
-	SpotInterruptionBehavior string        `toml:"spot_interruption_behavior"`
-	SecurityGroupId          string        `toml:"security_group_id"`
-}
-
-// EcsEndpoint 返回 ECS 相关的请求 endpoint
-func (c AliyunConfig) EcsEndpoint() string {
-	return fmt.Sprintf("ecs.%s.aliyuncs.com", c.RegionId)
-}
-
-// VpcEndpoint 返回 VPC 相关请求 endpoint
-func (c AliyunConfig) VpcEndpoint() string {
-	return fmt.Sprintf("vpc.%s.aliyuncs.com", c.RegionId)
-}
-
-type EcsDiskConfig struct {
-	Category string `toml:"category"`
-	Size     int    `toml:"size"`
-}
-
 type Config struct {
-	Server   ServerConfig   `toml:"server"`
-	Aliyun   AliyunConfig   `toml:"aliyun"`
-	Database DatabaseConfig `toml:"database"`
-	Monitor  MonitorConfig  `toml:"monitor"`
-	Deploy   DeployConfig   `toml:"deploy"`
+	Base     BaseConfig     `toml:"base" validate:"required"`
+	Aliyun   AliyunConfig   `toml:"aliyun" validate:"required"`
+	Database DatabaseConfig `toml:"database" validate:"required"`
+	Monitor  MonitorConfig  `toml:"monitor" validate:"required"`
+	Deploy   DeployConfig   `toml:"deploy" validate:"required"`
+	Server   ServerConfig   `toml:"server" validate:"required"`
 }
 
 func (c Config) GetAliyunEcsConfig() AliyunEcsConfig {
 	return c.Aliyun.Ecs
 }
-
-type MonitorConfig struct {
-	ActiveInstanceStatusMonitor ActiveInstanceStatusMonitor `toml:"active_instance_status"`
-	AutomaticPublicIpAllocator  AutomaticPublicIpAllocator  `toml:"automatic_public_ip_allocator"`
+func (c Config) GetGamePort() uint16 {
+	return c.Server.Port
+}
+func (c Config) GetGameRconPort() uint16 {
+	return c.Server.RconPort
 }
 
-type ActiveInstanceStatusMonitor struct {
-	ExecutionInterval int `toml:"execution_interval"`
+func Load(filename string) {
+	err := load(filename)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
-type AutomaticPublicIpAllocator struct {
-	ExecutionInterval int  `toml:"execution_interval"`
-	Verbose           bool `toml:"verbose"`
+func load(filename string) error {
+	log.Print("Loading config...")
+
+	configFileContent, err := os.ReadFile(filename)
+
+	if err != nil {
+		log.Println("Error reading config file:", err)
+		return err
+	}
+
+	err = toml.Unmarshal(configFileContent, &Cfg)
+
+	if err != nil {
+		log.Println("cannot unmarshal config.toml:", err)
+		return err
+	}
+
+	validate := validator.New()
+
+	err = validate.RegisterValidation("posRange", validPositiveRange)
+
+	if err != nil {
+		log.Println("cannot register posRange to validator:", err)
+		return err
+	}
+
+	err = validate.Struct(Cfg)
+
+	if err != nil {
+		log.Println("config validation error:", err)
+		return err
+	}
+
+	log.Print("OK")
+	return nil
 }

@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/mcstatus-io/mcutil/v4/status"
 )
@@ -11,7 +12,7 @@ func StopAndArchiveServer(ctx context.Context, host string, by *int64, comment s
 	stopServerCmd := MustGetCommand(consts.CmdTypeStopServer)
 	archiveServerCmd := MustGetCommand(consts.CmdTypeArchiveServer)
 
-	_, err := status.Modern(ctx, host, 25565)
+	_, err := status.Modern(ctx, host, config.Cfg.GetGamePort())
 
 	if err == nil {
 		_, err := stopServerCmd.RunWithoutCooldown(ctx, host, by, &CommandRunOption{Output: true, Comment: comment})

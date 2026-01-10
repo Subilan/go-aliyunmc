@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
@@ -16,6 +17,7 @@ func StartActiveInstanceWhenReady() {
 	var err error
 
 	logger := log.New(os.Stdout, "[StartActiveInstanceWhenReady] ", log.LstdFlags)
+	cfg := config.Cfg.Monitor.StartInstance
 
 	var instanceId string
 
@@ -26,14 +28,14 @@ func StartActiveInstanceWhenReady() {
 		return
 	}
 
-	timer := time.NewTimer(2 * time.Minute) // timeout
-	ticker := time.NewTicker(5 * time.Second)
+	timer := time.NewTimer(cfg.TimeoutDuration()) // timeout
+	ticker := time.NewTicker(cfg.IntervalDuration())
 
 	for {
 		select {
 		case <-ticker.C:
 			if SnapshotInstanceStatus() != consts.InstanceStopped || SnapshotInstanceIp() == "" {
-				logger.Println("instance not ready, retry in 5s")
+				logger.Println("instance not ready, retry in", cfg.IntervalDuration())
 				continue
 			}
 

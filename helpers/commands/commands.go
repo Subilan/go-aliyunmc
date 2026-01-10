@@ -9,6 +9,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
@@ -163,7 +164,7 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 	}
 
 	if c.ExecuteLocation == consts.ExecuteLocationServer {
-		rconClient, rconClientErr := rcon.Dial(host, 25575)
+		rconClient, rconClientErr := rcon.Dial(host, config.Cfg.GetGameRconPort())
 
 		if rconClientErr != nil {
 			return "", rconClientErr
@@ -246,7 +247,7 @@ func Load() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			_, err = status.Modern(ctx, *activeInstance.Ip, 25565)
+			_, err = status.Modern(ctx, *activeInstance.Ip, config.Cfg.GetGamePort())
 
 			// 需要服务器不在线
 			return err != nil
@@ -268,7 +269,7 @@ func Load() {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
-			_, err = status.Modern(ctx, *activeInstance.Ip, 25565)
+			_, err = status.Modern(ctx, *activeInstance.Ip, config.Cfg.GetGamePort())
 
 			// 需要服务器在线
 			return err == nil

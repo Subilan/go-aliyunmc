@@ -59,10 +59,11 @@ func syncIpWithUser(logger *log.Logger) {
 }
 
 func PublicIP(quit chan bool) {
+	cfg := config.Cfg.Monitor.PublicIp
 	logger := log.New(os.Stdout, "[PublicIP] ", log.LstdFlags)
 	logger.Println("starting...")
 
-	ticker := time.NewTicker(time.Duration(config.Cfg.Monitor.AutomaticPublicIpAllocator.ExecutionInterval) * time.Second)
+	ticker := time.NewTicker(cfg.IntervalDuration())
 
 	go syncIpWithUser(logger)
 
@@ -72,16 +73,13 @@ func PublicIP(quit chan bool) {
 			func() {
 				var activeInstanceId string
 
-				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), cfg.TimeoutDuration())
 				defer cancel()
 
 				err := db.Pool.QueryRowContext(ctx, "SELECT instance_id FROM instances WHERE deleted_at IS NULL AND ip IS NULL").Scan(&activeInstanceId)
 
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
-						if config.Cfg.Monitor.AutomaticPublicIpAllocator.Verbose {
-							logger.Println("No active instance without ip addr is found, skipping")
-						}
 						return
 					}
 

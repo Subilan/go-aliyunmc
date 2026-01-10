@@ -6,16 +6,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 )
 
-var backupInterval = 10 * time.Minute
-var retryInterval = 1 * time.Minute
-var backupTimeout = 2 * time.Minute
-
 func Backup(quit chan bool) {
+	cfg := config.Cfg.Monitor.Backup
+	var backupInterval = cfg.IntervalDuration()
+	var retryInterval = cfg.RetryIntervalDuration()
+	var backupTimeout = cfg.TimeoutDuration()
 	logger := log.New(os.Stdout, "[Backup] ", log.LstdFlags)
 
 	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)

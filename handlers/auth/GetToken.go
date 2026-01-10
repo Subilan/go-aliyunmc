@@ -67,7 +67,7 @@ func HandleGetToken() gin.HandlerFunc {
 		}
 
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-		tokenString, err := token.SignedString([]byte(config.Cfg.Server.JwtSecret))
+		tokenString, err := token.SignedString([]byte(config.Cfg.Base.JwtSecret))
 		if err != nil {
 			return nil, err
 		}
