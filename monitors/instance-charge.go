@@ -153,30 +153,46 @@ func sortZoneSpecs(
 	}
 }
 
+// GetInstanceChargeConfig 是 GetInstanceCharge 的具体执行参数
+type GetInstanceChargeConfig struct {
+	// ZoneIds 指定要在哪些可用区下查找。如果留空则代表在该地域的所有可用区查找。
+	ZoneIds []string
+
+	// MemRange 指定期望的服务器内存大小范围，单位GiB
+	MemRange IntRange
+
+	// CpuCoreCountRange 指定期望的服务器虚拟CPU核数
+	CpuCoreCountRange IntRange
+
+	// SortBy 为排序依据
+	SortBy consts.InstanceChargeSortBy
+
+	// SortOrder 为排序顺序
+	SortOrder consts.SortOrder
+
+	// MaxResults 限制查询符合要求实例接口的返回数量，范围为1~100，留空默认为100
+	MaxResults int64
+}
+
 // GetInstanceCharge 尝试获取指定可用区下，符合要求的所有实例类型，并获取该实例类型在抢占式实例中的每小时预估价格。
 func GetInstanceCharge(
 	ctx context.Context,
-	zoneId string,
-	memRange IntRange,
-	cpuCoreCountRange IntRange,
-	sortBy consts.InstanceChargeSortBy,
-	sortOrder consts.SortOrder,
-	maxResults int64,
+	cfg GetInstanceChargeConfig,
 ) ([]ZoneInstanceCharge, error) {
 	ecsConfig := config.Cfg.GetAliyunEcsConfig()
 	regionId := config.Cfg.Aliyun.RegionId
 
 	describeInstanceTypesRequest := &ecs20140526.DescribeInstanceTypesRequest{
-		MaximumMemorySize:   tea.Float32(float32(memRange.Max)),
-		MinimumMemorySize:   tea.Float32(float32(memRange.Min)),
-		MaximumCpuCoreCount: tea.Int32(int32(cpuCoreCountRange.Max)),
-		MinimumCpuCoreCount: tea.Int32(int32(cpuCoreCountRange.Min)),
+		MaximumMemorySize:   tea.Float32(float32(cfg.MemRange.Max)),
+		MinimumMemorySize:   tea.Float32(float32(cfg.MemRange.Min)),
+		MaximumCpuCoreCount: tea.Int32(int32(cfg.CpuCoreCountRange.Max)),
+		MinimumCpuCoreCount: tea.Int32(int32(cfg.CpuCoreCountRange.Min)),
 		CpuArchitecture:     tea.String("X86"),
 		InstanceCategories:  tea.StringSlice([]string{"General-purpose", "Compute-optimized", "Memory-optimized", "High Clock Speed"}),
 	}
 
-	if maxResults != 0 {
-		describeInstanceTypesRequest.MaxResults = &maxResults
+	if cfg.MaxResults != 0 {
+		describeInstanceTypesRequest.MaxResults = &cfg.MaxResults
 	}
 
 	// 获取地域下所有满足需要的实例类型
@@ -199,16 +215,14 @@ func GetInstanceCharge(
 	var targetZoneItems []globals.ZoneCacheItem
 
 	// 若请求体指定了可用区，则只在该可用区内搜索；否则在当前地域的所有可用区搜索
-	if zoneId != "" {
-		onlyZone := globals.GetZoneItemByZoneId(zoneId)
-
-		if onlyZone == nil {
-			return nil, errors.New("zone id not found")
-		}
-
-		// TODO: could be multiple
-		targetZoneItems = []globals.ZoneCacheItem{
-			*onlyZone,
+	if cfg.ZoneIds != nil {
+		for _, zoneId := range cfg.ZoneIds {
+			zone := globals.GetZoneItemByZoneId(zoneId)
+			if zone == nil {
+				log.Println("warn: got invalid zone id", zoneId)
+				continue
+			}
+			targetZoneItems = append(targetZoneItems, *zone)
 		}
 	} else {
 		targetZoneItems = globals.ZoneCache
@@ -280,8 +294,8 @@ func GetInstanceCharge(
 		})
 	}
 
-	sortZoneSpecs(result, sortBy, sortOrder)
-	sortZones(result, sortBy, sortOrder)
+	sortZoneSpecs(result, cfg.SortBy, cfg.SortOrder)
+	sortZones(result, cfg.SortBy, cfg.SortOrder)
 
 	return result, nil
 }
@@ -316,12 +330,12 @@ func InstanceCharge(quit chan bool) {
 
 			result, err := GetInstanceCharge(
 				ctx,
-				"", // across all zones in the region
-				IntRange{10, 16},
-				IntRange{4, 8},
-				consts.ICSortByTradePrice,
-				consts.OrderByAsc,
-				0,
+				GetInstanceChargeConfig{
+					MemRange:          IntRange{10, 16},
+					CpuCoreCountRange: IntRange{4, 8},
+					SortBy:            consts.ICSortByTradePrice,
+					SortOrder:         consts.OrderByAsc,
+				},
 			)
 
 			if err != nil {
