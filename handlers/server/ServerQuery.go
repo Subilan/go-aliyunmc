@@ -14,7 +14,7 @@ import (
 )
 
 type QueryOnServerQuery struct {
-	QueryType consts.CommandType `form:"queryType" binding:"required,oneof=get_server_sizes screenfetch"`
+	QueryType consts.CommandType `form:"queryType" binding:"required,oneof=get_server_sizes screenfetch get_ops get_cached_players get_server_properties"`
 }
 
 func HandleServerQuery() gin.HandlerFunc {

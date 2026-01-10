@@ -290,6 +290,30 @@ func Load() {
 		Timeout:         5,
 		IsQuery:         true,
 	}
+	Commands[consts.CmdTypeGetCachedPlayers] = &Command{
+		Type:            consts.CmdTypeGetCachedPlayers,
+		ExecuteLocation: consts.ExecuteLocationShell,
+		Cooldown:        0,
+		Content:         []string{"cat /home/mc/server/archive/usercache.json"},
+		Timeout:         5,
+		IsQuery:         true,
+	}
+	Commands[consts.CmdTypeGetServerProperties] = &Command{
+		Type:            consts.CmdTypeGetServerProperties,
+		ExecuteLocation: consts.ExecuteLocationShell,
+		Cooldown:        0,
+		Content:         []string{"cat /home/mc/server/archive/server.properties"},
+		Timeout:         5,
+		IsQuery:         true,
+	}
+	Commands[consts.CmdTypeGetOps] = &Command{
+		Type:            consts.CmdTypeGetOps,
+		ExecuteLocation: consts.ExecuteLocationShell,
+		Cooldown:        0,
+		Content:         []string{"cat /home/mc/server/archive/ops.json"},
+		Timeout:         5,
+		IsQuery:         true,
+	}
 
 	for _, typ := range []consts.CommandType{consts.CmdTypeBackupWorlds, consts.CmdTypeArchiveServer} {
 		var filename string
