@@ -17,6 +17,7 @@ func Backup(quit chan bool) {
 	var backupInterval = cfg.IntervalDuration()
 	var retryInterval = cfg.RetryIntervalDuration()
 	var backupTimeout = cfg.TimeoutDuration()
+
 	logger := log.New(os.Stdout, "[Backup] ", log.LstdFlags)
 
 	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)
@@ -45,7 +46,8 @@ func Backup(quit chan bool) {
 				_, err = cmd.RunWithoutCooldown(ctx, *activeInstance.Ip, nil, nil)
 
 				if err != nil {
-					logger.Println("error:", err, "retry in", retryInterval)
+					logger.Println("error:", err)
+					logger.Println("retry in", retryInterval)
 					ticker.Reset(retryInterval)
 					return
 				}

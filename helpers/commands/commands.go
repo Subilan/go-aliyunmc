@@ -282,6 +282,10 @@ func Load() {
 		Content:         []string{"du -sh /home/mc/server/archive", "du -sh /home/mc/server/archive/world", "du -sh /home/mc/server/archive/world_nether", "du -sh /home/mc/server/archive/world_the_end"},
 		Timeout:         5,
 		IsQuery:         true,
+		Prerequisite: func() bool {
+			_, err := store.GetDeployedActiveInstance()
+			return err == nil
+		},
 	}
 	Commands[consts.CmdTypeScreenfetch] = &Command{
 		Type:            consts.CmdTypeScreenfetch,
@@ -298,14 +302,22 @@ func Load() {
 		Content:         []string{"cat /home/mc/server/archive/usercache.json"},
 		Timeout:         5,
 		IsQuery:         true,
+		Prerequisite: func() bool {
+			_, err := store.GetDeployedActiveInstance()
+			return err == nil
+		},
 	}
 	Commands[consts.CmdTypeGetServerProperties] = &Command{
 		Type:            consts.CmdTypeGetServerProperties,
 		ExecuteLocation: consts.ExecuteLocationShell,
 		Cooldown:        0,
-		Content:         []string{"cat /home/mc/server/archive/server.properties"},
+		Content:         []string{"cat /home/mc/server/archive/server.properties | grep -E '^(white-list|view-distance|simulation-distance|pvp|online-mode|difficulty|max-players).*='"},
 		Timeout:         5,
 		IsQuery:         true,
+		Prerequisite: func() bool {
+			_, err := store.GetDeployedActiveInstance()
+			return err == nil
+		},
 	}
 	Commands[consts.CmdTypeGetOps] = &Command{
 		Type:            consts.CmdTypeGetOps,
@@ -314,6 +326,10 @@ func Load() {
 		Content:         []string{"cat /home/mc/server/archive/ops.json"},
 		Timeout:         5,
 		IsQuery:         true,
+		Prerequisite: func() bool {
+			_, err := store.GetDeployedActiveInstance()
+			return err == nil
+		},
 	}
 
 	for _, typ := range []consts.CommandType{consts.CmdTypeBackupWorlds, consts.CmdTypeArchiveServer} {
