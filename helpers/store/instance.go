@@ -16,12 +16,13 @@ type Instance struct {
 	CreatedAt    time.Time  `json:"createdAt"`
 	Deployed     bool       `json:"deployed"`
 	Ip           *string    `json:"ip"`
+	VSwitchId    string     `json:"vswitchId"`
 }
 
 func getInstance(cond string) (*Instance, error) {
 	var result Instance
 
-	err := db.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip, deployed FROM instances "+cond).Scan(
+	err := db.Pool.QueryRow("SELECT instance_id, instance_type, region_id, zone_id, deleted_at, created_at, ip, deployed, vswitch_id FROM instances "+cond).Scan(
 		&result.InstanceId,
 		&result.InstanceType,
 		&result.RegionId,
@@ -30,6 +31,7 @@ func getInstance(cond string) (*Instance, error) {
 		&result.CreatedAt,
 		&result.Ip,
 		&result.Deployed,
+		&result.VSwitchId,
 	)
 
 	if err != nil {

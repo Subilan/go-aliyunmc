@@ -17,22 +17,14 @@ import (
 	"github.com/Subilan/go-aliyunmc/monitors"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
+	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v6/client"
 	"github.com/gin-gonic/gin"
 )
 
-// CreateInstanceBody 是创建实例接口的请求体
-type CreateInstanceBody struct {
-	// ZoneId 是当前希望创建的实例所在的可用区 ID，例如 cn-shenzhen-c
-	ZoneId string `json:"zoneId" binding:"required"`
-
-	// VSwitchId 是当前希望创建实例使用的交换机 ID，其必须位于 ZoneId 表示的可用区内
-	VSwitchId string `json:"vSwitchId" binding:"required"`
-
-	// InstanceType 是当前希望创建实例的类型
-	InstanceType string `json:"instanceType" binding:"required"`
-
-	// DryRun 表示当前是否为预检请求
-	DryRun bool `json:"dryRun"`
+// CreateInstanceQuery 是创建实例接口的请求体
+type CreateInstanceQuery struct {
+	// AutoVSwitch 表示是否在默认交换机不存在时，在指定可用区内自动创建默认交换机，并立即使用该交换机
+	AutoVSwitch bool `json:"autoVSwitch" form:"autoVSwitch"`
 }
 
 type CreateInstanceResponseBody struct {
@@ -44,26 +36,67 @@ const createInstanceTimeout = 15 * time.Second
 
 var createInstanceMutex sync.Mutex
 
-func HandleCreateInstance() gin.HandlerFunc {
-	return helpers.BodyHandler(func(body CreateInstanceBody, c *gin.Context) (any, error) {
+func HandleCreatePreferredInstance() gin.HandlerFunc {
+	return helpers.QueryHandler(func(body CreateInstanceQuery, c *gin.Context) (any, error) {
 		// 长耗时任务，避免重复执行
-		createInstanceMutex.Lock()
+		ok := createInstanceMutex.TryLock()
+		if !ok {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "instance is being created"}
+		}
 		defer createInstanceMutex.Unlock()
+
+		if !monitors.SnapshotPreferredInstanceChargePresent() {
+			return nil, &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "preferred instance charge not present"}
+		}
+
+		inst := monitors.SnapshotPreferredInstanceCharge()
+		zoneId := inst.ZoneId
+		instanceType := inst.TypeAndTradePrice.InstanceType
 
 		var err error
 
-		zone := globals.GetZoneItemByZoneId(body.ZoneId)
+		zone := globals.GetZoneItemByZoneId(zoneId)
 
 		if zone == nil {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "zone not found"}
 		}
 
-		if !globals.IsInstanceTypeAvailableInZone(body.InstanceType, body.ZoneId) {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("instance type %s not available in zone %s or zone does not exist", body.InstanceType, body.ZoneId)}
+		if !globals.IsInstanceTypeAvailableInZone(instanceType, zoneId) {
+			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("instance type %s not available in zone %s or zone does not exist", instanceType, zoneId)}
 		}
 
-		if !globals.IsVSwitchInZone(body.VSwitchId, body.ZoneId) {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("vSwitch %s not found in region %s", body.VSwitchId, body.ZoneId)}
+		describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{
+			ZoneId:    tea.String(zoneId),
+			IsDefault: tea.Bool(true),
+		}
+
+		describeVSwitchesResponse, err := globals.VpcClient.DescribeVSwitches(describeVSwitchesRequest)
+
+		if err != nil {
+			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot describe vswitches in zone " + zoneId}
+		}
+
+		var vswitchId string
+
+		if len(describeVSwitchesResponse.Body.VSwitches.VSwitch) == 0 {
+			if !body.AutoVSwitch {
+				return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "vswitch not found"}
+			}
+			createDefaultVSwitchRequest := &vpc20160428.CreateDefaultVSwitchRequest{
+				ZoneId:   tea.String(zoneId),
+				RegionId: tea.String(config.Cfg.Aliyun.RegionId),
+			}
+
+			createDefaultVSwitchResponse, err := globals.VpcClient.CreateDefaultVSwitch(createDefaultVSwitchRequest)
+
+			if err != nil {
+				return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot create default vswitch in zone " + zoneId}
+			}
+
+			// 此时交换机可能仍然在准备中
+			vswitchId = *createDefaultVSwitchResponse.Body.VSwitchId
+		} else {
+			vswitchId = *describeVSwitchesResponse.Body.VSwitches.VSwitch[0].VSwitchId
 		}
 
 		ctx, cancel := context.WithTimeout(c, createInstanceTimeout)
@@ -86,7 +119,7 @@ func HandleCreateInstance() gin.HandlerFunc {
 		createInstanceRequest := &ecs20140526.CreateInstanceRequest{
 			RegionId:     tea.String(config.Cfg.Aliyun.RegionId),
 			ZoneId:       zone.ZoneId,
-			InstanceType: tea.String(body.InstanceType),
+			InstanceType: tea.String(instanceType),
 			SystemDisk: &ecs20140526.CreateInstanceRequestSystemDisk{
 				Category: tea.String(ecsConfig.SystemDisk.Category),
 				Size:     tea.Int32(int32(ecsConfig.SystemDisk.Size)),
@@ -106,9 +139,8 @@ func HandleCreateInstance() gin.HandlerFunc {
 			SpotStrategy:             tea.String("SpotAsPriceGo"),
 			SpotDuration:             tea.Int32(1),
 			SpotInterruptionBehavior: tea.String(ecsConfig.SpotInterruptionBehavior),
-			DryRun:                   tea.Bool(body.DryRun),
 			SecurityGroupId:          tea.String(ecsConfig.SecurityGroupId),
-			VSwitchId:                tea.String(body.VSwitchId),
+			VSwitchId:                tea.String(vswitchId),
 			ImageId:                  tea.String(ecsConfig.ImageId),
 		}
 
@@ -119,8 +151,8 @@ func HandleCreateInstance() gin.HandlerFunc {
 		}
 
 		_, err = db.Pool.ExecContext(ctx, `
-INSERT INTO instances (instance_id, instance_type, region_id, zone_id) VALUES (?, ?, ?, ?)
-`, *createInstanceResponse.Body.InstanceId, body.InstanceType, config.Cfg.Aliyun.RegionId, body.ZoneId)
+INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_id) VALUES (?, ?, ?, ?, ?)
+`, *createInstanceResponse.Body.InstanceId, instanceType, config.Cfg.Aliyun.RegionId, zoneId, vswitchId)
 
 		if err != nil {
 			return nil, err
@@ -129,12 +161,13 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id) VALUES (?
 		// 将实例创建广播给所有用户
 		event, err := store.BuildInstanceEvent(store.InstanceEventCreated, store.Instance{
 			InstanceId:   *createInstanceResponse.Body.InstanceId,
-			InstanceType: body.InstanceType,
+			InstanceType: instanceType,
 			RegionId:     config.Cfg.Aliyun.RegionId,
-			ZoneId:       body.ZoneId,
+			ZoneId:       zoneId,
 			DeletedAt:    nil,
 			CreatedAt:    time.Now(),
 			Ip:           nil,
+			VSwitchId:    vswitchId,
 		})
 
 		if err != nil {

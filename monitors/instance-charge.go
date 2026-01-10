@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"os"
-	"regexp"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -20,13 +19,19 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-// InstanceChargeItem 是查询实例类型及价格接口的返回结构
-type InstanceChargeItem struct {
+// ZoneInstanceCharge 反映一个可用区内的所有收费信息
+type ZoneInstanceCharge struct {
 	// ZoneId 是可用区的代码，例如cn-shenzhen-c
 	ZoneId string `json:"zoneId"`
 
-	// TypesAndTradePrice 是查询的结果数组
+	// TypesAndTradePrice 是该可用区内所有符合要求的实例类型及其收费信息
 	TypesAndTradePrice []InstanceTypeAndTradePrice `json:"typesAndTradePrice"`
+}
+
+// PreferredInstanceCharge 反映一个选出的最优实例类型收费信息及其可用区
+type PreferredInstanceCharge struct {
+	ZoneId            string                    `json:"zoneId"`
+	TypeAndTradePrice InstanceTypeAndTradePrice `json:"typeAndTradePrice"`
 }
 
 // InstanceTypeAndTradePrice 用来表示一个实例的类型、配置信息和成交价格
@@ -59,6 +64,95 @@ type IntRange struct {
 	Max int
 }
 
+func spec(it InstanceTypeAndTradePrice, sortBy consts.InstanceChargeSortBy) float64 {
+	switch sortBy {
+	case consts.ICSortByCpuCoreCount:
+		return float64(it.CpuCoreCount)
+	case consts.ICSortByMemorySize:
+		return float64(it.MemorySize)
+	case consts.ICSortByTradePrice:
+		return float64(it.TradePrice)
+	default:
+		return 0
+	}
+}
+
+func zoneSortKey(
+	zone ZoneInstanceCharge,
+	sortBy consts.InstanceChargeSortBy,
+	sortOrder consts.SortOrder,
+) (float64, bool) {
+
+	if len(zone.TypesAndTradePrice) == 0 {
+		return 0, false
+	}
+
+	key := spec(zone.TypesAndTradePrice[0], sortBy)
+
+	for _, it := range zone.TypesAndTradePrice[1:] {
+		v := spec(it, sortBy)
+
+		if sortOrder == consts.OrderByDesc {
+			if v > key {
+				key = v
+			}
+		} else {
+			if v < key {
+				key = v
+			}
+		}
+	}
+
+	return key, true
+}
+
+func sortZones(
+	zones []ZoneInstanceCharge,
+	sortBy consts.InstanceChargeSortBy,
+	sortOrder consts.SortOrder,
+) {
+	if sortBy == consts.ICSortByNone {
+		return
+	}
+
+	sort.SliceStable(zones, func(i, j int) bool {
+		ai, sortableA := zoneSortKey(zones[i], sortBy, sortOrder)
+		aj, sortableB := zoneSortKey(zones[j], sortBy, sortOrder)
+
+		// 空 zone 永远排后
+		if !sortableA && !sortableB {
+			return false
+		}
+		if !sortableA {
+			return false
+		}
+		if !sortableB {
+			return true
+		}
+
+		if sortOrder == consts.OrderByDesc {
+			return ai > aj
+		}
+		return ai < aj
+	})
+}
+
+func sortZoneSpecs(
+	zones []ZoneInstanceCharge,
+	sortBy consts.InstanceChargeSortBy,
+	sortOrder consts.SortOrder,
+) {
+	for i := range zones {
+		specs := zones[i].TypesAndTradePrice
+		sort.SliceStable(specs, func(i, j int) bool {
+			if sortOrder == consts.OrderByDesc {
+				return spec(specs[i], sortBy) > spec(specs[j], sortBy)
+			}
+			return spec(specs[i], sortBy) < spec(specs[j], sortBy)
+		})
+	}
+}
+
 // GetInstanceCharge 尝试获取指定可用区下，符合要求的所有实例类型，并获取该实例类型在抢占式实例中的每小时预估价格。
 func GetInstanceCharge(
 	ctx context.Context,
@@ -68,7 +162,7 @@ func GetInstanceCharge(
 	sortBy consts.InstanceChargeSortBy,
 	sortOrder consts.SortOrder,
 	maxResults int64,
-) ([]InstanceChargeItem, error) {
+) ([]ZoneInstanceCharge, error) {
 	ecsConfig := config.Cfg.GetAliyunEcsConfig()
 	regionId := config.Cfg.Aliyun.RegionId
 
@@ -78,6 +172,7 @@ func GetInstanceCharge(
 		MaximumCpuCoreCount: tea.Int32(int32(cpuCoreCountRange.Max)),
 		MinimumCpuCoreCount: tea.Int32(int32(cpuCoreCountRange.Min)),
 		CpuArchitecture:     tea.String("X86"),
+		InstanceCategories:  tea.StringSlice([]string{"General-purpose", "Compute-optimized", "Memory-optimized", "High Clock Speed"}),
 	}
 
 	if maxResults != 0 {
@@ -99,7 +194,7 @@ func GetInstanceCharge(
 		instanceTypeInfoMap[*inst.InstanceTypeId] = inst
 	}
 
-	var result = make([]InstanceChargeItem, 0)
+	var result = make([]ZoneInstanceCharge, 0)
 
 	var targetZoneItems []globals.ZoneCacheItem
 
@@ -179,65 +274,29 @@ func GetInstanceCharge(
 			typesAndTradePrice = append(typesAndTradePrice, currentTypeAndTradePrice)
 		}
 
-		result = append(result, InstanceChargeItem{
+		result = append(result, ZoneInstanceCharge{
 			ZoneId:             *zoneItem.ZoneId,
 			TypesAndTradePrice: typesAndTradePrice,
 		})
 	}
 
-	// 对结果按照指定字段进行排序
-	if sortBy != "" {
-		for _, item := range result {
-			typesAndTradePrice := item.TypesAndTradePrice
-
-			sort.SliceStable(typesAndTradePrice, func(i, j int) bool {
-				a := typesAndTradePrice[i]
-				b := typesAndTradePrice[j]
-
-				var less bool
-				switch sortBy {
-				case consts.ICSortByCpuCoreCount:
-					if a.CpuCoreCount == b.CpuCoreCount {
-						less = false
-					} else {
-						less = a.CpuCoreCount < b.CpuCoreCount
-					}
-				case consts.ICSortByMemorySize:
-					if a.MemorySize == b.MemorySize {
-						less = false
-					} else {
-						less = a.MemorySize < b.MemorySize
-					}
-				case consts.ICSortByTradePrice:
-					if a.TradePrice == b.TradePrice {
-						less = false
-					} else {
-						less = a.TradePrice < b.TradePrice
-					}
-				default:
-					less = false
-				}
-
-				if sortOrder == consts.SortByDesc {
-					return !less
-				}
-				return less
-			})
-		}
-	}
+	sortZoneSpecs(result, sortBy, sortOrder)
+	sortZones(result, sortBy, sortOrder)
 
 	return result, nil
 }
 
 var preferredInstanceChargePresent atomic.Bool
-var preferredInstanceCharge InstanceTypeAndTradePrice
+var preferredInstanceCharge PreferredInstanceCharge
 var preferredInstanceChargeMu sync.Mutex
 
+// SnapshotPreferredInstanceChargePresent 返回系统是否记录了有效的最佳实例类型及可用区
 func SnapshotPreferredInstanceChargePresent() bool {
 	return preferredInstanceChargePresent.Load()
 }
 
-func SnapshotPreferredInstanceCharge() InstanceTypeAndTradePrice {
+// SnapshotPreferredInstanceCharge 返回当前获取的最佳实例类型及可用区。在调用此函数之前，除非确信，应当调用 SnapshotPreferredInstanceChargePresent 检查该信息是否存在
+func SnapshotPreferredInstanceCharge() PreferredInstanceCharge {
 	preferredInstanceChargeMu.Lock()
 	defer preferredInstanceChargeMu.Unlock()
 	return preferredInstanceCharge
@@ -248,8 +307,6 @@ func InstanceCharge(quit chan bool) {
 	logger := log.New(os.Stdout, "[InstanceCharge] ", log.LstdFlags)
 	logger.Println("starting...")
 
-	unqualifiedEcsTypeRegex, _ := regexp.Compile(`^ecs\.(e|s6|xn4|n4|mn4|e4|t|d).*$`)
-
 	for {
 		func() {
 			logger.Println("getting instance charge")
@@ -259,11 +316,11 @@ func InstanceCharge(quit chan bool) {
 
 			result, err := GetInstanceCharge(
 				ctx,
-				*globals.ZoneCache[0].ZoneId,
+				"", // across all zones in the region
 				IntRange{10, 16},
 				IntRange{4, 8},
 				consts.ICSortByTradePrice,
-				consts.SortByAsc,
+				consts.OrderByAsc,
 				0,
 			)
 
@@ -277,12 +334,15 @@ func InstanceCharge(quit chan bool) {
 				return
 			}
 
+			logger.Println("1st zone id=", result[0].ZoneId)
 			logger.Println("got instance charge of length", len(result[0].TypesAndTradePrice))
+
+			preferredZoneId := result[0].ZoneId
 
 			filtered := make([]InstanceTypeAndTradePrice, 0, len(result[0].TypesAndTradePrice))
 
 			for _, instance := range result[0].TypesAndTradePrice {
-				if unqualifiedEcsTypeRegex.Match([]byte(instance.InstanceType)) || instance.TradePrice > 0.6 {
+				if instance.TradePrice > 0.6 {
 					continue
 				}
 				filtered = append(filtered, instance)
@@ -293,7 +353,7 @@ func InstanceCharge(quit chan bool) {
 			if len(filtered) == 0 {
 				logger.Println("warn: no preferred instance found with filter. set to empty.")
 				preferredInstanceChargeMu.Lock()
-				preferredInstanceCharge = InstanceTypeAndTradePrice{}
+				preferredInstanceCharge = PreferredInstanceCharge{}
 				preferredInstanceChargeMu.Unlock()
 
 				if preferredInstanceChargePresent.Load() == true {
@@ -305,16 +365,25 @@ func InstanceCharge(quit chan bool) {
 				return
 			}
 
-			if filtered[0].InstanceType != preferredInstanceCharge.InstanceType {
+			if filtered[0].InstanceType != preferredInstanceCharge.TypeAndTradePrice.InstanceType {
 				preferredInstanceChargeMu.Lock()
-				preferredInstanceCharge = filtered[0]
+				preferredInstanceCharge = PreferredInstanceCharge{
+					ZoneId:            preferredZoneId,
+					TypeAndTradePrice: filtered[0],
+				}
 				preferredInstanceChargeMu.Unlock()
 
 				if preferredInstanceChargePresent.Load() == false {
 					preferredInstanceChargePresent.Store(true)
 				}
 
-				logger.Printf("updated preferred instance, new type: %s, new trade price: %.2f, mem: %.2fG, cpu: %d", preferredInstanceCharge.InstanceType, preferredInstanceCharge.TradePrice, preferredInstanceCharge.MemorySize, preferredInstanceCharge.CpuCoreCount)
+				logger.Printf("updated preferred instance, zone id: %s, new type: %s, new trade price: %.2f, mem: %.2fG, cpu: %d",
+					preferredZoneId,
+					preferredInstanceCharge.TypeAndTradePrice.InstanceType,
+					preferredInstanceCharge.TypeAndTradePrice.TradePrice,
+					preferredInstanceCharge.TypeAndTradePrice.MemorySize,
+					preferredInstanceCharge.TypeAndTradePrice.CpuCoreCount,
+				)
 				logger.Println("next refresh in 5m")
 				ticker.Reset(5 * time.Minute)
 			} else {

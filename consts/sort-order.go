@@ -3,6 +3,6 @@ package consts
 type SortOrder string
 
 const (
-	SortByAsc  SortOrder = "asc"
-	SortByDesc SortOrder = "desc"
+	OrderByAsc  SortOrder = "asc"
+	OrderByDesc SortOrder = "desc"
 )

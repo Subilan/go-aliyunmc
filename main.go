@@ -30,7 +30,7 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/instance-status", instances.HandleGetActiveInstanceStatus())
 	r.GET("/preferred-instance-charge", instances.HandleGetPreferredInstanceCharge())
 	r.GET("/instance-description/:instanceId", instances.HandleDescribeInstance())
-	r.POST("/instance", middlewares.JWTAuth(), instances.HandleCreateInstance())
+	r.GET("/create-preferred-instance", middlewares.JWTAuth(), instances.HandleCreatePreferredInstance())
 	r.DELETE("/instance/:instanceId", middlewares.JWTAuth(), instances.HandleDeleteInstance())
 	r.DELETE("/instance", middlewares.JWTAuth(), instances.HandleDeleteInstance())
 	r.GET("/instance-deploy", middlewares.JWTAuth(), instances.HandleDeployInstance())

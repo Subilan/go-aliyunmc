@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS instances
     -- 实例所在的可用区
     zone_id       VARCHAR(20) NOT NULL,
 
+    -- 实例分配的交换机
+    vswitch_id    VARCHAR(50) NOT NULL,
+
     -- 实例被分配的公网 IP 地址
     ip            VARCHAR(50)          DEFAULT NULL,
 

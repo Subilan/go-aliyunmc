@@ -18,6 +18,6 @@ func HandleGetPreferredInstanceCharge() gin.HandlerFunc {
 
 		charge := monitors.SnapshotPreferredInstanceCharge()
 
-		return helpers.Data(gin.H{"regionId": "cn-shenzhen-c", "charge": charge}), nil
+		return helpers.Data(charge), nil
 	})
 }
