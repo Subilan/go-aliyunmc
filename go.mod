@@ -5,13 +5,12 @@ go 1.24.0
 toolchain go1.24.10
 
 require (
-	github.com/Blank-Xu/sql-adapter v1.2.0
+	github.com/alibabacloud-go/bssopenapi-20171214/v6 v6.1.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.13
 	github.com/alibabacloud-go/ecs-20140526/v7 v7.2.4
 	github.com/alibabacloud-go/tea v1.3.13
 	github.com/alibabacloud-go/vpc-20160428/v6 v6.14.0
 	github.com/aliyun/credentials-go v1.4.5
-	github.com/casbin/casbin v1.9.1
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-playground/validator/v10 v10.27.0
@@ -26,15 +25,11 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Knetic/govaluate v3.0.1-0.20171022003610-9aa49832a739+incompatible // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
-	github.com/casbin/casbin/v3 v3.6.0 // indirect
-	github.com/casbin/govaluate v1.10.0 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.9 // indirect

@@ -10,6 +10,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/handlers"
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
+	"github.com/Subilan/go-aliyunmc/handlers/bss"
 	"github.com/Subilan/go-aliyunmc/handlers/instances"
 	"github.com/Subilan/go-aliyunmc/handlers/server"
 	"github.com/Subilan/go-aliyunmc/handlers/simple"
@@ -79,6 +80,11 @@ func bindRoutes(r *gin.Engine) {
 	sj.GET("/latest-success-backup", server.HandleGetLatestSuccessBackup())
 	sj.GET("/latest-success-archive", server.HandleGetLatestSuccessArchive())
 
+	bj := r.Group("/bss")
+	bj.Use(mid.JWTAuth())
+	bj.GET("/transactions", bss.HandleGetTransactions())
+	bj.GET("/overview", bss.HandleGetOverview())
+
 	r.GET("/ping", simple.HandleGenerate200())
 	r.GET("/stream", mid.JWTAuth(), handlers.HandleBeginStream())
 }
@@ -116,14 +122,17 @@ func main() {
 		log.Fatalln("Error creating ECS client:", err)
 	}
 
-	log.Print("OK")
-
 	globals.VpcClient, err = clients.ShouldCreateVpcClient()
+
 	if err != nil {
 		log.Fatalln("Error creating VPC client:", err)
 	}
 
-	log.Print("OK")
+	clients.BssClient, err = clients.ShouldCreateBssClient()
+
+	if err != nil {
+		log.Fatalln("Error creating BSS client:", err)
+	}
 
 	log.Print("Loading global Zone information...")
 
