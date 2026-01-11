@@ -129,8 +129,9 @@ func ActiveInstance(quit chan bool) {
 				describeInstanceStatusResponse, err := globals.EcsClient.DescribeInstanceStatus(describeInstanceStatusRequest)
 
 				if err != nil {
-					event, _ := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, "unable_to_get")
-					stream.Broadcast(event)
+					if instanceStatus != consts.InstanceUnableToGet {
+						setInstanceStatus(consts.InstanceUnableToGet)
+					}
 					logger.Printf("Error describing active instance status: %v\n", err)
 					return
 				}
