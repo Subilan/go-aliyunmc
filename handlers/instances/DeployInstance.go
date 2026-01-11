@@ -22,13 +22,13 @@ import (
 )
 
 var deployInstanceMutex sync.Mutex
-var deployInstanceTaskStatusBroker = helpers.NewBroker[store.TaskStatus]()
+var deployInstanceTaskStatusBroker = helpers.NewBroker[consts.TaskStatus]()
 
 func StartDeployInstanceTaskStatusBroker() {
 	go deployInstanceTaskStatusBroker.Start()
 }
 
-func SubscribeDeployInstanceTaskStatus() <-chan store.TaskStatus {
+func SubscribeDeployInstanceTaskStatus() <-chan consts.TaskStatus {
 	return deployInstanceTaskStatusBroker.Subscribe()
 }
 
@@ -40,7 +40,7 @@ func syncDeployInstanceStatusWithUser(taskId string) {
 	}
 }
 
-func updateAndSend(taskId string, taskStatus store.TaskStatus) {
+func updateAndSend(taskId string, taskStatus consts.TaskStatus) {
 	_, err := db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", taskStatus, taskId)
 
 	if err != nil {
@@ -83,7 +83,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 		}
 
 		// 检查是否存在部署任务正在运行
-		runningTaskCnt, err := store.GetRunningTaskCount(store.TaskTypeInstanceDeployment)
+		runningTaskCnt, err := store.GetRunningTaskCount(consts.TaskTypeInstanceDeployment)
 
 		if err != nil {
 			return nil, err
@@ -94,7 +94,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 		}
 
 		// 为新的部署任务分配UUID并插入记录
-		taskId, err := store.InsertTask(store.TaskTypeInstanceDeployment, userId)
+		taskId, err := store.InsertTask(consts.TaskTypeInstanceDeployment, userId)
 
 		if err != nil {
 			return nil, err
@@ -113,7 +113,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 		tasks.Register(cancelRunCtx, taskId)
 
 		// 更新为运行状态（此时不进行Publish）
-		updateAndSend(taskId, store.TaskStatusRunning)
+		updateAndSend(taskId, consts.TaskStatusRunning)
 
 		// 运行并借助全局流输出内容
 		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(),
@@ -149,14 +149,14 @@ func deployInstance() helpers.BasicHandlerFunc {
 					log.Printf("cannot send and save script step: userid=%v, deployment, is_error=true, content=%s\n", userId, err.Error())
 				}
 
-				var status = store.TaskStatusFailed
+				var status = consts.TaskStatusFailed
 
 				if errors.Is(err, context.Canceled) {
-					status = store.TaskStatusCancelled
+					status = consts.TaskStatusCancelled
 				}
 
 				if errors.Is(err, context.DeadlineExceeded) {
-					status = store.TaskStatusTimedOut
+					status = consts.TaskStatusTimedOut
 				}
 
 				deployInstanceTaskStatusBroker.Publish(status)
@@ -167,7 +167,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 					log.Println("cannot update instance deployed status: " + err.Error())
 				}
 
-				deployInstanceTaskStatusBroker.Publish(store.TaskStatusSuccess)
+				deployInstanceTaskStatusBroker.Publish(consts.TaskStatusSuccess)
 			},
 			func() {
 				tasks.Unregister(taskId)

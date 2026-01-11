@@ -12,8 +12,8 @@ import (
 )
 
 type Paginated struct {
-	NextToken  *string `json:"nextToken" form:"nextToken"`
-	MaxResults *int64  `json:"maxResults" form:"maxResults" validate:"max=1600;min=1"`
+	Page     int `form:"page" validate:"min=1,omitempty"`
+	PageSize int `form:"pageSize" validate:"min=1,omitempty"`
 }
 
 type Sorted struct {

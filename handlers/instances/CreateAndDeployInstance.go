@@ -63,7 +63,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 			for {
 				select {
 				case taskStatus := <-deployInstanceStatusUpdate:
-					if taskStatus == store.TaskStatusSuccess {
+					if taskStatus == consts.TaskStatusSuccess {
 						cmd, ok := commands.ShouldGetCommand(consts.CmdTypeStartServer)
 
 						if !ok {
@@ -96,7 +96,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 							stream.Broadcast(event)
 						}()
 						break loop2
-					} else if taskStatus == store.TaskStatusFailed {
+					} else if taskStatus == consts.TaskStatusFailed {
 						event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "deploy task failed")
 						stream.Broadcast(event)
 						return

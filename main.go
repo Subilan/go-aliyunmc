@@ -23,7 +23,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TODO: 整合快速创建实例、部署实例和开启服务器，jwt加入用户role，前端权限相关展示，状态页面
+// TODO: 状态页面，emptyServer测试
 
 func bindRoutes(r *gin.Engine) {
 	i := r.Group("/instance")
@@ -64,6 +64,8 @@ func bindRoutes(r *gin.Engine) {
 
 	tj := r.Group("/task")
 	tj.Use(mid.JWTAuth())
+	tj.GET("/s", tasks.HandleGetTasks())
+	tj.GET("/overview", tasks.HandleGetTaskOverview())
 	tj.GET("/:taskId", tasks.HandleGetTask())
 	tj.GET("", tasks.HandleGetActiveTaskByType())
 	tj.GET("/cancel/:taskId", tasks.HandleCancelTask())

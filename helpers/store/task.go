@@ -3,35 +3,26 @@ package store
 import (
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/google/uuid"
 )
 
 type Task struct {
-	TaskId    string     `json:"taskId"`
-	TaskType  TaskType   `json:"taskType"`
-	UserId    int        `json:"userId"`
-	Status    TaskStatus `json:"status"`
-	CreatedAt time.Time  `json:"createdAt"`
+	Id        string            `json:"id"`
+	Type      consts.TaskType   `json:"type"`
+	UserId    int               `json:"userId"`
+	Status    consts.TaskStatus `json:"status"`
+	CreatedAt time.Time         `json:"createdAt"`
+	UpdatedAt *time.Time        `json:"updatedAt"`
 }
 
-type TaskType string
+type JoinedTask struct {
+	Task
+	Username string `json:"username"`
+}
 
-const (
-	TaskTypeInstanceDeployment TaskType = "instance_deployment"
-)
-
-type TaskStatus string
-
-const (
-	TaskStatusRunning   TaskStatus = "running"
-	TaskStatusSuccess   TaskStatus = "success"
-	TaskStatusFailed    TaskStatus = "failed"
-	TaskStatusCancelled TaskStatus = "cancelled"
-	TaskStatusTimedOut  TaskStatus = "timed_out"
-)
-
-func InsertTask(taskType TaskType, userId int64) (string, error) {
+func InsertTask(taskType consts.TaskType, userId int64) (string, error) {
 	uuidS, err := uuid.NewRandom()
 
 	if err != nil {
@@ -49,9 +40,9 @@ func InsertTask(taskType TaskType, userId int64) (string, error) {
 	return taskId, nil
 }
 
-func GetRunningTaskCount(taskType TaskType) (int, error) {
+func GetRunningTaskCount(taskType consts.TaskType) (int, error) {
 	var cnt int
-	err := db.Pool.QueryRow("SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", taskType, TaskStatusRunning).Scan(&cnt)
+	err := db.Pool.QueryRow("SELECT COUNT(*) FROM tasks WHERE `type` = ? AND status = ?", taskType, consts.TaskStatusRunning).Scan(&cnt)
 
 	if err != nil {
 		return 0, err

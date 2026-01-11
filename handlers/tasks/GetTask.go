@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -50,10 +51,10 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 		args = append(args, retrievalArg)
 	} else {
 		stmt += "WHERE type = ? AND status = ?"
-		args = append(args, retrievalArg, store.TaskStatusRunning)
+		args = append(args, retrievalArg, consts.TaskStatusRunning)
 	}
 
-	err := db.Pool.QueryRow(stmt, args...).Scan(&task.TaskId, &task.TaskType, &task.UserId, &task.Status, &task.CreatedAt)
+	err := db.Pool.QueryRow(stmt, args...).Scan(&task.Id, &task.Type, &task.UserId, &task.Status, &task.CreatedAt)
 
 	if err != nil {
 		return nil, err
@@ -63,7 +64,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 	var joinedPushedEvents string
 
 	if withPushedEvents || withJoinedPushedEvents {
-		rows, err := db.Pool.Query("SELECT task_id, ord, type, content, created_at FROM pushed_events ev WHERE task_id = ? ORDER BY ord", task.TaskId)
+		rows, err := db.Pool.Query("SELECT task_id, ord, type, content, created_at FROM pushed_events ev WHERE task_id = ? ORDER BY ord", task.Id)
 
 		if err != nil {
 			return nil, err
