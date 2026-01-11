@@ -6,6 +6,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/handlers"
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
@@ -16,39 +17,68 @@ import (
 	"github.com/Subilan/go-aliyunmc/handlers/users"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/middlewares"
+	"github.com/Subilan/go-aliyunmc/helpers/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
+// TODO: 整合快速创建实例、部署实例和开启服务器，jwt加入用户role，前端权限相关展示，状态页面
+
 func bindRoutes(r *gin.Engine) {
-	r.GET("/instance/:instanceId", instances.HandleGetInstance())
-	r.GET("/active-or-latest-instance", instances.HandleGetActiveOrLatestInstance())
-	r.GET("/instance-status", instances.HandleGetActiveInstanceStatus())
-	r.GET("/preferred-instance-charge", instances.HandleGetPreferredInstanceCharge())
-	r.GET("/instance-description/:instanceId", instances.HandleDescribeInstance())
-	r.GET("/create-preferred-instance", middlewares.JWTAuth(), instances.HandleCreatePreferredInstance())
-	r.DELETE("/instance/:instanceId", middlewares.JWTAuth(), instances.HandleDeleteInstance())
-	r.DELETE("/instance", middlewares.JWTAuth(), instances.HandleDeleteInstance())
-	r.GET("/instance-deploy", middlewares.JWTAuth(), instances.HandleDeployInstance())
-	r.POST("/user", users.HandleCreateUser())
-	r.PATCH("/user/:userId", middlewares.JWTAuth(), users.HandleUserUpdate())
-	r.DELETE("/user/:userId", middlewares.JWTAuth(), users.HandleUserDelete())
-	r.POST("/auth/token", auth.HandleGetToken())
-	r.GET("/auth/payload", middlewares.JWTAuth(), auth.HandleGetPayload())
-	r.GET("/authed-ping", middlewares.JWTAuth(), simple.HandleGenerate200())
+	i := r.Group("/instance")
+	ij := i.Group("")
+	ij.Use(mid.JWTAuth())
+	ia := ij.Group("")
+	ia.Use(mid.Role(consts.UserRoleAdmin))
+
+	i.GET("/:instanceId", instances.HandleGetInstance())
+	i.GET("", instances.HandleGetActiveOrLatestInstance())
+	i.GET("/status", instances.HandleGetActiveInstanceStatus())
+	i.GET("/preferred-charge", instances.HandleGetPreferredInstanceCharge())
+	i.GET("/desc/:instanceId", instances.HandleDescribeInstance())
+	ij.GET("/create-and-deploy", instances.HandleCreateAndDeployInstance())
+	ia.GET("/create-preferred", instances.HandleCreatePreferredInstance())
+	ia.GET("/deploy", instances.HandleDeployInstance())
+	ia.DELETE("/:instanceId", instances.HandleDeleteInstance())
+	ia.DELETE("", instances.HandleDeleteInstance())
+
+	u := r.Group("/user")
+	uj := u.Group("")
+	uj.Use(mid.JWTAuth())
+	ua := uj.Group("")
+	ua.Use(mid.Role(consts.UserRoleAdmin))
+
+	u.POST("", users.HandleCreateUser())
+	uj.GET("", users.HandleGetSelf())
+	uj.PATCH("/:userId", users.HandleUserUpdate())
+	uj.DELETE("/:userId", users.HandleUserDelete())
+
+	au := r.Group("/auth")
+	auj := au.Group("")
+	auj.Use(mid.JWTAuth())
+
+	au.POST("/token", auth.HandleGetToken())
+	auj.GET("/payload", auth.HandleGetPayload())
+	auj.GET("/ping", simple.HandleGenerate200())
+
+	tj := r.Group("/task")
+	tj.Use(mid.JWTAuth())
+	tj.GET("/:taskId", tasks.HandleGetTask())
+	tj.GET("", tasks.HandleGetActiveTaskByType())
+	tj.GET("/cancel/:taskId", tasks.HandleCancelTask())
+
+	sj := r.Group("/server")
+	sj.Use(mid.JWTAuth())
+	sj.GET("/exec", server.HandleServerExecute())
+	sj.GET("/query", server.HandleServerQuery())
+	sj.GET("/info", server.HandleGetServerInfo())
+	sj.GET("/backups", server.HandleGetBackupInfo())
+	sj.GET("/latest-success-backup", server.HandleGetLatestSuccessBackup())
+	sj.GET("/latest-success-archive", server.HandleGetLatestSuccessArchive())
+
 	r.GET("/ping", simple.HandleGenerate200())
-	r.GET("/stream", middlewares.JWTAuth(), handlers.HandleBeginStream())
-	r.GET("/task/:taskId", middlewares.JWTAuth(), tasks.HandleGetTask())
-	r.GET("/task", middlewares.JWTAuth(), tasks.HandleGetActiveTaskByType())
-	r.GET("/task-cancel/:taskId", middlewares.JWTAuth(), tasks.HandleCancelTask())
-	r.GET("/server/exec", middlewares.JWTAuth(), server.HandleServerExecute())
-	r.GET("/server/query", middlewares.JWTAuth(), server.HandleServerQuery())
-	r.GET("/server/info", middlewares.JWTAuth(), server.HandleGetServerInfo())
-	r.GET("/server/backups", middlewares.JWTAuth(), server.HandleGetBackupInfo())
-	r.GET("/server/latest-success-backup", middlewares.JWTAuth(), server.HandleGetLatestSuccessBackup())
-	r.GET("/server/latest-success-archive", middlewares.JWTAuth(), server.HandleGetLatestSuccessArchive())
+	r.GET("/stream", mid.JWTAuth(), handlers.HandleBeginStream())
 }
 
 func runMonitors() {
@@ -141,6 +171,8 @@ func main() {
 		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
 		AllowCredentials: true,
 	}))
+
+	instances.StartDeployInstanceTaskStatusBroker()
 
 	bindRoutes(engine)
 

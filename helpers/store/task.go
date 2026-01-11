@@ -25,10 +25,10 @@ type TaskStatus string
 
 const (
 	TaskStatusRunning   TaskStatus = "running"
-	TaskStatusSuccess              = "success"
-	TaskStatusFailed               = "failed"
-	TaskStatusCancelled            = "cancelled"
-	TaskStatusTimedOut             = "timed_out"
+	TaskStatusSuccess   TaskStatus = "success"
+	TaskStatusFailed    TaskStatus = "failed"
+	TaskStatusCancelled TaskStatus = "cancelled"
+	TaskStatusTimedOut  TaskStatus = "timed_out"
 )
 
 func InsertTask(taskType TaskType, userId int64) (string, error) {

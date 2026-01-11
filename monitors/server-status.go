@@ -19,9 +19,9 @@ import (
 	"github.com/mcstatus-io/mcutil/v4/status"
 )
 
-var serverRunningUpdate = make(chan bool, 1)
-var onlinePlayersUpdate = make(chan []string)
-var playerCountUpdate = make(chan int64)
+var isServerRunningBroker = helpers.NewBroker[bool]()
+var onlinePlayersBroker = helpers.NewBroker[[]string]()
+var playerCountBroker = helpers.NewBroker[int64]()
 
 var isServerRunning atomic.Bool
 var playerCount atomic.Int64
@@ -53,10 +53,11 @@ func SnapshotIsServerRunning() bool {
 }
 
 func syncServerStatusWithUser() {
-	for serverRunning := range serverRunningUpdate {
+	isServerRunningUpdate := isServerRunningBroker.Subscribe()
+	for newIsServerRunning := range isServerRunningUpdate {
 		var data any
 
-		if serverRunning {
+		if newIsServerRunning {
 			data = store.ServerNotificationRunning
 		} else {
 			data = store.ServerNotificationClosed
@@ -77,6 +78,7 @@ func syncServerStatusWithUser() {
 }
 
 func syncOnlineCountWithUser() {
+	playerCountUpdate := playerCountBroker.Subscribe()
 	for onlineCount := range playerCountUpdate {
 		event, err := store.BuildServerEvent(store.ServerEventOnlineCountUpdate, onlineCount)
 
@@ -94,8 +96,10 @@ func syncOnlineCountWithUser() {
 }
 
 func syncOnlinePlayersWithUser() {
-	for onlinePlayers := range onlinePlayersUpdate {
-		marshalled, err := json.Marshal(onlinePlayers)
+	onlinePlayersUpdate := onlinePlayersBroker.Subscribe()
+
+	for newOnlinePlayers := range onlinePlayersUpdate {
+		marshalled, err := json.Marshal(newOnlinePlayers)
 
 		if err != nil {
 			log.Println("cannot marshal online players:", err)
@@ -119,17 +123,17 @@ func syncOnlinePlayersWithUser() {
 
 func setServerStatus(status bool) {
 	isServerRunning.Store(status)
-	serverRunningUpdate <- status
+	isServerRunningBroker.Publish(status)
 
 	if !status {
 		playerCount.Store(0)
-		playerCountUpdate <- 0
+		playerCountBroker.Publish(0)
 
 		onlinePlayersMu.Lock()
 		onlinePlayers = []string{}
 		onlinePlayersMu.Unlock()
 
-		onlinePlayersUpdate <- onlinePlayers
+		onlinePlayersBroker.Publish(onlinePlayers)
 	}
 }
 
@@ -142,6 +146,9 @@ func ServerStatus(quit chan bool) {
 	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
 	logger.Println("starting...")
 
+	go isServerRunningBroker.Start()
+	go onlinePlayersBroker.Start()
+	go playerCountBroker.Start()
 	go syncServerStatusWithUser()
 	go syncOnlineCountWithUser()
 	go syncOnlinePlayersWithUser()
@@ -179,7 +186,7 @@ func ServerStatus(quit chan bool) {
 				} else {
 					if playerCount.Load() != *serverStatus.Players.Online {
 						playerCount.Store(*serverStatus.Players.Online)
-						playerCountUpdate <- playerCount.Load()
+						playerCountBroker.Publish(playerCount.Load())
 					}
 
 					if playerCount.Load() > 0 {
@@ -193,14 +200,14 @@ func ServerStatus(quit chan bool) {
 								onlinePlayersMu.Lock()
 								onlinePlayers = queryFull.Players
 								onlinePlayersMu.Unlock()
-								onlinePlayersUpdate <- queryFull.Players
+								onlinePlayersBroker.Publish(onlinePlayers)
 							}
 						}
 					} else if len(onlinePlayers) > 0 {
 						onlinePlayersMu.Lock()
 						onlinePlayers = []string{}
 						onlinePlayersMu.Unlock()
-						onlinePlayersUpdate <- onlinePlayers
+						onlinePlayersBroker.Publish(onlinePlayers)
 					}
 				}
 

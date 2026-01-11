@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"os"
@@ -32,6 +33,11 @@ type ZoneInstanceCharge struct {
 type PreferredInstanceCharge struct {
 	ZoneId            string                    `json:"zoneId"`
 	TypeAndTradePrice InstanceTypeAndTradePrice `json:"typeAndTradePrice"`
+}
+
+type PreferredInstanceChargeFileContent struct {
+	PreferredInstanceCharge
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // InstanceTypeAndTradePrice 用来表示一个实例的类型、配置信息和成交价格
@@ -317,6 +323,23 @@ func InstanceCharge(quit chan bool) {
 	logger := log.New(os.Stdout, "[InstanceCharge] ", log.LstdFlags)
 	logger.Println("starting...")
 
+	cacheFileContent, err := os.ReadFile(cfg.CacheFile)
+	if err != nil {
+		logger.Println("read cache file error:", err)
+	} else {
+		var cacheFileData PreferredInstanceChargeFileContent
+		err = json.Unmarshal(cacheFileContent, &cacheFileData)
+		if err != nil {
+			logger.Println("unmarshal cache file error:", err)
+		} else {
+			preferredInstanceChargePresent.Store(true)
+			preferredInstanceChargeMu.Lock()
+			preferredInstanceCharge = cacheFileData.PreferredInstanceCharge
+			preferredInstanceChargeMu.Unlock()
+			logger.Println("using cache", preferredInstanceCharge)
+		}
+	}
+
 	for {
 		func() {
 			logger.Println("getting instance charge")
@@ -394,6 +417,16 @@ func InstanceCharge(quit chan bool) {
 					preferredInstanceCharge.TypeAndTradePrice.MemorySize,
 					preferredInstanceCharge.TypeAndTradePrice.CpuCoreCount,
 				)
+
+				marshalled, _ := json.Marshal(PreferredInstanceChargeFileContent{PreferredInstanceCharge: preferredInstanceCharge, UpdatedAt: time.Now()})
+				err = os.WriteFile(cfg.CacheFile, marshalled, 0600)
+
+				if err != nil {
+					logger.Println("cannot write to cache file", err)
+				} else {
+					logger.Println("updated cache file")
+				}
+
 				logger.Println("next refresh in", cfg.RetryIntervalDuration())
 				ticker.Reset(cfg.RetryIntervalDuration())
 			} else {

@@ -2,7 +2,6 @@ package db
 
 import (
 	"database/sql"
-	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -16,7 +15,7 @@ func InitPool() error {
 	var err error
 
 	dbCfg := config.Cfg.Database
-	Pool, err = sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local", dbCfg.Username, dbCfg.Password, dbCfg.Host, dbCfg.Port, dbCfg.Database))
+	Pool, err = sql.Open("mysql", dbCfg.Dsn())
 
 	if err != nil {
 		return err

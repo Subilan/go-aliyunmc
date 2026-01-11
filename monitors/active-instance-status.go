@@ -13,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
@@ -20,12 +21,16 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-var instanceStatus consts.InstanceStatus
-var instanceStatusUpdate = make(chan consts.InstanceStatus)
-var instanceStatusMu sync.RWMutex
+var instanceStatusBroker = helpers.NewBroker[consts.InstanceStatus]()
+var isInstancePresentBroker = helpers.NewBroker[bool]()
 
-var instanceExist atomic.Bool
-var instanceExistUpdate = make(chan bool)
+var instanceStatus consts.InstanceStatus
+var instanceStatusMu sync.RWMutex
+var isInstancePresent atomic.Bool
+
+func SubscribeInstanceStatus() <-chan consts.InstanceStatus {
+	return instanceStatusBroker.Subscribe()
+}
 
 func SnapshotInstanceStatus() consts.InstanceStatus {
 	instanceStatusMu.RLock()
@@ -35,8 +40,9 @@ func SnapshotInstanceStatus() consts.InstanceStatus {
 }
 
 func syncInstanceStatusWithUser(logger *log.Logger) {
-	for currentInstanceStatus := range instanceStatusUpdate {
-		event, err := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, currentInstanceStatus)
+	instanceStatusUpdate := instanceStatusBroker.Subscribe()
+	for newInstanceStatus := range instanceStatusUpdate {
+		event, err := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus)
 
 		if err != nil {
 			logger.Println("Error building event", err)
@@ -52,8 +58,9 @@ func syncInstanceStatusWithUser(logger *log.Logger) {
 }
 
 func syncInstanceExternalDeletionWithUser(logger *log.Logger) {
-	for currentInstanceExist := range instanceExistUpdate {
-		if !currentInstanceExist {
+	isInstancePresentUpdate := isInstancePresentBroker.Subscribe()
+	for newIsInstancePresent := range isInstancePresentUpdate {
+		if !newIsInstancePresent {
 			event, err := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
 
 			if err != nil {
@@ -75,17 +82,17 @@ func setInstanceStatus(status consts.InstanceStatus) {
 	instanceStatus = status
 	instanceStatusMu.Unlock()
 
-	instanceStatusUpdate <- status
+	instanceStatusBroker.Publish(status)
 
 	if status == consts.InstanceInvalid {
-		if instanceExist.Load() == true {
-			instanceExist.Store(false)
-			instanceExistUpdate <- false
+		if isInstancePresent.Load() == true {
+			isInstancePresent.Store(false)
+			isInstancePresentBroker.Publish(false)
 		}
 	} else {
-		if instanceExist.Load() == false {
-			instanceExist.Store(true)
-			instanceExistUpdate <- true
+		if isInstancePresent.Load() == false {
+			isInstancePresent.Store(true)
+			isInstancePresentBroker.Publish(true)
 		}
 	}
 }
@@ -98,6 +105,8 @@ func ActiveInstance(quit chan bool) {
 
 	ticker := time.NewTicker(time.Duration(cfg.Interval) * time.Second)
 
+	go instanceStatusBroker.Start()
+	go isInstancePresentBroker.Start()
 	go syncInstanceExternalDeletionWithUser(logger)
 	go syncInstanceStatusWithUser(logger)
 

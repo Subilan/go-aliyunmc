@@ -53,6 +53,8 @@ func EmptyServer() {
 		timer *time.Timer
 	)
 
+	playerCountUpdate := playerCountBroker.Subscribe()
+
 	for {
 		select {
 		case cnt := <-playerCountUpdate:

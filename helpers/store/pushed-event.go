@@ -139,6 +139,8 @@ const (
 	InstanceEventActiveIpUpdate             InstanceEventType = "active_ip_update"
 	InstanceEventCreated                    InstanceEventType = "created"
 	InstanceEventDeploymentTaskStatusUpdate InstanceEventType = "deployment_task_status_update"
+	InstanceEventCreateAndDeployFailed      InstanceEventType = "create_and_deploy_failed"
+	InstanceEventCreateAndDeployStep        InstanceEventType = "create_and_deploy_step"
 )
 
 const (

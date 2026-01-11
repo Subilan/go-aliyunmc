@@ -11,6 +11,7 @@ type InstanceCharge struct {
 	MemRange          []int                 `toml:"mem_range" validate:"required,posRange"`
 	CpuCoreCountRange []int                 `toml:"cpu_core_count_range" validate:"required,posRange"`
 	Filters           InstanceChargeFilters `toml:"filters" validate:"required"`
+	CacheFile         string                `toml:"cache_file" validate:"required"`
 }
 
 func (i InstanceCharge) MemIntRange() IntRange {

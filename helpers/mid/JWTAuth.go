@@ -1,4 +1,4 @@
-package middlewares
+package mid
 
 import (
 	"errors"
@@ -53,9 +53,10 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 将用户信息存储到上下文中，供后续处理器使用
+		// 将用户信息存储到上下文中，供后续处理使用
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
+		c.Set("role", claims.Role)
 
 		c.Next()
 	}

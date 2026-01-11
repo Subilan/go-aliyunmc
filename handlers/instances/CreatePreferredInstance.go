@@ -36,8 +36,8 @@ const createInstanceTimeout = 15 * time.Second
 
 var createInstanceMutex sync.Mutex
 
-func HandleCreatePreferredInstance() gin.HandlerFunc {
-	return helpers.QueryHandler(func(body CreateInstanceQuery, c *gin.Context) (any, error) {
+func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
+	return func(query CreateInstanceQuery, c *gin.Context) (any, error) {
 		// 长耗时任务，避免重复执行
 		ok := createInstanceMutex.TryLock()
 		if !ok {
@@ -79,7 +79,7 @@ func HandleCreatePreferredInstance() gin.HandlerFunc {
 		var vswitchId string
 
 		if len(describeVSwitchesResponse.Body.VSwitches.VSwitch) == 0 {
-			if !body.AutoVSwitch {
+			if !query.AutoVSwitch {
 				return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "vswitch not found"}
 			}
 			createDefaultVSwitchRequest := &vpc20160428.CreateDefaultVSwitchRequest{
@@ -183,5 +183,9 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_i
 		go monitors.StartActiveInstanceWhenReady()
 
 		return gin.H{}, nil
-	})
+	}
+}
+
+func HandleCreatePreferredInstance() gin.HandlerFunc {
+	return helpers.QueryHandler(createPreferredInstance())
 }

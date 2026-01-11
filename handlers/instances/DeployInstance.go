@@ -22,10 +22,50 @@ import (
 )
 
 var deployInstanceMutex sync.Mutex
+var deployInstanceTaskStatusBroker = helpers.NewBroker[store.TaskStatus]()
 
-func HandleDeployInstance() gin.HandlerFunc {
-	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
-		deployInstanceMutex.Lock()
+func StartDeployInstanceTaskStatusBroker() {
+	go deployInstanceTaskStatusBroker.Start()
+}
+
+func SubscribeDeployInstanceTaskStatus() <-chan store.TaskStatus {
+	return deployInstanceTaskStatusBroker.Subscribe()
+}
+
+func syncDeployInstanceStatusWithUser(taskId string) {
+	taskStatusUpdate := deployInstanceTaskStatusBroker.Subscribe()
+
+	for taskStatus := range taskStatusUpdate {
+		updateAndSend(taskId, taskStatus)
+	}
+}
+
+func updateAndSend(taskId string, taskStatus store.TaskStatus) {
+	_, err := db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", taskStatus, taskId)
+
+	if err != nil {
+		log.Println("cannot update task status: " + err.Error())
+	}
+
+	event, err := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, taskStatus)
+
+	if err != nil {
+		log.Println("cannot build instance event", err)
+	}
+
+	err = stream.BroadcastAndSave(event)
+
+	if err != nil {
+		log.Println("cannot send and save instance event", err)
+	}
+}
+
+func deployInstance() helpers.BasicHandlerFunc {
+	return func(c *gin.Context) (any, error) {
+		ok := deployInstanceMutex.TryLock()
+		if !ok {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "instance is being deployed"}
+		}
 		defer deployInstanceMutex.Unlock()
 
 		userId, err := gctx.ShouldGetUserId(c)
@@ -65,20 +105,20 @@ func HandleDeployInstance() gin.HandlerFunc {
 			return nil, err
 		}
 
+		// 与用户和数据库同步
+		go syncDeployInstanceStatusWithUser(taskId)
+
 		// 创建当前任务的全局流
 		stream.CreateState(taskId)
 
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
+
+		// 记录取消函数
 		tasks.Register(cancelRunCtx, taskId)
 
-		event, err := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, store.TaskStatusRunning)
-
-		if err != nil {
-			log.Println("cannot build instance event", err)
-		}
-
-		err = stream.BroadcastAndSave(event)
+		// 更新为运行状态（此时不进行Publish）
+		updateAndSend(taskId, store.TaskStatusRunning)
 
 		// 运行并借助全局流输出内容
 		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(),
@@ -124,48 +164,15 @@ func HandleDeployInstance() gin.HandlerFunc {
 					status = store.TaskStatusTimedOut
 				}
 
-				_, err = db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", status, taskId)
-
-				if err != nil {
-					log.Println("cannot update task status: " + err.Error())
-				}
-
-				event, err = store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, status)
-
-				if err != nil {
-					log.Println("cannot build instance event", err)
-				}
-
-				err = stream.BroadcastAndSave(event)
-
-				if err != nil {
-					log.Println("cannot send and save instance event", err)
-				}
+				deployInstanceTaskStatusBroker.Publish(status)
 			},
 			func() {
-				_, err = db.Pool.Exec("UPDATE tasks SET status = ? WHERE task_id = ?", store.TaskStatusSuccess, taskId)
-
-				if err != nil {
-					log.Println("cannot update task status to success: " + err.Error())
-				}
-
 				_, err = db.Pool.Exec("UPDATE instances SET deployed = 1 WHERE deleted_at IS NULL")
-
 				if err != nil {
 					log.Println("cannot update instance deployed status: " + err.Error())
 				}
 
-				event, err = store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, store.TaskStatusSuccess)
-
-				if err != nil {
-					log.Println("cannot build instance event", err)
-				}
-
-				err = stream.BroadcastAndSave(event)
-
-				if err != nil {
-					log.Println("cannot send and save instance event", err)
-				}
+				deployInstanceTaskStatusBroker.Publish(store.TaskStatusSuccess)
 			},
 			func() {
 				tasks.Unregister(taskId)
@@ -174,5 +181,9 @@ func HandleDeployInstance() gin.HandlerFunc {
 		)
 
 		return helpers.Data(taskId), nil
-	})
+	}
+}
+
+func HandleDeployInstance() gin.HandlerFunc {
+	return helpers.BasicHandler(deployInstance())
 }

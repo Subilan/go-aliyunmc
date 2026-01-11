@@ -37,7 +37,7 @@ func HandleServerQuery() gin.HandlerFunc {
 		output, err := cmd.Run(ctx, *activeInstance.Ip, nil, nil)
 
 		if err != nil {
-			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s\noutput:\n%s", err.Error(), output)}
+			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s", err.Error())}
 		}
 
 		return helpers.Data(output), nil

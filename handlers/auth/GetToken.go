@@ -5,8 +5,10 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -19,8 +21,9 @@ type GetTokenRequest struct {
 }
 
 type TokenClaims struct {
-	UserID   int64  `json:"user_id"`
-	Username string `json:"username"`
+	UserID   int64           `json:"user_id"`
+	Username string          `json:"username"`
+	Role     consts.UserRole `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -49,6 +52,12 @@ func HandleGetToken() gin.HandlerFunc {
 			}
 		}
 
+		userRole, err := store.GetUserRole(id, consts.UserRoleUser)
+
+		if err != nil {
+			return nil, err
+		}
+
 		// 设置token过期时间
 		expirationTime := time.Hour * 24 * 7 // 默认7天
 		if body.KeepAlive {
@@ -59,10 +68,11 @@ func HandleGetToken() gin.HandlerFunc {
 		claims := &TokenClaims{
 			UserID:   id,
 			Username: username,
+			Role:     userRole,
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(expirationTime)),
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
-				Issuer:    "gomc-server",
+				Issuer:    "go-aliyunmc-server",
 			},
 		}
 

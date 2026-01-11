@@ -11,6 +11,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/stream"
@@ -22,7 +23,7 @@ var instanceIpRestored bool
 var instanceIp string
 var instanceIpMu sync.RWMutex
 
-var instanceIpUpdate = make(chan string)
+var instanceIpBroker = helpers.NewBroker[string]()
 
 func RestoreInstanceIp(ip string) {
 	if instanceIpRestored {
@@ -43,6 +44,7 @@ func SnapshotInstanceIp() string {
 }
 
 func syncIpWithUser(logger *log.Logger) {
+	instanceIpUpdate := instanceIpBroker.Subscribe()
 	for ip := range instanceIpUpdate {
 		event, err := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip)
 
@@ -65,6 +67,7 @@ func PublicIP(quit chan bool) {
 
 	ticker := time.NewTicker(cfg.IntervalDuration())
 
+	go instanceIpBroker.Start()
 	go syncIpWithUser(logger)
 
 	for {
@@ -104,7 +107,7 @@ func PublicIP(quit chan bool) {
 				instanceIp = ip
 				instanceIpMu.Unlock()
 
-				instanceIpUpdate <- ip
+				instanceIpBroker.Publish(instanceIp)
 
 				_, err = db.Pool.ExecContext(ctx, "UPDATE instances SET ip = ? WHERE instance_id = ?", ip, activeInstanceId)
 
