@@ -42,14 +42,8 @@ func SnapshotInstanceStatus() consts.InstanceStatus {
 func syncInstanceStatusWithUser(logger *log.Logger) {
 	instanceStatusUpdate := instanceStatusBroker.Subscribe()
 	for newInstanceStatus := range instanceStatusUpdate {
-		event, err := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus)
-
-		if err != nil {
-			logger.Println("Error building event", err)
-			continue
-		}
-
-		err = stream.BroadcastAndSave(event)
+		event := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus)
+		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
 			logger.Println("Error broadcast and save event", err)
@@ -61,14 +55,8 @@ func syncInstanceExternalDeletionWithUser(logger *log.Logger) {
 	isInstancePresentUpdate := isInstancePresentBroker.Subscribe()
 	for newIsInstancePresent := range isInstancePresentUpdate {
 		if !newIsInstancePresent {
-			event, err := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
-
-			if err != nil {
-				logger.Println("Error building event", err)
-				continue
-			}
-
-			err = stream.BroadcastAndSave(event)
+			event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
+			err := stream.BroadcastAndSave(event)
 
 			if err != nil {
 				logger.Println("Error broadcast and save event", err)

@@ -21,7 +21,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 			_, err := createInstanceFunc(query, c)
 
 			if err != nil {
-				event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
+				event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
 				stream.Broadcast(event)
 				return
 			}
@@ -34,23 +34,23 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 				select {
 				case status := <-instanceStatusUpdate:
 					if status == consts.InstanceRunning {
-						event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
+						event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
 						stream.Broadcast(event)
 						time.Sleep(20 * time.Second)
 						_, err = deployInstanceFunc(c)
 
 						if err != nil {
-							event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
+							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
 							stream.Broadcast(event)
 							return
 						}
 
-						event, _ = store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested instance deployment")
+						event = store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested instance deployment")
 						stream.Broadcast(event)
 						break loop1
 					}
 				case <-timeout.C:
-					event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be running")
+					event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be running")
 					stream.Broadcast(event)
 					return
 				}
@@ -67,7 +67,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						cmd, ok := commands.ShouldGetCommand(consts.CmdTypeStartServer)
 
 						if !ok {
-							event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot find start_server command")
+							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot find start_server command")
 							stream.Broadcast(event)
 							return
 						}
@@ -75,7 +75,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						instance, err := store.GetDeployedActiveInstance()
 
 						if err != nil {
-							event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot get instance: "+err.Error())
+							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot get instance: "+err.Error())
 							stream.Broadcast(event)
 							return
 						}
@@ -87,22 +87,22 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 							_, err = cmd.RunWithoutCooldown(ctx, *instance.Ip, nil, nil)
 
 							if err != nil {
-								event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot start server: "+err.Error())
+								event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot start server: "+err.Error())
 								stream.Broadcast(event)
 								return
 							}
 
-							event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested server start")
+							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested server start")
 							stream.Broadcast(event)
 						}()
 						break loop2
 					} else if taskStatus == store.TaskStatusFailed {
-						event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "deploy task failed")
+						event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "deploy task failed")
 						stream.Broadcast(event)
 						return
 					}
 				case <-timeout.C:
-					event, _ := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be deployed")
+					event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be deployed")
 					stream.Broadcast(event)
 					return
 				}

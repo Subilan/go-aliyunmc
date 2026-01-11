@@ -30,7 +30,7 @@ func (s *UserStream) State() *store.PushedEventState {
 }
 
 // Broadcast 向所有已连接的用户传递相同的推送
-func Broadcast(wrapped store.PushedEvent) {
+func Broadcast(wrapped *store.PushedEvent) {
 	log.Printf("debug: broadcasting event: type: %d, content: %s", wrapped.Type, wrapped.Content)
 
 	for _, syncUser := range userStreams {
@@ -39,7 +39,7 @@ func Broadcast(wrapped store.PushedEvent) {
 }
 
 // BroadcastAndSave 向所有已连接的用户推送信息，并保存到数据库中
-func BroadcastAndSave(wrapped store.PushedEvent) error {
+func BroadcastAndSave(wrapped *store.PushedEvent) error {
 	err := wrapped.Insert()
 
 	if err != nil {
@@ -52,12 +52,12 @@ func BroadcastAndSave(wrapped store.PushedEvent) error {
 }
 
 // Send 向该用户的 Chan 传递一个推送
-func (s *UserStream) Send(wrapped store.PushedEvent) {
+func (s *UserStream) Send(wrapped *store.PushedEvent) {
 	s.Chan <- wrapped.SSE()
 }
 
 // SendAndSave 向该用户的 Chan 传递一个推送，并保存到数据库中
-func (s *UserStream) SendAndSave(wrapped store.PushedEvent) error {
+func (s *UserStream) SendAndSave(wrapped *store.PushedEvent) error {
 	err := wrapped.Insert()
 
 	if err != nil {

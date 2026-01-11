@@ -38,6 +38,8 @@ func HandleBeginStream() gin.HandlerFunc {
 		userStream := stream.RegisterUser(userIdInt, conn, ctx)
 		defer stream.UnregisterUser(userIdInt)
 
+		_ = conn.SendEvent(ctx, store.BuildSyncEvent(store.SyncEventClearLastEventId).SSE())
+
 		lastOrd := 0
 		// 前端携带了Last-Event-Id，需要进行同步
 		if lastState != nil {
@@ -46,7 +48,7 @@ func HandleBeginStream() gin.HandlerFunc {
 
 			if err != nil {
 				log.Println("cannot get task status of task id", lastState.TaskId)
-				_ = conn.SendEvent(ctx, helpers.ErrorEvent("invalid last-event-id, cannot retrieve status from db", helpers.EventErrorInvalidLastEventId))
+				_ = conn.SendEvent(ctx, store.BuildErrorEvent("invalid last-event-id, cannot retrieve status from db").SSE())
 				return
 			}
 

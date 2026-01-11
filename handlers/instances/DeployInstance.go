@@ -47,12 +47,7 @@ func updateAndSend(taskId string, taskStatus store.TaskStatus) {
 		log.Println("cannot update task status: " + err.Error())
 	}
 
-	event, err := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, taskStatus)
-
-	if err != nil {
-		log.Println("cannot build instance event", err)
-	}
-
+	event := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, taskStatus)
 	err = stream.BroadcastAndSave(event)
 
 	if err != nil {
@@ -127,7 +122,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 
 				state := stream.GetState(taskId)
 
-				err = stream.BroadcastAndSave(store.PushedEvent{
+				err = stream.BroadcastAndSave(&store.PushedEvent{
 					PushedEventState: *state,
 					Content:          string(bytes),
 				})
@@ -143,7 +138,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 				log.Println("dedug: deploy.sh stderr: ", err.Error())
 
 				state := stream.GetState(taskId)
-				sendAndSaveError := stream.BroadcastAndSave(store.PushedEvent{
+				sendAndSaveError := stream.BroadcastAndSave(&store.PushedEvent{
 					PushedEventState: *state,
 					IsError:          true,
 					Content:          err.Error(),

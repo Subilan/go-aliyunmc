@@ -16,10 +16,12 @@ import (
 
 type PushedEvent struct {
 	PushedEventState
-	Type      PushedEventType `json:"type"`
-	IsError   bool            `json:"isError"`
-	Content   string          `json:"content"`
-	CreatedAt time.Time       `json:"createdAt"`
+	Type PushedEventType `json:"type"`
+
+	// IsError 决定前端该信息的显示效果。IsError 并不一定表示此信息与系统的严重错误有关。
+	IsError   bool      `json:"isError"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type PushedEventState struct {
@@ -113,22 +115,19 @@ const (
 	EventTypeDeployment PushedEventType = iota
 	EventTypeServer
 	EventTypeInstance
+	EventTypeError
+	EventTypeSync
 )
 
-func BuildStatelessEvent(data any, typ PushedEventType) (PushedEvent, error) {
-	marshalledData, err := json.Marshal(data)
-
-	if err != nil {
-		return PushedEvent{}, err
-	}
-
-	return PushedEvent{
+func BuildStatelessEvent(data any, typ PushedEventType) *PushedEvent {
+	marshalledData, _ := json.Marshal(data)
+	return &PushedEvent{
 		PushedEventState: PushedEventState{},
 		Type:             typ,
 		IsError:          false,
 		Content:          string(marshalledData),
 		CreatedAt:        time.Now(),
-	}, nil
+	}
 }
 
 type InstanceEventType string
@@ -147,7 +146,7 @@ const (
 	InstanceNotificationDeleted = "instance_deleted"
 )
 
-func BuildInstanceEvent(typ InstanceEventType, data any) (PushedEvent, error) {
+func BuildInstanceEvent(typ InstanceEventType, data any) *PushedEvent {
 	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeInstance)
 }
 
@@ -160,10 +159,24 @@ const (
 )
 
 const (
-	ServerNotificationClosed  ServerEventType = "closed"
-	ServerNotificationRunning ServerEventType = "running"
+	ServerNotificationClosed  = "closed"
+	ServerNotificationRunning = "running"
 )
 
-func BuildServerEvent(typ ServerEventType, data any) (PushedEvent, error) {
+func BuildServerEvent(typ ServerEventType, data any) *PushedEvent {
 	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeServer)
+}
+
+func BuildErrorEvent(details string) *PushedEvent {
+	return BuildStatelessEvent(gin.H{"details": details}, EventTypeError)
+}
+
+type SyncEventType string
+
+const (
+	SyncEventClearLastEventId SyncEventType = "clear_last_event_id"
+)
+
+func BuildSyncEvent(typ SyncEventType) *PushedEvent {
+	return BuildStatelessEvent(gin.H{"syncType": typ}, EventTypeSync)
 }

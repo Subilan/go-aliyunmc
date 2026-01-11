@@ -159,7 +159,7 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_i
 		}
 
 		// 将实例创建广播给所有用户
-		event, err := store.BuildInstanceEvent(store.InstanceEventCreated, store.Instance{
+		event := store.BuildInstanceEvent(store.InstanceEventCreated, store.Instance{
 			InstanceId:   *createInstanceResponse.Body.InstanceId,
 			InstanceType: instanceType,
 			RegionId:     config.Cfg.Aliyun.RegionId,
@@ -169,11 +169,6 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_i
 			Ip:           nil,
 			VSwitchId:    vswitchId,
 		})
-
-		if err != nil {
-			log.Println("cannot build event:", err)
-		}
-
 		err = stream.BroadcastAndSave(event)
 
 		if err != nil {
