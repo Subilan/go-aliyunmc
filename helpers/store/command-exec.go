@@ -15,6 +15,12 @@ type CommandExec struct {
 	CreatedAt time.Time          `json:"createdAt"`
 	UpdatedAt time.Time          `json:"updatedAt"`
 	Auto      bool               `json:"auto"`
+	Comment   *string            `json:"comment"`
+}
+
+type JoinedCommandExec struct {
+	CommandExec
+	Username *string `json:"username"`
 }
 
 const q = "SELECT id, `type`, `by`, `status`, created_at, updated_at, auto FROM command_exec "

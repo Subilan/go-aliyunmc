@@ -18,6 +18,8 @@ type Overview struct {
 	CdtExpense        float64   `json:"cdtExpense"`
 	TotalExpense      float64   `json:"totalExpense"`
 	LatestPayment     float64   `json:"latestPayment"`
+	ExpenseDays       int       `json:"expenseDays"`
+	ExpenseAverage    float64   `json:"expenseAverage"`
 	LatestPaymentTime time.Time `json:"latestPaymentTime"`
 }
 
@@ -70,6 +72,13 @@ func HandleGetOverview() gin.HandlerFunc {
 		}
 
 		result.TotalExpense = result.OssExpense + result.EcsExpense + result.CdtExpense + result.YunDiskExpense
+
+		err = db.Pool.QueryRow("SELECT AVG(`day_amount`) AS `total_day_averge`, COUNT(*) AS `total_days` FROM (SELECT SUM(`amount`) AS `day_amount`, DATE(`time`) AS `day` FROM transactions WHERE flow='Expense' AND remarks IN ('ECS', 'YUNDISK', 'OSS', 'CDT_INTERNET_PUBLIC_CN') GROUP BY `day`) a").
+			Scan(&result.ExpenseAverage, &result.ExpenseDays)
+
+		if err != nil {
+			return nil, err
+		}
 
 		err = db.Pool.QueryRow("SELECT amount, time FROM transactions WHERE flow='Income' AND `type`='Payment'").Scan(&result.LatestPayment, &result.LatestPaymentTime)
 

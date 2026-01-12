@@ -109,8 +109,8 @@ func HandleGetTransactions() gin.HandlerFunc {
 		}
 
 		return helpers.Data(gin.H{
-			"transactions": transactions,
-			"total":        total,
+			"data":  transactions,
+			"total": total,
 		}), nil
 	})
 }

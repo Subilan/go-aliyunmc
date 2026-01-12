@@ -51,7 +51,7 @@ func HandleGetTasks() gin.HandlerFunc {
 type TaskOverview struct {
 	SuccessCount   int              `json:"successCount"`
 	UnsuccessCount int              `json:"unsuccessCount"`
-	Latest         store.JoinedTask `json:"latest"`
+	Latest         store.JoinedTask `json:"latest,omitempty"`
 }
 
 func HandleGetTaskOverview() gin.HandlerFunc {
@@ -70,12 +70,8 @@ func HandleGetTaskOverview() gin.HandlerFunc {
 			return nil, err
 		}
 
-		err = db.Pool.QueryRow("SELECT t.task_id, t.type, t.status, t.created_at, t.updated_at, u.username FROM tasks t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 1").
+		_ = db.Pool.QueryRow("SELECT t.task_id, t.type, t.status, t.created_at, t.updated_at, u.username FROM tasks t JOIN users u ON t.user_id = u.id ORDER BY t.created_at DESC LIMIT 1").
 			Scan(&res.Latest.Id, &res.Latest.Type, &res.Latest.Status, &res.Latest.CreatedAt, &res.Latest.UpdatedAt, &res.Latest.Username)
-
-		if err != nil {
-			return nil, err
-		}
 
 		return helpers.Data(res), nil
 	})

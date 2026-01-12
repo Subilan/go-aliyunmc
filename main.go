@@ -79,6 +79,8 @@ func bindRoutes(r *gin.Engine) {
 	sj.GET("/backups", server.HandleGetBackupInfo())
 	sj.GET("/latest-success-backup", server.HandleGetLatestSuccessBackup())
 	sj.GET("/latest-success-archive", server.HandleGetLatestSuccessArchive())
+	sj.GET("/exec/s", server.HandleGetCommandExecs())
+	sj.GET("/exec-overview", server.HandleGetCommandExecOverview())
 
 	bj := r.Group("/bss")
 	bj.Use(mid.JWTAuth())
