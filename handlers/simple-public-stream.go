@@ -4,8 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
@@ -21,8 +21,8 @@ func HandleBeginSimplePublicStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		incomingEvents := stream.SubscribeGlobalStream()
-		defer stream.UnsubscribeGlobalStream(incomingEvents)
+		incomingEvents := stream.SubPublicChannel()
+		defer stream.UnsubPublicChannel(incomingEvents)
 
 		for {
 			select {

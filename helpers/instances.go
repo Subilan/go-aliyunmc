@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
 )
@@ -33,7 +33,7 @@ func DeleteInstance(ctx context.Context, instanceId string, force bool) error {
 	}
 
 	// 将实例删除广播给所有用户
-	event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted, true)
+	event := events.Instance(events.InstanceEventNotify, events.InstanceNotificationDeleted, true)
 	err = stream.BroadcastAndSave(event)
 
 	if err != nil {

@@ -10,6 +10,8 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/gctx"
@@ -18,7 +20,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/tasks"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
 	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,7 +49,7 @@ func updateAndSend(taskId string, taskStatus consts.TaskStatus) {
 		log.Println("cannot update task status: " + err.Error())
 	}
 
-	event := store.BuildInstanceEvent(store.InstanceEventDeploymentTaskStatusUpdate, taskStatus)
+	event := events.Instance(events.InstanceEventDeploymentTaskStatusUpdate, taskStatus)
 	err = stream.BroadcastAndSave(event)
 
 	if err != nil {
@@ -105,7 +106,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 		go syncDeployInstanceStatusWithUser(taskId)
 
 		// 创建当前任务的全局流
-		stream.CreateState(taskId)
+		stream.RecordStateForTask(taskId)
 
 		// 创建超时上下文
 		runCtx, cancelRunCtx := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -121,14 +122,14 @@ func deployInstance() helpers.BasicHandlerFunc {
 			func(bytes []byte) {
 				//log.Println("debug: deploy.sh stdout: ", string(bytes))
 
-				state := stream.GetState(taskId)
+				state := stream.GetStateOfTask(taskId)
 
-				err = stream.BroadcastAndSave(&store.PushedEvent{
-					PushedEventState: *state,
-					Content:          string(bytes),
+				err = stream.BroadcastAndSave(&events.Event{
+					EventState: *state,
+					Content:    string(bytes),
 				})
 
-				stream.IncrStateOrd(taskId)
+				stream.IncrStateOrdOfTask(taskId)
 
 				if err != nil {
 					log.Println(err.Error())
@@ -138,11 +139,11 @@ func deployInstance() helpers.BasicHandlerFunc {
 			func(err error) {
 				log.Println("dedug: deploy.sh stderr: ", err.Error())
 
-				state := stream.GetState(taskId)
-				sendAndSaveError := stream.BroadcastAndSave(&store.PushedEvent{
-					PushedEventState: *state,
-					IsError:          true,
-					Content:          err.Error(),
+				state := stream.GetStateOfTask(taskId)
+				sendAndSaveError := stream.BroadcastAndSave(&events.Event{
+					EventState: *state,
+					IsError:    true,
+					Content:    err.Error(),
 				})
 
 				if sendAndSaveError != nil {
@@ -172,7 +173,7 @@ func deployInstance() helpers.BasicHandlerFunc {
 			},
 			func() {
 				tasks.Unregister(taskId)
-				stream.DeleteState(taskId)
+				stream.DeleteStateOfTask(taskId)
 			},
 		)
 

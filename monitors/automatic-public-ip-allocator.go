@@ -11,10 +11,10 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
 
@@ -46,7 +46,7 @@ func SnapshotInstanceIp() string {
 func syncIpWithUser(logger *log.Logger) {
 	instanceIpUpdate := instanceIpBroker.Subscribe()
 	for ip := range instanceIpUpdate {
-		event := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip, true)
+		event := events.Instance(events.InstanceEventActiveIpUpdate, ip, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {

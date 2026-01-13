@@ -12,9 +12,9 @@ import (
 	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
-	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/mcstatus-io/mcutil/v4/query"
 	"github.com/mcstatus-io/mcutil/v4/response"
 	"github.com/mcstatus-io/mcutil/v4/status"
@@ -59,12 +59,12 @@ func syncServerStatusWithUser() {
 		var data any
 
 		if newIsServerRunning {
-			data = store.ServerNotificationRunning
+			data = events.ServerNotificationRunning
 		} else {
-			data = store.ServerNotificationClosed
+			data = events.ServerNotificationClosed
 		}
 
-		event := store.BuildServerEvent(store.ServerEventNotify, data, true)
+		event := events.Server(events.ServerEventNotify, data, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -76,7 +76,7 @@ func syncServerStatusWithUser() {
 func syncOnlineCountWithUser() {
 	playerCountUpdate := playerCountBroker.Subscribe()
 	for onlineCount := range playerCountUpdate {
-		event := store.BuildServerEvent(store.ServerEventOnlineCountUpdate, onlineCount, true)
+		event := events.Server(events.ServerEventOnlineCountUpdate, onlineCount, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -96,7 +96,7 @@ func syncOnlinePlayersWithUser() {
 			return
 		}
 
-		event := store.BuildServerEvent(store.ServerEventOnlinePlayersUpdate, string(marshalled), true)
+		event := events.Server(events.ServerEventOnlinePlayersUpdate, string(marshalled), true)
 		err = stream.BroadcastAndSave(event)
 
 		if err != nil {

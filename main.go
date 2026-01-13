@@ -7,6 +7,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/handlers"
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
@@ -20,7 +21,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -178,7 +178,7 @@ func main() {
 
 	log.Println("Intializing global stream...")
 
-	stream.InitializeGlobalStream()
+	stream.InitPublicChannel()
 
 	log.Print("Loading gin...")
 

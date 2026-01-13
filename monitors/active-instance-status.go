@@ -13,10 +13,10 @@ import (
 	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
-	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 )
@@ -42,7 +42,7 @@ func SnapshotInstanceStatus() consts.InstanceStatus {
 func syncInstanceStatusWithUser(logger *log.Logger) {
 	instanceStatusUpdate := instanceStatusBroker.Subscribe()
 	for newInstanceStatus := range instanceStatusUpdate {
-		event := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus, true)
+		event := events.Instance(events.InstanceEventActiveStatusUpdate, newInstanceStatus, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -55,7 +55,7 @@ func syncInstanceExternalDeletionWithUser(logger *log.Logger) {
 	isInstancePresentUpdate := isInstancePresentBroker.Subscribe()
 	for newIsInstancePresent := range isInstancePresentUpdate {
 		if !newIsInstancePresent {
-			event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted, true)
+			event := events.Instance(events.InstanceEventNotify, events.InstanceNotificationDeleted, true)
 			err := stream.BroadcastAndSave(event)
 
 			if err != nil {

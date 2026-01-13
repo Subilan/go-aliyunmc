@@ -4,11 +4,12 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,7 +22,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 			_, err := createInstanceFunc(query, c)
 
 			if err != nil {
-				event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
+				event := events.Instance(events.InstanceEventCreateAndDeployFailed, err.Error())
 				stream.Broadcast(event)
 				return
 			}
@@ -34,23 +35,23 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 				select {
 				case status := <-instanceStatusUpdate:
 					if status == consts.InstanceRunning {
-						event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
+						event := events.Instance(events.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
 						stream.Broadcast(event)
 						time.Sleep(20 * time.Second)
 						_, err = deployInstanceFunc(c)
 
 						if err != nil {
-							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, err.Error())
+							event := events.Instance(events.InstanceEventCreateAndDeployFailed, err.Error())
 							stream.Broadcast(event)
 							return
 						}
 
-						event = store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested instance deployment")
+						event = events.Instance(events.InstanceEventCreateAndDeployStep, "requested instance deployment")
 						stream.Broadcast(event)
 						break loop1
 					}
 				case <-timeout.C:
-					event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be running")
+					event := events.Instance(events.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be running")
 					stream.Broadcast(event)
 					return
 				}
@@ -67,7 +68,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						cmd, ok := commands.ShouldGetCommand(consts.CmdTypeStartServer)
 
 						if !ok {
-							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot find start_server command")
+							event := events.Instance(events.InstanceEventCreateAndDeployFailed, "cannot find start_server command")
 							stream.Broadcast(event)
 							return
 						}
@@ -75,7 +76,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						instance, err := store.GetDeployedActiveInstance()
 
 						if err != nil {
-							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot get instance: "+err.Error())
+							event := events.Instance(events.InstanceEventCreateAndDeployFailed, "cannot get instance: "+err.Error())
 							stream.Broadcast(event)
 							return
 						}
@@ -87,22 +88,22 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 							_, err = cmd.RunWithoutCooldown(ctx, *instance.Ip, nil, nil)
 
 							if err != nil {
-								event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "cannot start server: "+err.Error())
+								event := events.Instance(events.InstanceEventCreateAndDeployFailed, "cannot start server: "+err.Error())
 								stream.Broadcast(event)
 								return
 							}
 
-							event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployStep, "requested server start")
+							event := events.Instance(events.InstanceEventCreateAndDeployStep, "requested server start")
 							stream.Broadcast(event)
 						}()
 						break loop2
 					} else if taskStatus == consts.TaskStatusFailed {
-						event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "deploy task failed")
+						event := events.Instance(events.InstanceEventCreateAndDeployFailed, "deploy task failed")
 						stream.Broadcast(event)
 						return
 					}
 				case <-timeout.C:
-					event := store.BuildInstanceEvent(store.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be deployed")
+					event := events.Instance(events.InstanceEventCreateAndDeployFailed, "timeout waiting for instance to be deployed")
 					stream.Broadcast(event)
 					return
 				}

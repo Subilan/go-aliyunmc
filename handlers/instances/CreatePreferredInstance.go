@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/events"
+	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v6/client"
@@ -159,7 +160,7 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_i
 		}
 
 		// 将实例创建广播给所有用户
-		event := store.BuildInstanceEvent(store.InstanceEventCreated, store.Instance{
+		event := events.Instance(events.InstanceEventCreated, store.Instance{
 			InstanceId:   *createInstanceResponse.Body.InstanceId,
 			InstanceType: instanceType,
 			RegionId:     config.Cfg.Aliyun.RegionId,

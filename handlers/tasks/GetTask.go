@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -27,7 +28,7 @@ type GetTaskResponse struct {
 	store.Task
 
 	// PushedEvents 由 GetTaskQuery.WithPushedEvents 指定是否包含
-	PushedEvents []store.PushedEvent `json:"pushedEvents,omitempty"`
+	PushedEvents []events.Event `json:"pushedEvents,omitempty"`
 
 	// PushedEvents 由 GetTaskQuery.WithJoinedPushedEvents 指定是否包含
 	JoinedPushedEvents string `json:"joinedPushedEvents,omitempty"`
@@ -60,7 +61,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 		return nil, err
 	}
 
-	var pushedEvents []store.PushedEvent
+	var pushedEvents []events.Event
 	var joinedPushedEvents string
 
 	if withPushedEvents || withJoinedPushedEvents {
@@ -71,7 +72,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 		}
 
 		for rows.Next() {
-			var event store.PushedEvent
+			var event events.Event
 			err = rows.Scan(&event.TaskId, &event.Ord, &event.Type, &event.Content, &event.CreatedAt)
 			if err != nil {
 				return nil, err
