@@ -10,19 +10,19 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/globals"
-	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-var instanceStatusBroker = helpers.NewBroker[consts.InstanceStatus]()
-var isInstancePresentBroker = helpers.NewBroker[bool]()
+var instanceStatusBroker = broker.New[consts.InstanceStatus]()
+var isInstancePresentBroker = broker.New[bool]()
 
 var instanceStatus consts.InstanceStatus
 var instanceStatusMu sync.RWMutex
@@ -111,6 +111,9 @@ func ActiveInstance(quit chan bool) {
 
 				if err != nil {
 					if errors.Is(err, sql.ErrNoRows) {
+						if instanceStatus != consts.InstanceInvalid {
+							setInstanceStatus(consts.InstanceInvalid)
+						}
 						return
 					}
 

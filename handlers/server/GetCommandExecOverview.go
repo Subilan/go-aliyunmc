@@ -29,7 +29,7 @@ func HandleGetCommandExecOverview() gin.HandlerFunc {
 		}
 
 		_ = db.Pool.
-			QueryRow("SELECT c.id, c.type, c.by, c.created_at, c.updated_at, c.status, c.auto, c.comment, u.username FROM command_exec c JOIN users u ON c.by=u.id ORDER BY c.created_at DESC LIMIT 1").
+			QueryRow("SELECT c.id, c.type, c.by, c.created_at, c.updated_at, c.status, c.auto, c.comment, u.username FROM command_exec c LEFT JOIN users u ON c.by=u.id ORDER BY c.created_at DESC LIMIT 1").
 			Scan(
 				&result.LatestCommandExec.Id,
 				&result.LatestCommandExec.Type,

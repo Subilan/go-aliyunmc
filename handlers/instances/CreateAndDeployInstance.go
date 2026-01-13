@@ -7,8 +7,8 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 )
 

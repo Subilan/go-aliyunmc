@@ -5,13 +5,17 @@ import (
 	"log"
 	"sync"
 
-	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
+	"github.com/google/uuid"
 	"go.jetify.com/sse"
 )
 
 // UserStream 是对用户主动建立的 SSE 连接的封装
 type UserStream struct {
+	// Id 是该连接的唯一标识
+	Id string
+
 	// UserId 是该用户的主键
 	UserId int
 
@@ -25,7 +29,7 @@ type UserStream struct {
 	Ctx context.Context
 }
 
-var globalStreamBroker = helpers.NewBroker[*sse.Event]()
+var globalStreamBroker = broker.New[*sse.Event]()
 var globalStreamBrokerInitialized = false
 
 func InitializeGlobalStream() {
@@ -44,14 +48,13 @@ func UnsubscribeGlobalStream(ch chan *sse.Event) {
 	globalStreamBroker.Unsubscribe(ch)
 }
 
-// State 返回全局表中记录的该连接的接收状态
-func (s *UserStream) State() *store.PushedEventState {
-	return userStreamStates[s.UserId]
-}
-
 // Broadcast 向所有已连接的用户传递相同的推送
 func Broadcast(wrapped *store.PushedEvent) {
 	log.Printf("debug: broadcasting event: type: %d, content: %s", wrapped.Type, wrapped.Content)
+
+	if wrapped.IsPublic {
+		globalStreamBroker.Publish(wrapped.SSE())
+	}
 
 	for _, syncUser := range userStreams {
 		syncUser.Send(wrapped)
@@ -74,10 +77,6 @@ func BroadcastAndSave(wrapped *store.PushedEvent) error {
 // Send 向该用户的 Chan 传递一个推送
 func (s *UserStream) Send(wrapped *store.PushedEvent) {
 	s.Chan <- wrapped.SSE()
-
-	if wrapped.IsPublic {
-		globalStreamBroker.Publish(wrapped.SSE())
-	}
 }
 
 // SendAndSave 向该用户的 Chan 传递一个推送，并保存到数据库中
@@ -93,9 +92,8 @@ func (s *UserStream) SendAndSave(wrapped *store.PushedEvent) error {
 	return nil
 }
 
-var userStreams = make(map[int]*UserStream)
+var userStreams = make(map[string]*UserStream)
 var userStreamsMu sync.Mutex
-var userStreamStates = make(map[int]*store.PushedEventState)
 var globalStreamStates = make(map[string]*store.PushedEventState)
 var globalStreamStatesMu sync.Mutex
 
@@ -130,23 +128,28 @@ func IncrStateOrd(taskId string) {
 }
 
 // RegisterUser 将用户的 SSE 连接信息记录到全局表中，用于后续推送信息
-func RegisterUser(userId int, conn *sse.Conn, ctx context.Context) *UserStream {
+func RegisterUser(userId int, conn *sse.Conn, ctx context.Context) (string, *UserStream) {
 	userStreamsMu.Lock()
 	defer userStreamsMu.Unlock()
+
+	connId, _ := uuid.NewRandom()
+	connIdStr := connId.String()
+
 	var syncUser = &UserStream{
+		Id:     connIdStr,
 		UserId: userId,
 		Conn:   conn,
 		Chan:   make(chan *sse.Event, 16),
 		Ctx:    ctx,
 	}
 
-	userStreams[userId] = syncUser
-	return syncUser
+	userStreams[connIdStr] = syncUser
+	return connIdStr, syncUser
 }
 
 // UnregisterUser 从全局表中删除指定用户的 SSE 连接信息
-func UnregisterUser(userId int) {
+func UnregisterUser(connId string) {
 	userStreamsMu.Lock()
 	defer userStreamsMu.Unlock()
-	delete(userStreams, userId)
+	delete(userStreams, connId)
 }

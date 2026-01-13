@@ -9,19 +9,20 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/mcstatus-io/mcutil/v4/query"
 	"github.com/mcstatus-io/mcutil/v4/response"
 	"github.com/mcstatus-io/mcutil/v4/status"
 )
 
-var isServerRunningBroker = helpers.NewBroker[bool]()
-var onlinePlayersBroker = helpers.NewBroker[[]string]()
-var playerCountBroker = helpers.NewBroker[int64]()
+var isServerRunningBroker = broker.New[bool]()
+var onlinePlayersBroker = broker.New[[]string]()
+var playerCountBroker = broker.New[int64]()
 
 var isServerRunning atomic.Bool
 var playerCount atomic.Int64
@@ -109,8 +110,9 @@ func setServerStatus(status bool) {
 	isServerRunningBroker.Publish(status)
 
 	if !status {
-		playerCount.Store(0)
-		playerCountBroker.Publish(0)
+		// 服务器关闭后，玩家数量记作-1，区分于空服务器状态
+		playerCount.Store(-1)
+		playerCountBroker.Publish(-1)
 
 		onlinePlayersMu.Lock()
 		onlinePlayers = []string{}
@@ -128,6 +130,8 @@ func ServerStatus(quit chan bool) {
 
 	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
 	logger.Println("starting...")
+
+	playerCount.Store(-1) // default value, server not online
 
 	go isServerRunningBroker.Start()
 	go onlinePlayersBroker.Start()

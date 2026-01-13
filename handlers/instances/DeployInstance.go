@@ -8,21 +8,22 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/gctx"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/helpers/tasks"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
 	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 )
 
 var deployInstanceMutex sync.Mutex
-var deployInstanceTaskStatusBroker = helpers.NewBroker[consts.TaskStatus]()
+var deployInstanceTaskStatusBroker = broker.New[consts.TaskStatus]()
 
 func StartDeployInstanceTaskStatusBroker() {
 	go deployInstanceTaskStatusBroker.Start()

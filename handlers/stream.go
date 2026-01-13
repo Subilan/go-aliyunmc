@@ -3,12 +3,11 @@ package handlers
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
@@ -35,8 +34,8 @@ func HandleBeginStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		userStream := stream.RegisterUser(userIdInt, conn, ctx)
-		defer stream.UnregisterUser(userIdInt)
+		streamId, userStream := stream.RegisterUser(userIdInt, conn, ctx)
+		defer stream.UnregisterUser(streamId)
 
 		_ = conn.SendEvent(ctx, store.BuildSyncEvent(store.SyncEventClearLastEventId).SSE())
 
@@ -71,9 +70,6 @@ func HandleBeginStream() gin.HandlerFunc {
 			}
 		}
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
 		for {
 			select {
 			case e := <-userStream.Chan:
@@ -91,13 +87,6 @@ func HandleBeginStream() gin.HandlerFunc {
 
 				if err != nil {
 					log.Println("cannot send event:", err)
-					return
-				}
-
-			case <-ticker.C:
-				if err := conn.SendComment(ctx, "ping"); err != nil {
-					// 心跳的错误处理应该保持简单
-					log.Println("cannot ping client:", err)
 					return
 				}
 

@@ -3,10 +3,9 @@ package handlers
 import (
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/Subilan/go-aliyunmc/helpers"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-gonic/gin"
 	"go.jetify.com/sse"
 )
@@ -22,9 +21,6 @@ func HandleBeginSimplePublicStream() gin.HandlerFunc {
 		}
 		defer conn.Close()
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
 		incomingEvents := stream.SubscribeGlobalStream()
 		defer stream.UnsubscribeGlobalStream(incomingEvents)
 
@@ -35,12 +31,6 @@ func HandleBeginSimplePublicStream() gin.HandlerFunc {
 
 				if err != nil {
 					log.Println("cannot send event:", err)
-					return
-				}
-
-			case <-ticker.C:
-				if err := conn.SendComment(ctx, " "); err != nil {
-					log.Println("cannot ping client:", err)
 					return
 				}
 

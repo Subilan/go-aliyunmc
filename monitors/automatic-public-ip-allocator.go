@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/broker"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/globals"
-	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
+	"github.com/Subilan/go-aliyunmc/stream"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
 
@@ -23,7 +23,7 @@ var instanceIpRestored bool
 var instanceIp string
 var instanceIpMu sync.RWMutex
 
-var instanceIpBroker = helpers.NewBroker[string]()
+var instanceIpBroker = broker.New[string]()
 
 func RestoreInstanceIp(ip string) {
 	if instanceIpRestored {

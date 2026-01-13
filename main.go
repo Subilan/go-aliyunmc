@@ -19,8 +19,8 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/mid"
-	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/stream"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -35,7 +35,8 @@ func bindRoutes(r *gin.Engine) {
 	ia.Use(mid.Role(consts.UserRoleAdmin))
 
 	i.GET("/:instanceId", instances.HandleGetInstance())
-	i.GET("", instances.HandleGetActiveOrLatestInstance())
+	i.GET("", instances.HandleGetInstance())
+	i.GET("/active-or-latest", instances.HandleGetActiveOrLatestInstance())
 	i.GET("/status", instances.HandleGetActiveInstanceStatus())
 	i.GET("/preferred-charge", instances.HandleGetPreferredInstanceCharge())
 	i.GET("/desc/:instanceId", instances.HandleDescribeInstance())
@@ -72,11 +73,12 @@ func bindRoutes(r *gin.Engine) {
 	tj.GET("", tasks.HandleGetActiveTaskByType())
 	tj.GET("/cancel/:taskId", tasks.HandleCancelTask())
 
-	sj := r.Group("/server")
+	s := r.Group("/server")
+	s.GET("/info", server.HandleGetServerInfo())
+	sj := s.Group("")
 	sj.Use(mid.JWTAuth())
 	sj.GET("/exec", server.HandleServerExecute())
 	sj.GET("/query", server.HandleServerQuery())
-	sj.GET("/info", server.HandleGetServerInfo())
 	sj.GET("/backups", server.HandleGetBackupInfo())
 	sj.GET("/latest-success-backup", server.HandleGetLatestSuccessBackup())
 	sj.GET("/latest-success-archive", server.HandleGetLatestSuccessArchive())
@@ -99,6 +101,7 @@ func runMonitors() {
 	var quitPublicIP = make(chan bool)
 	var quitBackup = make(chan bool)
 	var quitInstanceCharge = make(chan bool)
+	var quitEmptyServer = make(chan bool)
 
 	var ip string
 
@@ -111,6 +114,7 @@ func runMonitors() {
 	go monitors.ServerStatus(quitServerStatus)
 	go monitors.Backup(quitBackup)
 	go monitors.InstanceCharge(quitInstanceCharge)
+	go monitors.EmptyServer(quitEmptyServer)
 }
 
 func main() {

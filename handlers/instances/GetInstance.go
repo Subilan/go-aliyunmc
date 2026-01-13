@@ -1,8 +1,6 @@
 package instances
 
 import (
-	"net/http"
-
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -14,7 +12,13 @@ func HandleGetInstance() gin.HandlerFunc {
 		instanceId := c.Param("instanceId")
 
 		if instanceId == "" {
-			return nil, &helpers.HttpError{Code: http.StatusBadRequest, Details: "instanceId not provided"}
+			activeInstance, err := store.GetIpAllocatedActiveInstance()
+
+			if err != nil {
+				return nil, err
+			}
+
+			return helpers.Data(activeInstance), nil
 		}
 
 		var result store.Instance

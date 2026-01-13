@@ -31,20 +31,25 @@ func safeDeleteServer(logger *log.Logger) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
-	if err := commands.StopAndArchiveServer(ctx, *activeInstance.Ip, nil, "empty server"); err != nil {
+	if err := commands.StopAndArchiveServer(ctx, *activeInstance.Ip, nil, "The server has been empty for too long."); err != nil {
 		logger.Println("cannot stop and archive server:", err)
 		return
 	}
+
+	logger.Println("stop and archive server successfully")
 
 	if err := helpers.DeleteInstance(ctx, activeInstance.InstanceId, true); err != nil {
 		logger.Println("cannot delete instance:", err)
 		return
 	}
+
+	logger.Println("delete instance successfully")
 }
 
-func EmptyServer() {
+func EmptyServer(quit chan bool) {
 	cfg := config.Cfg.Monitor.EmptyServer
 	logger := log.New(os.Stdout, "[EmptyServer] ", log.LstdFlags)
+	logger.Println("starting...")
 
 	var emptyTimeout = cfg.EmptyTimeoutDuration()
 
@@ -59,14 +64,18 @@ func EmptyServer() {
 		select {
 		case cnt := <-playerCountUpdate:
 			switch {
-			case cnt > 0:
-				// 有玩家进入，取消计时
+			case cnt > 0 || cnt == -1:
 				if timer != nil {
 					timer.Stop()
 					timer = nil
 				}
 				state = emptyServerStateIdle
-				logger.Println("player joined, cancel empty-server timer")
+
+				if cnt > 0 {
+					logger.Println("player joined, cancel empty-server timer")
+				} else {
+					logger.Println("player count being -1, cancel empty-server timer")
+				}
 
 			case cnt == 0 && state == emptyServerStateIdle:
 				// 从非空转为空，启动计时
@@ -97,6 +106,9 @@ func EmptyServer() {
 			safeDeleteServer(logger)
 
 			state = emptyServerStateIdle
+
+		case <-quit:
+			return
 		}
 	}
 }
