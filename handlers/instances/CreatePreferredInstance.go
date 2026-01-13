@@ -168,7 +168,7 @@ INSERT INTO instances (instance_id, instance_type, region_id, zone_id, vswitch_i
 			CreatedAt:    time.Now(),
 			Ip:           nil,
 			VSwitchId:    vswitchId,
-		})
+		}, true)
 		err = stream.BroadcastAndSave(event)
 
 		if err != nil {

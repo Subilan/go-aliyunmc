@@ -5,6 +5,7 @@ import (
 	"log"
 	"sync"
 
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"go.jetify.com/sse"
 )
@@ -22,6 +23,25 @@ type UserStream struct {
 
 	// Ctx 是该连接的上下文
 	Ctx context.Context
+}
+
+var globalStreamBroker = helpers.NewBroker[*sse.Event]()
+var globalStreamBrokerInitialized = false
+
+func InitializeGlobalStream() {
+	if globalStreamBrokerInitialized {
+		log.Fatalln("reinitializing global stream is not permitted.")
+	}
+	go globalStreamBroker.Start()
+	globalStreamBrokerInitialized = true
+}
+
+func SubscribeGlobalStream() chan *sse.Event {
+	return globalStreamBroker.Subscribe()
+}
+
+func UnsubscribeGlobalStream(ch chan *sse.Event) {
+	globalStreamBroker.Unsubscribe(ch)
 }
 
 // State 返回全局表中记录的该连接的接收状态
@@ -54,6 +74,10 @@ func BroadcastAndSave(wrapped *store.PushedEvent) error {
 // Send 向该用户的 Chan 传递一个推送
 func (s *UserStream) Send(wrapped *store.PushedEvent) {
 	s.Chan <- wrapped.SSE()
+
+	if wrapped.IsPublic {
+		globalStreamBroker.Publish(wrapped.SSE())
+	}
 }
 
 // SendAndSave 向该用户的 Chan 传递一个推送，并保存到数据库中

@@ -46,7 +46,7 @@ func SnapshotInstanceIp() string {
 func syncIpWithUser(logger *log.Logger) {
 	instanceIpUpdate := instanceIpBroker.Subscribe()
 	for ip := range instanceIpUpdate {
-		event := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip)
+		event := store.BuildInstanceEvent(store.InstanceEventActiveIpUpdate, ip, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {

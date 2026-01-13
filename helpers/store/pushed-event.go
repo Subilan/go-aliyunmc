@@ -19,7 +19,11 @@ type PushedEvent struct {
 	Type PushedEventType `json:"type"`
 
 	// IsError 决定前端该信息的显示效果。IsError 并不一定表示此信息与系统的严重错误有关。
-	IsError   bool      `json:"isError"`
+	IsError bool `json:"isError"`
+
+	// IsPublic 决定该信息是否可以发送给未登录用户
+	IsPublic bool `json:"isPublic"`
+
 	Content   string    `json:"content"`
 	CreatedAt time.Time `json:"createdAt"`
 }
@@ -119,12 +123,13 @@ const (
 	EventTypeSync
 )
 
-func BuildStatelessEvent(data any, typ PushedEventType) *PushedEvent {
+func BuildStatelessEvent(data any, typ PushedEventType, public bool) *PushedEvent {
 	marshalledData, _ := json.Marshal(data)
 	return &PushedEvent{
 		PushedEventState: PushedEventState{},
 		Type:             typ,
 		IsError:          false,
+		IsPublic:         public,
 		Content:          string(marshalledData),
 		CreatedAt:        time.Now(),
 	}
@@ -146,8 +151,13 @@ const (
 	InstanceNotificationDeleted = "instance_deleted"
 )
 
-func BuildInstanceEvent(typ InstanceEventType, data any) *PushedEvent {
-	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeInstance)
+func BuildInstanceEvent(typ InstanceEventType, data any, isPublic ...bool) *PushedEvent {
+	public := false
+	if len(isPublic) > 0 {
+		public = isPublic[0]
+	}
+
+	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeInstance, public)
 }
 
 type ServerEventType string
@@ -163,12 +173,16 @@ const (
 	ServerNotificationRunning = "running"
 )
 
-func BuildServerEvent(typ ServerEventType, data any) *PushedEvent {
-	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeServer)
+func BuildServerEvent(typ ServerEventType, data any, isPublic ...bool) *PushedEvent {
+	public := false
+	if len(isPublic) > 0 {
+		public = isPublic[0]
+	}
+	return BuildStatelessEvent(gin.H{"type": typ, "data": data}, EventTypeServer, public)
 }
 
 func BuildErrorEvent(details string) *PushedEvent {
-	return BuildStatelessEvent(gin.H{"details": details}, EventTypeError)
+	return BuildStatelessEvent(gin.H{"details": details}, EventTypeError, false)
 }
 
 type SyncEventType string
@@ -178,5 +192,5 @@ const (
 )
 
 func BuildSyncEvent(typ SyncEventType) *PushedEvent {
-	return BuildStatelessEvent(gin.H{"syncType": typ}, EventTypeSync)
+	return BuildStatelessEvent(gin.H{"syncType": typ}, EventTypeSync, false)
 }

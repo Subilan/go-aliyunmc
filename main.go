@@ -19,6 +19,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/mid"
+	"github.com/Subilan/go-aliyunmc/helpers/stream"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -89,6 +90,7 @@ func bindRoutes(r *gin.Engine) {
 
 	r.GET("/ping", simple.HandleGenerate200())
 	r.GET("/stream", mid.JWTAuth(), handlers.HandleBeginStream())
+	r.GET("/stream/simple-public", handlers.HandleBeginSimplePublicStream())
 }
 
 func runMonitors() {
@@ -154,8 +156,6 @@ func main() {
 		log.Fatalln("Error getting VSwitchCache:", err)
 	}
 
-	log.Print("OK")
-
 	log.Print("Initializing database pool...")
 
 	err = db.InitPool()
@@ -164,8 +164,6 @@ func main() {
 		log.Fatalln("Error initializing database:", err)
 	}
 
-	log.Print("OK")
-
 	log.Println("Loading commands...")
 
 	commands.Load()
@@ -173,6 +171,10 @@ func main() {
 	log.Println("Starting monitors...")
 
 	runMonitors()
+
+	log.Println("Intializing global stream...")
+
+	stream.InitializeGlobalStream()
 
 	log.Print("Loading gin...")
 

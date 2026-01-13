@@ -33,7 +33,7 @@ func DeleteInstance(ctx context.Context, instanceId string, force bool) error {
 	}
 
 	// 将实例删除广播给所有用户
-	event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
+	event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted, true)
 	err = stream.BroadcastAndSave(event)
 
 	if err != nil {

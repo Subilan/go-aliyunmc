@@ -63,7 +63,7 @@ func syncServerStatusWithUser() {
 			data = store.ServerNotificationClosed
 		}
 
-		event := store.BuildServerEvent(store.ServerEventNotify, data)
+		event := store.BuildServerEvent(store.ServerEventNotify, data, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -75,7 +75,7 @@ func syncServerStatusWithUser() {
 func syncOnlineCountWithUser() {
 	playerCountUpdate := playerCountBroker.Subscribe()
 	for onlineCount := range playerCountUpdate {
-		event := store.BuildServerEvent(store.ServerEventOnlineCountUpdate, onlineCount)
+		event := store.BuildServerEvent(store.ServerEventOnlineCountUpdate, onlineCount, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -95,7 +95,7 @@ func syncOnlinePlayersWithUser() {
 			return
 		}
 
-		event := store.BuildServerEvent(store.ServerEventOnlinePlayersUpdate, string(marshalled))
+		event := store.BuildServerEvent(store.ServerEventOnlinePlayersUpdate, string(marshalled), true)
 		err = stream.BroadcastAndSave(event)
 
 		if err != nil {

@@ -42,7 +42,7 @@ func SnapshotInstanceStatus() consts.InstanceStatus {
 func syncInstanceStatusWithUser(logger *log.Logger) {
 	instanceStatusUpdate := instanceStatusBroker.Subscribe()
 	for newInstanceStatus := range instanceStatusUpdate {
-		event := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus)
+		event := store.BuildInstanceEvent(store.InstanceEventActiveStatusUpdate, newInstanceStatus, true)
 		err := stream.BroadcastAndSave(event)
 
 		if err != nil {
@@ -55,7 +55,7 @@ func syncInstanceExternalDeletionWithUser(logger *log.Logger) {
 	isInstancePresentUpdate := isInstancePresentBroker.Subscribe()
 	for newIsInstancePresent := range isInstancePresentUpdate {
 		if !newIsInstancePresent {
-			event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted)
+			event := store.BuildInstanceEvent(store.InstanceEventNotify, store.InstanceNotificationDeleted, true)
 			err := stream.BroadcastAndSave(event)
 
 			if err != nil {
