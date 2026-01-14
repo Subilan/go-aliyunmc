@@ -2,15 +2,19 @@ package config
 
 import "time"
 
-type PublicIp struct {
+// PublicIP 包含了 monitors.PublicIP 的相关配置
+type PublicIP struct {
+	// Interval 表示尝试获取实例状态的间隔，单位秒
 	Interval int `toml:"interval" validate:"required,gte=1"`
-	Timeout  int `toml:"timeout" validate:"required,gte=1"`
+
+	// Timeout 表示获取实例状态的超时时间，单位秒
+	Timeout int `toml:"timeout" validate:"required,gte=1"`
 }
 
-func (p PublicIp) TimeoutDuration() time.Duration {
+func (p PublicIP) TimeoutDuration() time.Duration {
 	return time.Duration(p.Timeout) * time.Second
 }
 
-func (p PublicIp) IntervalDuration() time.Duration {
+func (p PublicIP) IntervalDuration() time.Duration {
 	return time.Duration(p.Interval) * time.Second
 }

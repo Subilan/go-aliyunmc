@@ -56,7 +56,7 @@ func syncIpWithUser(logger *log.Logger) {
 }
 
 func PublicIP(quit chan bool) {
-	cfg := config.Cfg.Monitor.PublicIp
+	cfg := config.Cfg.Monitor.PublicIP
 	logger := log.New(os.Stdout, "[PublicIP] ", log.LstdFlags)
 	logger.Println("starting...")
 

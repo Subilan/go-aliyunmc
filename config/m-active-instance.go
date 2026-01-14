@@ -2,7 +2,9 @@ package config
 
 import "time"
 
+// ActiveInstance 是对 monitors.ActiveInstance 的配置
 type ActiveInstance struct {
+	// Interval 是实例状态刷新的间隔，单位秒
 	Interval int `toml:"interval" validate:"required,gte=1"`
 }
 

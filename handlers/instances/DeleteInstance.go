@@ -68,7 +68,7 @@ func HandleDeleteInstance() gin.HandlerFunc {
 				return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "instance is not deployed and cannot be archived"}
 			}
 
-			err = commands.StopAndArchiveServer(ctx, *inst.Ip, &userId, "delete instance")
+			err = commands.StopAndArchiveServer(ctx, *inst.Ip, &userId, "During delete & archive instance procedure")
 
 			if err != nil {
 				return nil, err

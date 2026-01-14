@@ -1,8 +1,5 @@
+// Package broker 提供一个简单的 PubSub 结构以方便进程之间的一对多通讯，实现比一般 channel 更广泛的用途。Broker 尤其用于监控器（monitors）进程和其它进程的信息交流中。Broker 的源代码来自 https://stackoverflow.com/a/49877632
 package broker
-
-// Source - https://stackoverflow.com/a/49877632
-// Posted by icza, modified by community. See post 'Timeline' for change history
-// Retrieved 2026-01-11, License - CC BY-SA 4.0
 
 type Broker[T any] struct {
 	stopCh    chan struct{}
