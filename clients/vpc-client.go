@@ -7,8 +7,10 @@ import (
 	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v6/client"
 )
 
+// VpcClient 是系统全局专有网络服务客户端
 var VpcClient *vpc20160428.Client
 
+// ShouldCreateVpcClient 根据凭据创建一个专有网络服务客户端
 func ShouldCreateVpcClient() (*vpc20160428.Client, error) {
 	return vpc20160428.NewClient(&openapi.Config{
 		Credential: MustGetAKCredential(),

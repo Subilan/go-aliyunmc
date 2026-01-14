@@ -6,9 +6,11 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 )
 
+// BssClient 是系统全局费用服务客户端
 var BssClient *bss20171214.Client
 
-func ShouldCreateBssClient() (client *bss20171214.Client, err error) {
+// ShouldCreateBssClient 根据凭据创建一个费用服务客户端
+func ShouldCreateBssClient() (*bss20171214.Client, error) {
 	return bss20171214.NewClient(&openapi.Config{
 		Credential: MustGetAKCredential(),
 		Endpoint:   tea.String("business.aliyuncs.com"),

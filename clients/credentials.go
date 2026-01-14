@@ -5,7 +5,7 @@ import (
 	"github.com/aliyun/credentials-go/credentials"
 )
 
-// MustGetAKCredential 参见 ShouldGetAKCredential，如果获取过程发生问题会 panic
+// MustGetAKCredential 是 ShouldGetAKCredential 的 Must 形式
 func MustGetAKCredential() credentials.Credential {
 	cr, err := ShouldGetAKCredential()
 
@@ -16,7 +16,7 @@ func MustGetAKCredential() credentials.Credential {
 	return cr
 }
 
-// ShouldGetAKCredential 返回一个基于 config.toml 中配置的 AKID 和 AKSecret 形成的 credentials.Credential 以及可能的 error
+// ShouldGetAKCredential 尝试返回一个基于 config.AliyunConfig 形成的 credentials.Credential
 func ShouldGetAKCredential() (credentials.Credential, error) {
 	crConfig := new(credentials.Config).
 		SetType("access_key").
