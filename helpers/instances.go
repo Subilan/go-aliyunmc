@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
@@ -20,7 +20,7 @@ func DeleteInstance(ctx context.Context, instanceId string, force bool) error {
 		ForceStop:  &force,
 	}
 
-	_, err := globals.EcsClient.DeleteInstanceWithContext(ctx, deleteInstanceRequest, &dara.RuntimeOptions{})
+	_, err := clients.EcsClient.DeleteInstanceWithContext(ctx, deleteInstanceRequest, &dara.RuntimeOptions{})
 
 	if err != nil {
 		return err

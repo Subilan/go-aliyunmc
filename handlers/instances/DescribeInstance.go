@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -25,7 +25,7 @@ func HandleDescribeInstance() gin.HandlerFunc {
 			InstanceIds: tea.String(fmt.Sprintf("[\"%s\"]", instanceId)),
 		}
 
-		describeInstancesResponse, err := globals.EcsClient.DescribeInstances(&describeInstancesRequest)
+		describeInstancesResponse, err := clients.EcsClient.DescribeInstances(&describeInstancesRequest)
 
 		if err != nil {
 			return nil, err

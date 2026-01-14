@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/broker"
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
@@ -89,7 +89,7 @@ func PublicIP(quit chan bool) {
 					InstanceId: &activeInstanceId,
 				}
 
-				allocatePublicIpAddressResponse, err := globals.EcsClient.AllocatePublicIpAddress(allocatePublicIpAddressRequest)
+				allocatePublicIpAddressResponse, err := clients.EcsClient.AllocatePublicIpAddress(allocatePublicIpAddressRequest)
 
 				if err != nil {
 					logger.Printf("Cannot allocate public ip: %v", err)

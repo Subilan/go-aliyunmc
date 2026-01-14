@@ -2,16 +2,15 @@ package instances
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -56,22 +55,12 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 
 		var err error
 
-		zone := globals.GetZoneItemByZoneId(zoneId)
-
-		if zone == nil {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "zone not found"}
-		}
-
-		if !globals.IsInstanceTypeAvailableInZone(instanceType, zoneId) {
-			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: fmt.Sprintf("instance type %s not available in zone %s or zone does not exist", instanceType, zoneId)}
-		}
-
 		describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{
 			ZoneId:    tea.String(zoneId),
 			IsDefault: tea.Bool(true),
 		}
 
-		describeVSwitchesResponse, err := globals.VpcClient.DescribeVSwitches(describeVSwitchesRequest)
+		describeVSwitchesResponse, err := clients.VpcClient.DescribeVSwitches(describeVSwitchesRequest)
 
 		if err != nil {
 			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot describe vswitches in zone " + zoneId}
@@ -88,7 +77,7 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 				RegionId: tea.String(config.Cfg.Aliyun.RegionId),
 			}
 
-			createDefaultVSwitchResponse, err := globals.VpcClient.CreateDefaultVSwitch(createDefaultVSwitchRequest)
+			createDefaultVSwitchResponse, err := clients.VpcClient.CreateDefaultVSwitch(createDefaultVSwitchRequest)
 
 			if err != nil {
 				return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: "cannot create default vswitch in zone " + zoneId}
@@ -119,7 +108,7 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 
 		createInstanceRequest := &ecs20140526.CreateInstanceRequest{
 			RegionId:     tea.String(config.Cfg.Aliyun.RegionId),
-			ZoneId:       zone.ZoneId,
+			ZoneId:       &zoneId,
 			InstanceType: tea.String(instanceType),
 			SystemDisk: &ecs20140526.CreateInstanceRequestSystemDisk{
 				Category: tea.String(ecsConfig.SystemDisk.Category),
@@ -145,7 +134,7 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 			ImageId:                  tea.String(ecsConfig.ImageId),
 		}
 
-		createInstanceResponse, err := globals.EcsClient.CreateInstance(createInstanceRequest)
+		createInstanceResponse, err := clients.EcsClient.CreateInstance(createInstanceRequest)
 
 		if err != nil {
 			return nil, err

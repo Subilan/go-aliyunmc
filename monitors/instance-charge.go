@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
-	"github.com/Subilan/go-aliyunmc/globals"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
@@ -57,7 +57,7 @@ func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInst
 				ResourceType:        tea.String("instance"),
 			}
 
-			describeAvailableResourceResponse, err := globals.EcsClient.DescribeAvailableResourceWithContext(ctx, describeAvailableResourceRequest, &dara.RuntimeOptions{})
+			describeAvailableResourceResponse, err := clients.EcsClient.DescribeAvailableResourceWithContext(ctx, describeAvailableResourceRequest, &dara.RuntimeOptions{})
 
 			if err != nil {
 				return nil, err
@@ -95,7 +95,7 @@ func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInst
 							SpotDuration: tea.Int32(1),
 						}
 
-						describePriceResponse, err := globals.EcsClient.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
+						describePriceResponse, err := clients.EcsClient.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
 
 						if err != nil {
 							logger.Println("describe price error: %s", err.Error())

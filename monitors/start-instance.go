@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -39,7 +39,7 @@ func StartActiveInstanceWhenReady() {
 				continue
 			}
 
-			_, err = globals.EcsClient.StartInstance(&client.StartInstanceRequest{InstanceId: tea.String(instanceId)})
+			_, err = clients.EcsClient.StartInstance(&client.StartInstanceRequest{InstanceId: tea.String(instanceId)})
 
 			if err != nil {
 				logger.Println("cannot start instance in StartActiveInstanceWhenReady monitor")

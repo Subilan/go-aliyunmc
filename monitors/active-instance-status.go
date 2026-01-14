@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/broker"
+	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -126,7 +126,7 @@ func ActiveInstance(quit chan bool) {
 					InstanceId: tea.StringSlice([]string{activeInstanceId}),
 				}
 
-				describeInstanceStatusResponse, err := globals.EcsClient.DescribeInstanceStatus(describeInstanceStatusRequest)
+				describeInstanceStatusResponse, err := clients.EcsClient.DescribeInstanceStatus(describeInstanceStatusRequest)
 
 				if err != nil {
 					if instanceStatus != consts.InstanceUnableToGet {

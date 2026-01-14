@@ -8,7 +8,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/events/stream"
-	"github.com/Subilan/go-aliyunmc/globals"
 	"github.com/Subilan/go-aliyunmc/handlers"
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
 	"github.com/Subilan/go-aliyunmc/handlers/bss"
@@ -124,13 +123,13 @@ func main() {
 
 	log.Print("Loading global ECS client...")
 
-	globals.EcsClient, err = clients.ShouldCreateEcsClient()
+	clients.EcsClient, err = clients.ShouldCreateEcsClient()
 
 	if err != nil {
 		log.Fatalln("Error creating ECS client:", err)
 	}
 
-	globals.VpcClient, err = clients.ShouldCreateVpcClient()
+	clients.VpcClient, err = clients.ShouldCreateVpcClient()
 
 	if err != nil {
 		log.Fatalln("Error creating VPC client:", err)
@@ -140,24 +139,6 @@ func main() {
 
 	if err != nil {
 		log.Fatalln("Error creating BSS client:", err)
-	}
-
-	log.Print("Loading global Zone information...")
-
-	globals.ZoneCache, err = globals.RetrieveZones(globals.EcsClient)
-
-	if err != nil {
-		log.Fatalln("Error getting zones:", err)
-	}
-
-	log.Print("OK")
-
-	log.Print("Loading global VSwitch information...")
-
-	globals.VSwitchCache, err = globals.RetrieveVSwitches(globals.VpcClient)
-
-	if err != nil {
-		log.Fatalln("Error getting VSwitchCache:", err)
 	}
 
 	log.Print("Initializing database pool...")
