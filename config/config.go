@@ -56,13 +56,6 @@ func load(filename string) error {
 
 	validate := validator.New()
 
-	err = validate.RegisterValidation("posRange", validPositiveRange)
-
-	if err != nil {
-		log.Println("cannot register posRange to validator:", err)
-		return err
-	}
-
 	err = validate.Struct(Cfg)
 
 	if err != nil {

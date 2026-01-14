@@ -52,7 +52,7 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 
 		inst := monitors.SnapshotPreferredInstanceCharge()
 		zoneId := inst.ZoneId
-		instanceType := inst.TypeAndTradePrice.InstanceType
+		instanceType := inst.InstanceType
 
 		var err error
 

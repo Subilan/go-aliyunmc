@@ -5,21 +5,13 @@ import (
 )
 
 type InstanceCharge struct {
-	Interval          int                   `toml:"interval" validate:"required,gte=1"`
-	RetryInterval     int                   `toml:"retry_interval" validate:"required,gte=1"`
-	Timeout           int                   `toml:"timeout" validate:"required,gte=1"`
-	MemRange          []int                 `toml:"mem_range" validate:"required,posRange"`
-	CpuCoreCountRange []int                 `toml:"cpu_core_count_range" validate:"required,posRange"`
-	Filters           InstanceChargeFilters `toml:"filters" validate:"required"`
-	CacheFile         string                `toml:"cache_file" validate:"required"`
-}
-
-func (i InstanceCharge) MemIntRange() IntRange {
-	return IntRange{i.MemRange[0], i.MemRange[1]}
-}
-
-func (i InstanceCharge) CpuCoreCountIntRange() IntRange {
-	return IntRange{i.CpuCoreCountRange[0], i.CpuCoreCountRange[1]}
+	Interval            int                   `toml:"interval" validate:"required,gte=1"`
+	RetryInterval       int                   `toml:"retry_interval" validate:"required,gte=1"`
+	Timeout             int                   `toml:"timeout" validate:"required,gte=1"`
+	MemChoices          []int                 `toml:"mem_choices" validate:"required,dive,gte=1"`
+	CpuCoreCountChoices []int                 `toml:"cpu_core_count_choices" validate:"required,dive,gte=1"`
+	Filters             InstanceChargeFilters `toml:"filters" validate:"required"`
+	CacheFile           string                `toml:"cache_file" validate:"required"`
 }
 
 func (i InstanceCharge) TimeoutDuration() time.Duration {
@@ -35,5 +27,6 @@ func (i InstanceCharge) RetryIntervalDuration() time.Duration {
 }
 
 type InstanceChargeFilters struct {
-	MaxTradePrice float32 `toml:"max_trade_price" validate:"gte=0"`
+	MaxTradePrice         float32 `toml:"max_trade_price" validate:"gte=0"`
+	InstanceTypeExclusion string  `toml:"instance_type_exclusion"`
 }

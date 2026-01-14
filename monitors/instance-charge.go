@@ -3,307 +3,150 @@ package monitors
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
-	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/globals"
-	"github.com/Subilan/go-aliyunmc/helpers"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-// ZoneInstanceCharge 反映一个可用区内的所有收费信息
-type ZoneInstanceCharge struct {
-	// ZoneId 是可用区的代码，例如cn-shenzhen-c
-	ZoneId string `json:"zoneId"`
-
-	// TypesAndTradePrice 是该可用区内所有符合要求的实例类型及其收费信息
-	TypesAndTradePrice []InstanceTypeAndTradePrice `json:"typesAndTradePrice"`
+type AvailableInstanceItem struct {
+	InstanceType string  `json:"instanceType"`
+	Memory       int     `json:"memory"`
+	CpuCoreCount int     `json:"cpuCoreCount"`
+	ZoneId       string  `json:"zoneId"`
+	TradePrice   float32 `json:"tradePrice"`
 }
 
-// PreferredInstanceCharge 反映一个选出的最优实例类型收费信息及其可用区
-type PreferredInstanceCharge struct {
-	ZoneId            string                    `json:"zoneId"`
-	TypeAndTradePrice InstanceTypeAndTradePrice `json:"typeAndTradePrice"`
+type PreferredInstanceFileContent struct {
+	AvailableInstanceItem
+	Candidates []AvailableInstanceItem `json:"candidates"`
+	UpdatedAt  time.Time               `json:"updatedAt"`
 }
 
-type PreferredInstanceChargeFileContent struct {
-	PreferredInstanceCharge
-	UpdatedAt time.Time `json:"updatedAt"`
-}
-
-// InstanceTypeAndTradePrice 用来表示一个实例的类型、配置信息和成交价格
-type InstanceTypeAndTradePrice struct {
-	// InstanceType 是该实例的类型代码，例如 ecs.g6.xlarge
-	InstanceType string `json:"instanceType"`
-
-	// CpuCoreCount 是该实例的CPU核数
-	CpuCoreCount int32 `json:"cpuCoreCount,omitempty"`
-
-	// MemorySize 是该实例的内存大小，单位GiB
-	MemorySize float32 `json:"memorySize,omitempty"`
-
-	// TradePrice 是该实例在抢占式竞价策略下的每小时成交价格，单位CNY
-	TradePrice float32 `json:"tradePrice,omitempty"`
-}
-
-//type InstanceQueryOptions struct {
-//	ZoneId              string `json:"zoneId" form:"zoneId"`
-//	MinimumMemorySize   int    `json:"minimumMemorySize,omitempty" form:"minimumMemorySize" binding:"required"`
-//	MaximumMemorySize   int    `json:"maximumMemorySize,omitempty" form:"maximumMemorySize" binding:"required"`
-//	MinimumCpuCoreCount int    `json:"minimumCpuCoreCount,omitempty" form:"minimumCpuCoreCount" binding:"required"`
-//	MaximumCpuCoreCount int    `json:"maximumCpuCoreCount,omitempty" form:"maximumCpuCoreCount" binding:"required"`
-//	CpuArchitecture     string `json:"cpuArchitecture,omitempty" form:"cpuArchitecture" binding:"required" validate:"oneof=X86 ARM"`
-//	SortBy              string `json:"sortBy,omitempty" form:"sortBy"`
-//}
-
-func spec(it InstanceTypeAndTradePrice, sortBy consts.InstanceChargeSortBy) float64 {
-	switch sortBy {
-	case consts.ICSortByCpuCoreCount:
-		return float64(it.CpuCoreCount)
-	case consts.ICSortByMemorySize:
-		return float64(it.MemorySize)
-	case consts.ICSortByTradePrice:
-		return float64(it.TradePrice)
-	default:
-		return 0
-	}
-}
-
-func zoneSortKey(
-	zone ZoneInstanceCharge,
-	sortBy consts.InstanceChargeSortBy,
-	sortOrder consts.SortOrder,
-) (float64, bool) {
-
-	if len(zone.TypesAndTradePrice) == 0 {
-		return 0, false
-	}
-
-	key := spec(zone.TypesAndTradePrice[0], sortBy)
-
-	for _, it := range zone.TypesAndTradePrice[1:] {
-		v := spec(it, sortBy)
-
-		if sortOrder == consts.OrderByDesc {
-			if v > key {
-				key = v
-			}
-		} else {
-			if v < key {
-				key = v
-			}
-		}
-	}
-
-	return key, true
-}
-
-func sortZones(
-	zones []ZoneInstanceCharge,
-	sortBy consts.InstanceChargeSortBy,
-	sortOrder consts.SortOrder,
-) {
-	if sortBy == consts.ICSortByNone {
-		return
-	}
-
-	sort.SliceStable(zones, func(i, j int) bool {
-		ai, sortableA := zoneSortKey(zones[i], sortBy, sortOrder)
-		aj, sortableB := zoneSortKey(zones[j], sortBy, sortOrder)
-
-		// 空 zone 永远排后
-		if !sortableA && !sortableB {
-			return false
-		}
-		if !sortableA {
-			return false
-		}
-		if !sortableB {
-			return true
-		}
-
-		if sortOrder == consts.OrderByDesc {
-			return ai > aj
-		}
-		return ai < aj
-	})
-}
-
-func sortZoneSpecs(
-	zones []ZoneInstanceCharge,
-	sortBy consts.InstanceChargeSortBy,
-	sortOrder consts.SortOrder,
-) {
-	for i := range zones {
-		specs := zones[i].TypesAndTradePrice
-		sort.SliceStable(specs, func(i, j int) bool {
-			if sortOrder == consts.OrderByDesc {
-				return spec(specs[i], sortBy) > spec(specs[j], sortBy)
-			}
-			return spec(specs[i], sortBy) < spec(specs[j], sortBy)
-		})
-	}
-}
-
-// GetInstanceChargeConfig 是 GetInstanceCharge 的具体执行参数
-type GetInstanceChargeConfig struct {
-	// ZoneIds 指定要在哪些可用区下查找。如果留空则代表在该地域的所有可用区查找。
-	ZoneIds []string
-
-	// MemRange 指定期望的服务器内存大小范围，单位GiB
-	MemRange config.IntRange
-
-	// CpuCoreCountRange 指定期望的服务器虚拟CPU核数
-	CpuCoreCountRange config.IntRange
-
-	// SortBy 为排序依据
-	SortBy consts.InstanceChargeSortBy
-
-	// SortOrder 为排序顺序
-	SortOrder consts.SortOrder
-
-	// MaxResults 限制查询符合要求实例接口的返回数量，范围为1~100，留空默认为100
-	MaxResults int64
-}
-
-// GetInstanceCharge 尝试获取指定可用区下，符合要求的所有实例类型，并获取该实例类型在抢占式实例中的每小时预估价格。
-func GetInstanceCharge(
-	ctx context.Context,
-	cfg GetInstanceChargeConfig,
-) ([]ZoneInstanceCharge, error) {
+// GetInstanceCharge 尝试获取地域下符合要求的所有实例类型，并获取该实例类型在抢占式实例中的每小时预估价格。
+func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInstanceItem, error) {
 	ecsConfig := config.Cfg.GetAliyunEcsConfig()
 	regionId := config.Cfg.Aliyun.RegionId
 
-	describeInstanceTypesRequest := &ecs20140526.DescribeInstanceTypesRequest{
-		MaximumMemorySize:   tea.Float32(float32(cfg.MemRange.Max)),
-		MinimumMemorySize:   tea.Float32(float32(cfg.MemRange.Min)),
-		MaximumCpuCoreCount: tea.Int32(int32(cfg.CpuCoreCountRange.Max)),
-		MinimumCpuCoreCount: tea.Int32(int32(cfg.CpuCoreCountRange.Min)),
-		CpuArchitecture:     tea.String("X86"),
-		InstanceCategories:  tea.StringSlice([]string{"General-purpose", "Compute-optimized", "Memory-optimized", "High Clock Speed"}),
-	}
+	memChoices := config.Cfg.Monitor.InstanceCharge.MemChoices
+	cpuCoreCountChoices := config.Cfg.Monitor.InstanceCharge.CpuCoreCountChoices
 
-	if cfg.MaxResults != 0 {
-		describeInstanceTypesRequest.MaxResults = &cfg.MaxResults
-	}
+	var result = make([]AvailableInstanceItem, 0, 10)
 
-	// 获取地域下所有满足需要的实例类型
-	describeInstanceTypesResponse, err := globals.EcsClient.DescribeInstanceTypesWithContext(ctx, describeInstanceTypesRequest, &dara.RuntimeOptions{})
-
-	if err != nil {
-		return nil, err
-	}
-
-	var instanceTypeIds = make([]string, 0)
-	var instanceTypeInfoMap = make(map[string]*ecs20140526.DescribeInstanceTypesResponseBodyInstanceTypesInstanceType)
-
-	for _, inst := range describeInstanceTypesResponse.Body.InstanceTypes.InstanceType {
-		instanceTypeIds = append(instanceTypeIds, *inst.InstanceTypeId)
-		instanceTypeInfoMap[*inst.InstanceTypeId] = inst
-	}
-
-	var result = make([]ZoneInstanceCharge, 0)
-
-	var targetZoneItems []globals.ZoneCacheItem
-
-	// 若请求体指定了可用区，则只在该可用区内搜索；否则在当前地域的所有可用区搜索
-	if cfg.ZoneIds != nil {
-		for _, zoneId := range cfg.ZoneIds {
-			zone := globals.GetZoneItemByZoneId(zoneId)
-			if zone == nil {
-				log.Println("warn: got invalid zone id", zoneId)
-				continue
-			}
-			targetZoneItems = append(targetZoneItems, *zone)
-		}
-	} else {
-		targetZoneItems = globals.ZoneCache
-	}
-
-	// 对当前地域的每一个可用区
-	for _, zoneItem := range targetZoneItems {
-		var typesAndTradePrice = make([]InstanceTypeAndTradePrice, 0)
-
-		// 找出当前可用区内的实例类型与按参数搜索结果中的实例类型的交集
-		zoneAvailableFilteredInstanceTypes := helpers.IntersectHashGeneric(tea.StringSliceValue(zoneItem.AvailableInstanceTypes), instanceTypeIds)
-
-		// 对当前可用区满足要求的每一个实例类型
-		for _, instanceType := range zoneAvailableFilteredInstanceTypes {
-			describePriceRequest := &ecs20140526.DescribePriceRequest{
-				RegionId:                tea.String(regionId),
-				ResourceType:            tea.String("instance"),
-				InstanceType:            tea.String(instanceType),
-				InternetChargeType:      tea.String("PayByTraffic"),
-				InternetMaxBandwidthOut: tea.Int32(int32(ecsConfig.InternetMaxBandwidthOut)),
-				SystemDisk: &ecs20140526.DescribePriceRequestSystemDisk{
-					Category: tea.String(ecsConfig.SystemDisk.Category),
-					Size:     tea.Int32(int32(ecsConfig.SystemDisk.Size)),
-				},
-				DataDisk: []*ecs20140526.DescribePriceRequestDataDisk{
-					{
-						Category: tea.String(ecsConfig.DataDisk.Category),
-						Size:     tea.Int64(int64(ecsConfig.DataDisk.Size)),
-					},
-				},
-				ZoneId:       zoneItem.ZoneId,
-				SpotStrategy: tea.String("SpotAsPriceGo"),
-				SpotDuration: tea.Int32(1),
+	for _, mem := range memChoices {
+		for _, cpu := range cpuCoreCountChoices {
+			describeAvailableResourceRequest := &ecs20140526.DescribeAvailableResourceRequest{
+				RegionId:            &regionId,
+				InstanceChargeType:  tea.String("PostPaid"),
+				SpotStrategy:        tea.String("SpotAsPriceGo"),
+				SpotDuration:        tea.Int32(1),
+				DestinationResource: tea.String("InstanceType"),
+				SystemDiskCategory:  &ecsConfig.SystemDisk.Category,
+				DataDiskCategory:    &ecsConfig.DataDisk.Category,
+				Cores:               tea.Int32(int32(cpu)),
+				Memory:              tea.Float32(float32(mem)),
+				ResourceType:        tea.String("instance"),
 			}
 
-			// 获取价格
-			// Note: 由于查价接口传入的信息相比查询实例类型接口传入的信息多出了对系统盘和数据盘的参数
-			// 此处可能因为系统盘、数据盘的配置在指定实例上不受支持而报错
-			describePriceResponse, err := globals.EcsClient.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
-
-			currentTypeAndTradePrice := InstanceTypeAndTradePrice{
-				InstanceType: instanceType,
-			}
+			describeAvailableResourceResponse, err := globals.EcsClient.DescribeAvailableResourceWithContext(ctx, describeAvailableResourceRequest, &dara.RuntimeOptions{})
 
 			if err != nil {
-				if errors.Is(err, context.DeadlineExceeded) {
-					return nil, err
+				return nil, err
+			}
+
+			for _, availZone := range describeAvailableResourceResponse.Body.AvailableZones.AvailableZone {
+				if len(availZone.AvailableResources.AvailableResource) > 0 {
+					resources := availZone.AvailableResources.AvailableResource[0].SupportedResources.SupportedResource
+
+					for _, resource := range resources {
+						if *resource.StatusCategory != "WithStock" || *resource.Status != "Available" {
+							continue
+						}
+
+						var tradePrice float32 = -1
+
+						describePriceRequest := &ecs20140526.DescribePriceRequest{
+							RegionId:                &regionId,
+							ZoneId:                  availZone.ZoneId,
+							ResourceType:            tea.String("instance"),
+							InstanceType:            resource.Value,
+							InternetChargeType:      tea.String("PayByTraffic"),
+							InternetMaxBandwidthOut: tea.Int32(int32(ecsConfig.InternetMaxBandwidthOut)),
+							SystemDisk: &ecs20140526.DescribePriceRequestSystemDisk{
+								Category: tea.String(ecsConfig.SystemDisk.Category),
+								Size:     tea.Int32(int32(ecsConfig.SystemDisk.Size)),
+							},
+							DataDisk: []*ecs20140526.DescribePriceRequestDataDisk{
+								{
+									Category: tea.String(ecsConfig.DataDisk.Category),
+									Size:     tea.Int64(int64(ecsConfig.DataDisk.Size)),
+								},
+							},
+							SpotStrategy: tea.String("SpotAsPriceGo"),
+							SpotDuration: tea.Int32(1),
+						}
+
+						describePriceResponse, err := globals.EcsClient.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
+
+						if err != nil {
+							logger.Println("describe price error: %s", err.Error())
+						} else {
+							tradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice
+						}
+
+						filters := config.Cfg.Monitor.InstanceCharge.Filters
+
+						if tradePrice > filters.MaxTradePrice {
+							continue
+						}
+
+						if filters.InstanceTypeExclusion != "" {
+							typeExRegex, err := regexp.Compile(filters.InstanceTypeExclusion)
+							if err == nil {
+								if typeExRegex.MatchString(*resource.Value) {
+									logger.Printf("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
+									continue
+								}
+							} else {
+								logger.Println("warning: ignored invalid instance type exclusion regular expression: %s", err.Error())
+							}
+						}
+
+						result = append(result, AvailableInstanceItem{
+							ZoneId:       *availZone.ZoneId,
+							InstanceType: *resource.Value,
+							TradePrice:   tradePrice,
+							Memory:       mem,
+							CpuCoreCount: cpu,
+						})
+					}
 				}
-
-				//fmt.Printf("warn: cannot retrieve price for ecs type [%s] under region [%s] zone [%s]\n", instanceType, regionId, *zoneItem.ZoneId)
-				continue
-			} else {
-				currentTypeAndTradePrice.TradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice
 			}
-
-			if currentTypeAndTradePrice.TradePrice > 0 {
-				info := instanceTypeInfoMap[instanceType]
-
-				currentTypeAndTradePrice.CpuCoreCount = *info.CpuCoreCount
-				currentTypeAndTradePrice.MemorySize = *info.MemorySize
-			}
-
-			typesAndTradePrice = append(typesAndTradePrice, currentTypeAndTradePrice)
 		}
-
-		result = append(result, ZoneInstanceCharge{
-			ZoneId:             *zoneItem.ZoneId,
-			TypesAndTradePrice: typesAndTradePrice,
-		})
 	}
 
-	sortZoneSpecs(result, cfg.SortBy, cfg.SortOrder)
-	sortZones(result, cfg.SortBy, cfg.SortOrder)
+	// 按照价格排序
+	sort.SliceStable(result, func(i, j int) bool {
+		return result[i].TradePrice < result[j].TradePrice
+	})
 
 	return result, nil
 }
 
 var preferredInstanceChargePresent atomic.Bool
-var preferredInstanceCharge PreferredInstanceCharge
+var preferredInstanceCharge AvailableInstanceItem
 var preferredInstanceChargeMu sync.Mutex
+var preferredInstanceChargeCandidates []AvailableInstanceItem
+var preferredInstanceChargeCandidatesMu sync.Mutex
 
 // SnapshotPreferredInstanceChargePresent 返回系统是否记录了有效的最佳实例类型及可用区
 func SnapshotPreferredInstanceChargePresent() bool {
@@ -311,7 +154,7 @@ func SnapshotPreferredInstanceChargePresent() bool {
 }
 
 // SnapshotPreferredInstanceCharge 返回当前获取的最佳实例类型及可用区。在调用此函数之前，除非确信，应当调用 SnapshotPreferredInstanceChargePresent 检查该信息是否存在
-func SnapshotPreferredInstanceCharge() PreferredInstanceCharge {
+func SnapshotPreferredInstanceCharge() AvailableInstanceItem {
 	preferredInstanceChargeMu.Lock()
 	defer preferredInstanceChargeMu.Unlock()
 	return preferredInstanceCharge
@@ -327,16 +170,21 @@ func InstanceCharge(quit chan bool) {
 	if err != nil {
 		logger.Println("read cache file error:", err)
 	} else {
-		var cacheFileData PreferredInstanceChargeFileContent
+		var cacheFileData PreferredInstanceFileContent
 		err = json.Unmarshal(cacheFileContent, &cacheFileData)
 		if err != nil {
 			logger.Println("unmarshal cache file error:", err)
 		} else {
+
+			// TODO: add validation for in-file struct
 			preferredInstanceChargePresent.Store(true)
 			preferredInstanceChargeMu.Lock()
-			preferredInstanceCharge = cacheFileData.PreferredInstanceCharge
+			preferredInstanceCharge = cacheFileData.AvailableInstanceItem
 			preferredInstanceChargeMu.Unlock()
-			logger.Println("using cache", preferredInstanceCharge)
+			preferredInstanceChargeCandidatesMu.Lock()
+			preferredInstanceChargeCandidates = cacheFileData.Candidates
+			preferredInstanceChargeCandidatesMu.Unlock()
+			logger.Printf("using cache from file, preferred = %v, candidate length = %d", preferredInstanceCharge, len(preferredInstanceChargeCandidates))
 		}
 	}
 
@@ -347,46 +195,17 @@ func InstanceCharge(quit chan bool) {
 			ctx, cancel := context.WithTimeout(context.Background(), cfg.TimeoutDuration())
 			defer cancel()
 
-			result, err := GetInstanceCharge(
-				ctx,
-				GetInstanceChargeConfig{
-					MemRange:          cfg.MemIntRange(),
-					CpuCoreCountRange: cfg.CpuCoreCountIntRange(),
-					SortBy:            consts.ICSortByTradePrice,
-					SortOrder:         consts.OrderByAsc,
-				},
-			)
+			result, err := GetInstanceCharge(ctx, logger)
 
 			if err != nil {
 				logger.Println("cannot get instance charge", err)
 				return
 			}
 
-			if len(result) == 0 || len(result[0].TypesAndTradePrice) == 0 {
-				logger.Println("got zero length array")
-				return
-			}
-
-			logger.Println("1st zone id=", result[0].ZoneId)
-			logger.Println("got instance charge of length", len(result[0].TypesAndTradePrice))
-
-			preferredZoneId := result[0].ZoneId
-
-			filtered := make([]InstanceTypeAndTradePrice, 0, len(result[0].TypesAndTradePrice))
-
-			for _, instance := range result[0].TypesAndTradePrice {
-				if instance.TradePrice > cfg.Filters.MaxTradePrice && cfg.Filters.MaxTradePrice > 0 {
-					continue
-				}
-				filtered = append(filtered, instance)
-			}
-
-			logger.Println("filtered length", len(filtered))
-
-			if len(filtered) == 0 {
+			if len(result) == 0 {
 				logger.Println("warn: no preferred instance found with filter. set to empty.")
 				preferredInstanceChargeMu.Lock()
-				preferredInstanceCharge = PreferredInstanceCharge{}
+				preferredInstanceCharge = AvailableInstanceItem{}
 				preferredInstanceChargeMu.Unlock()
 
 				if preferredInstanceChargePresent.Load() == true {
@@ -398,27 +217,28 @@ func InstanceCharge(quit chan bool) {
 				return
 			}
 
-			if filtered[0].InstanceType != preferredInstanceCharge.TypeAndTradePrice.InstanceType {
+			target := result[0]
+			candidates := make([]AvailableInstanceItem, 0, 3)
+
+			for i := 1; i < min(len(result)-1, 3); i++ {
+				candidates = append(candidates, result[i])
+			}
+
+			if target.InstanceType != preferredInstanceCharge.InstanceType {
 				preferredInstanceChargeMu.Lock()
-				preferredInstanceCharge = PreferredInstanceCharge{
-					ZoneId:            preferredZoneId,
-					TypeAndTradePrice: filtered[0],
-				}
+				preferredInstanceCharge = target
 				preferredInstanceChargeMu.Unlock()
+				preferredInstanceChargeCandidatesMu.Lock()
+				preferredInstanceChargeCandidates = candidates
+				preferredInstanceChargeCandidatesMu.Unlock()
 
 				if preferredInstanceChargePresent.Load() == false {
 					preferredInstanceChargePresent.Store(true)
 				}
 
-				logger.Printf("updated preferred instance, zone id: %s, new type: %s, new trade price: %.2f, mem: %.2fG, cpu: %d",
-					preferredZoneId,
-					preferredInstanceCharge.TypeAndTradePrice.InstanceType,
-					preferredInstanceCharge.TypeAndTradePrice.TradePrice,
-					preferredInstanceCharge.TypeAndTradePrice.MemorySize,
-					preferredInstanceCharge.TypeAndTradePrice.CpuCoreCount,
-				)
+				logger.Printf("updated preferred instance, %v", target)
 
-				marshalled, _ := json.Marshal(PreferredInstanceChargeFileContent{PreferredInstanceCharge: preferredInstanceCharge, UpdatedAt: time.Now()})
+				marshalled, _ := json.Marshal(PreferredInstanceFileContent{AvailableInstanceItem: target, Candidates: candidates, UpdatedAt: time.Now()})
 				err = os.WriteFile(cfg.CacheFile, marshalled, 0600)
 
 				if err != nil {
