@@ -22,4 +22,7 @@ type MonitorConfig struct {
 
 	// StartInstance 是对 monitors.StartActiveInstanceWhenReady 的相关配置
 	StartInstance StartInstance `toml:"start_instance" validate:"required"`
+
+	// BssSync 是对 monitors.BssSync 的相关配置
+	BssSync BssSync `toml:"bss_sync" validate:"required"`
 }

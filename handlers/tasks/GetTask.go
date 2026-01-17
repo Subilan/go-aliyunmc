@@ -70,6 +70,7 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 		if err != nil {
 			return nil, err
 		}
+		defer rows.Close()
 
 		for rows.Next() {
 			var event events.Event

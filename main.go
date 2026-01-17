@@ -101,6 +101,7 @@ func runMonitors() {
 	var quitBackup = make(chan bool)
 	var quitInstanceCharge = make(chan bool)
 	var quitEmptyServer = make(chan bool)
+	var quitBssSync = make(chan bool)
 
 	var ip string
 
@@ -114,6 +115,7 @@ func runMonitors() {
 	go monitors.Backup(quitBackup)
 	go monitors.InstanceCharge(quitInstanceCharge)
 	go monitors.EmptyServer(quitEmptyServer)
+	go monitors.BssSync(quitBssSync)
 }
 
 func main() {
