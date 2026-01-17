@@ -1,0 +1,130 @@
+[base]
+# HTTP服务器的监听端口
+expose = 33761
+# 用于为用户登录JWT令牌签名的私有字符串
+jwt_secret = ''
+
+[aliyun]
+# 实例运行的地域。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
+region_id = ''
+# 用于访问阿里云服务的AKID，可在阿里云RAM控制台中生成
+access_key_id = ''
+# 用于访问阿里云服务的AKSecret
+access_key_secret = ''
+
+[aliyun.ecs]
+# 实例的峰值带宽，单位为Mbps，取值范围1～100，必须为整数
+internet_max_bandwidth_out = 5
+# 实例使用的系统镜像名，决定操作系统类型
+image_id = ''
+# 实例操作系统的主机名
+hostname = 'examplehost'
+# 实例操作系统根用户密码
+root_password = ''
+# 实例操作系统主用户的密码
+prod_password = ''
+# 实例的中止动作，取值Stop或Terminate
+spot_interruption_behavior = 'Stop'
+# 实例安全组ID
+security_group_id = ''
+
+[aliyun.ecs.system_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB
+size = 20
+
+[aliyun.ecs.data_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB
+size = 40
+
+[database]
+# 数据库主机
+host = 'localhost'
+# 数据库端口
+port = 3306
+# 数据库用户名，注意不要使用root
+username = ''
+# 数据库用户密码
+password = ''
+# 存储本系统数据的模式名
+database = ''
+
+[monitor]
+[monitor.active_instance]
+# 刷新间隔，单位秒
+interval = 5
+
+[monitor.public_ip]
+# 刷新间隔，单位秒
+interval = 5
+# 超时时间，单位秒
+timeout = 20
+
+[monitor.instance_charge]
+# 刷新间隔，单位秒
+interval = 600
+# 重试间隔，单位秒
+retry_interval = 300
+# 刷新超时时间，单位秒
+timeout = 240
+# 实例可接受的内存大小列表，单位GiB，请使用常见内存大小，如4、8、16
+mem_choices = [16]
+# 实例可接受的vCPU数量。请使用与实例内存比满足1:2、1:4、1:8的数值
+cpu_core_count_choices = [4]
+# 刷新数据的缓存文件名
+cache_file = 'latest_preferred_instance_charge.json'
+
+[monitor.instance_charge.filters]
+# 实例最大可接受的交易价格，单位CNY。超过此价格的实例会被过滤
+max_trade_price = 0.6
+# 正则表达式，表示对实例规格名（实例类型）的筛选，符合该正则表达式的实例会被过滤
+instance_type_exclusion = '^ecs\.(e|s6|xn4|n4|mn4|e4|t|d).*$'
+
+[monitor.backup]
+# 刷新间隔，单位秒
+interval = 600
+# 重试间隔，单位秒。建议小于刷新间隔，并采用较小数值，如60
+retry_interval = 60
+# 备份超时时间，单位秒。
+timeout = 120
+
+[monitor.empty_server]
+# 服务器空转超时时间，单位秒。超过此时间，服务器会被关闭、归档并删除
+empty_timeout = 3600
+
+[monitor.server_status]
+# 刷新间隔，单位秒
+interval = 5
+# 超时时间，单位秒
+timeout = 10
+
+[monitor.start_instance]
+# 刷新间隔，单位秒
+interval = 5
+# 超时时间，单位秒
+timeout = 120
+
+[deploy]
+# 部署阶段需要安装的包名称，注意拼写正确，不包含Java
+packages = ['screen', 'unzip', 'zip', 'screenfetch', 'vim', 'htop']
+# 服务器管理者个人公钥，用于快速登录
+ssh_public_key = ''
+# 需要预装的Java版本，最低为8
+java_version = 21
+# 用于存储归档和备份的OSS存储桶地址，必须以oss://开头
+oss_root = 'oss://mybucket'
+# 用于存储备份的存储桶内地址，相对于OSSRoot，例如/backups
+backup_path = '/backups'
+# 用于存储归档的备份桶内地址，相对于OSSRoot，例如/archive
+archive_path = '/archive'
+
+[server]
+# MC服务器地址，默认25565
+port = 25565
+# MC服务器的RCON服务地址，默认25575，请务必保证server.properties中RCON已开启
+rcon_port = 25575
+# MC服务器的RCON密码，可在server.properties中设置和查看
+rcon_password = ''
