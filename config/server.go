@@ -7,4 +7,7 @@ type ServerConfig struct {
 
 	// RconPort 是服务器的 RCON 服务地址，用于发送指令。默认一般为 25575
 	RconPort uint16 `toml:"rcon_port" validate:"required"`
+
+	// RconPassword 是服务器的 RCON 密码，用于发送指令。
+	RconPassword string `toml:"rcon_password" validate:"required"`
 }

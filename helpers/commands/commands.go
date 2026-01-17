@@ -165,12 +165,12 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 
 	if c.ExecuteLocation == consts.ExecuteLocationServer {
 		rconClient, rconClientErr := rcon.Dial(host, config.Cfg.GetGameRconPort())
-
 		if rconClientErr != nil {
 			return "", rconClientErr
 		}
+		defer rconClient.Close()
 
-		if err := rconClient.Login("subilan1999"); err != nil {
+		if err := rconClient.Login(config.Cfg.Server.RconPassword); err != nil {
 			return "", err
 		}
 
