@@ -80,7 +80,7 @@ func HandleGetOverview() gin.HandlerFunc {
 			return nil, err
 		}
 
-		err = db.Pool.QueryRow("SELECT amount, time FROM transactions WHERE flow='Income' AND `type`='Payment'").Scan(&result.LatestPayment, &result.LatestPaymentTime)
+		err = db.Pool.QueryRow("SELECT amount, `time` FROM transactions WHERE flow='Income' AND `type`='Payment' ORDER BY `time` DESC LIMIT 1").Scan(&result.LatestPayment, &result.LatestPaymentTime)
 
 		if err != nil {
 			return nil, err
