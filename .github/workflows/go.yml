@@ -22,7 +22,7 @@ jobs:
         go-version: '1.24'
 
     - name: Build
-      run: go build -o ./go-aliyunmc ./...
+      run: go build -o ./go-aliyunmc .
 
     - name: Test
       run: go test -v ./...
