@@ -98,7 +98,7 @@ func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInst
 						describePriceResponse, err := clients.EcsClient.DescribePriceWithContext(ctx, describePriceRequest, &dara.RuntimeOptions{})
 
 						if err != nil {
-							logger.Println("describe price error: %s", err.Error())
+							logger.Printf("describe price error: %s", err.Error())
 						} else {
 							tradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice
 						}
@@ -117,7 +117,7 @@ func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInst
 									continue
 								}
 							} else {
-								logger.Println("warning: ignored invalid instance type exclusion regular expression: %s", err.Error())
+								logger.Printf("warning: ignored invalid instance type exclusion regular expression: %s", err.Error())
 							}
 						}
 
