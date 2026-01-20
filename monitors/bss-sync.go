@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log"
-	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	bss20171214 "github.com/alibabacloud-go/bssopenapi-20171214/v6/client"
 	"github.com/alibabacloud-go/tea/dara"
@@ -55,7 +54,7 @@ func fetchAllTransactions(ctx context.Context, client *bss20171214.Client, creat
 }
 
 func BssSync(quit chan bool) {
-	logger := log.New(os.Stdout, "[BssSync] ", log.LstdFlags)
+	logger := filelog.NewLogger("bss-sync", "BssSync")
 	logger.Println("starting...")
 	cfg := config.Cfg.Monitor.BssSync
 	ticker := time.NewTicker(cfg.IntervalDuration())

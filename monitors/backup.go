@@ -2,12 +2,11 @@ package monitors
 
 import (
 	"context"
-	"log"
-	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 )
@@ -18,7 +17,7 @@ func Backup(quit chan bool) {
 	var retryInterval = cfg.RetryIntervalDuration()
 	var backupTimeout = cfg.TimeoutDuration()
 
-	logger := log.New(os.Stdout, "[Backup] ", log.LstdFlags)
+	logger := filelog.NewLogger("backup", "Backup")
 
 	cmd := commands.MustGetCommand(consts.CmdTypeBackupWorlds)
 

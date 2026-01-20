@@ -21,6 +21,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4
 	go.jetify.com/sse v0.1.0
 	golang.org/x/crypto v0.45.0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

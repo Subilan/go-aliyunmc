@@ -7,3 +7,4 @@ latest_preferred_instance_charge.json
 oss_cache*
 transactions.json
 go-aliyunmc
+logs/

@@ -3,10 +3,10 @@ package monitors
 import (
 	"context"
 	"log"
-	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -48,7 +48,7 @@ func safeDeleteServer(logger *log.Logger) {
 
 func EmptyServer(quit chan bool) {
 	cfg := config.Cfg.Monitor.EmptyServer
-	logger := log.New(os.Stdout, "[EmptyServer] ", log.LstdFlags)
+	logger := filelog.NewLogger("empty-server", "EmptyServer")
 	logger.Println("starting...")
 
 	var emptyTimeout = cfg.EmptyTimeoutDuration()

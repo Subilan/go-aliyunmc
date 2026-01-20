@@ -13,6 +13,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
@@ -163,7 +164,7 @@ func SnapshotPreferredInstanceCharge() AvailableInstanceItem {
 func InstanceCharge(quit chan bool) {
 	cfg := config.Cfg.Monitor.InstanceCharge
 	ticker := time.NewTicker(cfg.IntervalDuration())
-	logger := log.New(os.Stdout, "[InstanceCharge] ", log.LstdFlags)
+	logger := filelog.NewLogger("instance-charge", "InstanceCharge")
 	logger.Println("starting...")
 
 	cacheFileContent, err := os.ReadFile(cfg.CacheFile)

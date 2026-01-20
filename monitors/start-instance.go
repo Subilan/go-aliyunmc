@@ -1,13 +1,12 @@
 package monitors
 
 import (
-	"log"
-	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -16,7 +15,7 @@ import (
 func StartActiveInstanceWhenReady() {
 	var err error
 
-	logger := log.New(os.Stdout, "[StartActiveInstanceWhenReady] ", log.LstdFlags)
+	logger := filelog.NewLogger("start-active-instance-when-ready", "StartActiveInstanceWhenReady")
 	cfg := config.Cfg.Monitor.StartInstance
 
 	var instanceId string

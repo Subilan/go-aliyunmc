@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,6 +15,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -86,7 +86,7 @@ func setInstanceStatus(status consts.InstanceStatus) {
 }
 
 func ActiveInstance(quit chan bool) {
-	logger := log.New(os.Stdout, "[ActiveInstance] ", log.LstdFlags)
+	logger := filelog.NewLogger("active-instance", "ActiveInstance")
 	logger.Println("starting...")
 
 	cfg := config.Cfg.Monitor.ActiveInstance

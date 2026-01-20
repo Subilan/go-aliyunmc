@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 )
@@ -57,7 +57,7 @@ func syncIpWithUser(logger *log.Logger) {
 
 func PublicIP(quit chan bool) {
 	cfg := config.Cfg.Monitor.PublicIP
-	logger := log.New(os.Stdout, "[PublicIP] ", log.LstdFlags)
+	logger := filelog.NewLogger("public-ip", "PublicIP")
 	logger.Println("starting...")
 
 	ticker := time.NewTicker(cfg.IntervalDuration())

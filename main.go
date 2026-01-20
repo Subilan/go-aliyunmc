@@ -8,6 +8,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/events/stream"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/handlers"
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
 	"github.com/Subilan/go-aliyunmc/handlers/bss"
@@ -23,8 +24,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
-
-// TODO: 状态页面，emptyServer测试
 
 func bindRoutes(r *gin.Engine) {
 	i := r.Group("/instance")
@@ -90,6 +89,7 @@ func bindRoutes(r *gin.Engine) {
 	bj.GET("/overview", bss.HandleGetOverview())
 
 	r.GET("/ping", simple.HandleGenerate200())
+	r.GET("/", simple.HandleVersion())
 	r.GET("/stream", mid.JWTAuth(), handlers.HandleBeginStream())
 	r.GET("/stream/simple-public", handlers.HandleBeginSimplePublicStream())
 }
@@ -118,8 +118,13 @@ func runMonitors() {
 	go monitors.BssSync(quitBssSync)
 }
 
+// mainLogWriter 是指向 main.log 日志文件的日志 writer
+var mainLogWriter = filelog.NewLogWriter("main")
+
 func main() {
 	var err error
+
+	log.SetOutput(mainLogWriter)
 
 	config.Load("config.toml")
 
@@ -166,6 +171,12 @@ func main() {
 	log.Print("Loading gin...")
 
 	engine := gin.New()
+
+	gin.DefaultWriter = mainLogWriter
+
+	engine.Use(gin.Logger())
+
+	engine.Use(gin.Recovery())
 
 	engine.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},

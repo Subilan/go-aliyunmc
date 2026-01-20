@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
+	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/mcstatus-io/mcutil/v4/query"
 	"github.com/mcstatus-io/mcutil/v4/response"
@@ -128,7 +128,7 @@ func ServerStatus(quit chan bool) {
 	cfg := config.Cfg.Monitor.ServerStatus
 	ticker := time.NewTicker(cfg.IntervalDuration())
 
-	logger := log.New(os.Stdout, "[ServerStatus] ", log.LstdFlags)
+	logger := filelog.NewLogger("server-status", "ServerStatus")
 	logger.Println("starting...")
 
 	playerCount.Store(-1) // default value, server not online
