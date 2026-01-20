@@ -20,6 +20,11 @@ go-aliyunmc 是 [Seatide](https://seatidemc.github.io) 服务器的运行基石�
 
 如果你对 go-aliyunmc 的代码感兴趣，欢迎来协助开发或捉虫。代码中涉及的并发代码可能有许多我未发现的严重问题，代码质量、注释详细程度有待提高，文档也有待完善。
 
+## 前端
+
+当前项目中的代码承担 go-aliyunmc 的主要功能，作为一个完整系统的后端存在。对于前端，设想中有多个客户端的开发计划，但目前仅开发了一个 Web 前端。未来可能会考虑推出命令行前端。
+- [go-aliyunmc-client-web](https://github.com/Subilan/go-aliyunmc-client-web)
+
 ## 协议 & 鸣谢
 
 MIT
