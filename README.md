@@ -24,5 +24,5 @@ go-aliyunmc 是 [Seatide](https://seatidemc.github.io) 服务器的运行基石�
 
 MIT
 
-- 运行模式的灵感始于 [SomeBottle](https://github.com/SomeBottle) 的个人服务器。
-- 鸣谢在 2021-2024 年间支持过 Seatide 的 12 名玩家。
+- 特别感谢：运行模式的灵感始于 [SomeBottle](https://github.com/SomeBottle) 的个人服务器。
+- 感谢在 2021-2024 年间支持过 Seatide 的 12 名玩家。
