@@ -175,15 +175,9 @@ func main() {
 	gin.DefaultWriter = mainLogWriter
 
 	engine.Use(gin.Logger())
-
 	engine.Use(gin.Recovery())
 
-	engine.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
-		AllowCredentials: true,
-	}))
+	engine.Use(cors.New(config.Cfg.Base.GetGinCorsConfig()))
 
 	instances.StartDeployInstanceTaskStatusBroker()
 

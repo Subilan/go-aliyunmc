@@ -4,6 +4,16 @@ expose = 33761
 # 用于为用户登录JWT令牌签名的私有字符串
 jwt_secret = ''
 
+[base.cors]
+# 允许的源地址
+allow_origins = ['*']
+# 允许的请求方法
+allow_methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
+# 允许的请求头
+allow_headers = ['Content-Length', 'Content-Type', 'Authorization', 'Last-Event-Id']
+# 是否允许携带凭证信息
+allow_credentials = true
+
 [aliyun]
 # 实例运行的地域。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
 region_id = ''
@@ -106,6 +116,11 @@ timeout = 10
 interval = 5
 # 超时时间，单位秒
 timeout = 120
+
+[monitor.bss_sync]
+interval = 0
+timeout = 0
+initial_time = 0001-01-01T00:00:00Z
 
 [deploy]
 # 部署阶段需要安装的包名称，注意拼写正确，不包含Java

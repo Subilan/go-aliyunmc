@@ -1,3 +1,4 @@
+// Package filelog 提供与日志打印和日志文件输出相关的功能。
 package filelog
 
 import (
