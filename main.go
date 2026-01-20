@@ -183,7 +183,7 @@ func main() {
 
 	bindRoutes(engine)
 
-	err = engine.Run(fmt.Sprintf(":%d", config.Cfg.Base.Expose))
+	err = engine.Run(fmt.Sprintf("0.0.0.0:%d", config.Cfg.Base.Expose))
 
 	if err != nil {
 		log.Fatalln("cannot start server:", err)
