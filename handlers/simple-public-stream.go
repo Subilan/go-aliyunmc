@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
@@ -14,7 +15,7 @@ func HandleBeginSimplePublicStream() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx := c.Request.Context()
 
-		conn, err := sse.Upgrade(ctx, c.Writer)
+		conn, err := sse.Upgrade(ctx, c.Writer, sse.WithHeartbeatInterval(5*time.Second), sse.WithWriteTimeout(10*time.Second))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, helpers.Details(err.Error()))
 			return
