@@ -12,6 +12,7 @@ require (
 	github.com/alibabacloud-go/vpc-20160428/v6 v6.14.0
 	github.com/aliyun/credentials-go v1.4.5
 	github.com/gin-contrib/cors v1.7.6
+	github.com/gin-gonic/autotls v1.2.2
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-sql-driver/mysql v1.9.3
@@ -52,6 +53,7 @@ require (
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect

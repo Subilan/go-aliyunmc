@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os/signal"
+	"syscall"
+
+	"github.com/gin-gonic/autotls"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
@@ -123,6 +128,8 @@ var mainLogWriter = filelog.NewLogWriter("main")
 
 func main() {
 	var err error
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	log.SetOutput(mainLogWriter)
 
@@ -183,9 +190,11 @@ func main() {
 
 	bindRoutes(engine)
 
-	err = engine.Run(fmt.Sprintf("0.0.0.0:%d", config.Cfg.Base.Expose))
-
-	if err != nil {
-		log.Fatalln("cannot start server:", err)
+	if config.Cfg.Base.Autotls.Enabled {
+		log.Printf("Gin server started with autotls enabled. Domains = %v", config.Cfg.Base.Autotls.Domains)
+		log.Fatalln(autotls.RunWithContext(ctx, engine, config.Cfg.Base.Autotls.Domains...))
 	}
+
+	log.Println("Gin server started")
+	log.Fatalln(engine.Run(fmt.Sprintf(":%d", config.Cfg.Base.Expose)))
 }

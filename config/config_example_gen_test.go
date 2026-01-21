@@ -18,6 +18,9 @@ func TestGenConfig(t *testing.T) {
 				AllowHeaders:     []string{"Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
 				AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 			},
+			Autotls: AutotlsConfig{
+				Enabled: false,
+			},
 		},
 		Aliyun: AliyunConfig{
 			RegionId:        "",

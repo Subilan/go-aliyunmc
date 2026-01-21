@@ -14,6 +14,13 @@ allow_headers = ['Content-Length', 'Content-Type', 'Authorization', 'Last-Event-
 # 是否允许携带凭证信息
 allow_credentials = true
 
+# 是否使用gin-gonic/autotls启动服务器
+[base.autotls]
+# 是否启用
+enabled = false
+# 签发域名
+domain = []
+
 [aliyun]
 # 实例运行的地域。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
 region_id = ''
