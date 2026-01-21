@@ -227,7 +227,7 @@ func InstanceCharge(quit chan bool) {
 				candidates = append(candidates, result[i])
 			}
 
-			if target.InstanceType != preferredInstanceCharge.InstanceType {
+			if target.InstanceType != preferredInstanceCharge.InstanceType || target.ZoneId != preferredInstanceCharge.ZoneId {
 				preferredInstanceChargeMu.Lock()
 				preferredInstanceCharge = target
 				preferredInstanceChargeMu.Unlock()
