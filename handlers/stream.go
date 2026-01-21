@@ -3,6 +3,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Subilan/go-aliyunmc/events"
 	"github.com/Subilan/go-aliyunmc/events/stream"
@@ -70,6 +71,26 @@ func HandleBeginStream() gin.HandlerFunc {
 				}
 			}
 		}
+
+		//log.Println("debug: stream begin")
+
+		go func() {
+			ticker := time.NewTicker(3 * time.Second) // must be below write timeout
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ticker.C:
+					//log.Println("debug: sending pong")
+					err = conn.SendComment(ctx, "pong")
+					if err != nil {
+						log.Println("cannot send pong", err.Error())
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
 
 		for {
 			select {

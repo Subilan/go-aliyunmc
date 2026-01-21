@@ -8,3 +8,4 @@ oss_cache*
 transactions.json
 go-aliyunmc
 logs/
+upload.sh

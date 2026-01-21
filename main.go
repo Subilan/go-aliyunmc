@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os/signal"
 	"syscall"
-
-	"github.com/gin-gonic/autotls"
 
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
@@ -27,6 +27,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 )
 
@@ -131,6 +132,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	log.SetPrefix("[main] ")
 	log.SetOutput(mainLogWriter)
 
 	config.Load("config.toml")
@@ -192,9 +194,24 @@ func main() {
 
 	if config.Cfg.Base.Autotls.Enabled {
 		log.Printf("Gin server started with autotls enabled. Domains = %v", config.Cfg.Base.Autotls.Domains)
-		log.Fatalln(autotls.RunWithContext(ctx, engine, config.Cfg.Base.Autotls.Domains...))
+
+		go func() {
+			if err := autotls.RunWithContext(ctx, engine, config.Cfg.Base.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Println(err)
+				stop()
+			}
+		}()
+	} else {
+		log.Println("Gin server started")
+
+		go func() {
+			if err := engine.Run(fmt.Sprintf(":%d", config.Cfg.Base.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Println(err)
+				stop()
+			}
+		}()
 	}
 
-	log.Println("Gin server started")
-	log.Fatalln(engine.Run(fmt.Sprintf(":%d", config.Cfg.Base.Expose)))
+	<-ctx.Done()
+	log.Println("Shutting down...")
 }
