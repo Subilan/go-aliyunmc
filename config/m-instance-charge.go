@@ -32,6 +32,9 @@ type InstanceCharge struct {
 
 	// CacheFile 是刷新数据的缓存文件名，必须以 .json 结尾。系统刚启动时将先使用该文件记录的信息。
 	CacheFile string `toml:"cache_file" validate:"required,endswith=.json" comment:"刷新数据的缓存文件名"`
+
+	// Verbose 表示是否输出完整过程，会增加日志量
+	Verbose bool `toml:"verbose" comment:"是否在日志中输出较多信息"`
 }
 
 func (i InstanceCharge) TimeoutDuration() time.Duration {

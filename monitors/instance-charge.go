@@ -114,7 +114,9 @@ func GetInstanceCharge(ctx context.Context, logger *log.Logger) ([]AvailableInst
 							typeExRegex, err := regexp.Compile(filters.InstanceTypeExclusion)
 							if err == nil {
 								if typeExRegex.MatchString(*resource.Value) {
-									logger.Printf("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
+									if config.Cfg.Monitor.InstanceCharge.Verbose {
+										logger.Printf("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
+									}
 									continue
 								}
 							} else {
