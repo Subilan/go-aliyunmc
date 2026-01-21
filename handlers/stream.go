@@ -29,7 +29,7 @@ func HandleBeginStream() gin.HandlerFunc {
 		lastEventId := c.GetHeader("Last-Event-Id")
 		lastState, _ := events.StateFromString(lastEventId)
 
-		conn, err := sse.Upgrade(ctx, c.Writer)
+		conn, err := sse.Upgrade(ctx, c.Writer, sse.WithWriteTimeout(10*time.Second), sse.WithHeartbeatInterval(5*time.Second))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, helpers.Details(err.Error()))
 			return
@@ -71,26 +71,6 @@ func HandleBeginStream() gin.HandlerFunc {
 				}
 			}
 		}
-
-		//log.Println("debug: stream begin")
-
-		go func() {
-			ticker := time.NewTicker(3 * time.Second) // must be below write timeout
-			defer ticker.Stop()
-
-			for {
-				select {
-				case <-ticker.C:
-					//log.Println("debug: sending pong")
-					err = conn.SendComment(ctx, "pong")
-					if err != nil {
-						log.Println("cannot send pong", err.Error())
-					}
-				case <-ctx.Done():
-					return
-				}
-			}
-		}()
 
 		for {
 			select {
