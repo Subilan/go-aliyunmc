@@ -311,7 +311,7 @@ func Load() {
 		Type:            consts.CmdTypeGetServerProperties,
 		ExecuteLocation: consts.ExecuteLocationShell,
 		Cooldown:        0,
-		Content:         []string{"cat /home/mc/server/archive/server.properties | grep -E '^(white-list|view-distance|simulation-distance|pvp|online-mode|difficulty|max-players).*='"},
+		Content:         []string{"cat /home/mc/server/archive/server.properties | grep -E '^(white-list|view-distance|simulation-distance|spawn-protection|online-mode|difficulty|max-players).*='"},
 		Timeout:         5,
 		IsQuery:         true,
 		Prerequisite: func() bool {
