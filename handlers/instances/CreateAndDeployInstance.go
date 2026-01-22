@@ -17,9 +17,10 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 	return helpers.QueryHandler[CreateInstanceQuery](func(query CreateInstanceQuery, c *gin.Context) (any, error) {
 		createInstanceFunc := createPreferredInstance()
 		deployInstanceFunc := deployInstance()
+		ctxCopy := c.Copy()
 
 		go func() {
-			_, err := createInstanceFunc(query, c)
+			_, err := createInstanceFunc(query, ctxCopy)
 
 			if err != nil {
 				event := events.Instance(events.InstanceEventCreateAndDeployFailed, err.Error())
@@ -38,7 +39,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						event := events.Instance(events.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
 						stream.Broadcast(event)
 						time.Sleep(20 * time.Second)
-						_, err = deployInstanceFunc(c)
+						_, err = deployInstanceFunc(ctxCopy)
 
 						if err != nil {
 							event := events.Instance(events.InstanceEventCreateAndDeployFailed, err.Error())
