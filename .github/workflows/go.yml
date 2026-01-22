@@ -28,7 +28,7 @@ jobs:
       run: go build -ldflags "-s -w" -o ./go-aliyunmc .
 
     - name: Test
-      run: go test -v $(go list ./... | grep -v /docs/)
+      run: go test -v $(go list ./... | grep -v /docs)
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v6.0.0

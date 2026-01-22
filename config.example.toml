@@ -19,7 +19,7 @@ allow_credentials = true
 # 是否启用
 enabled = false
 # 签发域名
-domain = []
+domains = []
 
 [aliyun]
 # 实例运行的地域。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
@@ -93,6 +93,8 @@ mem_choices = [16]
 cpu_core_count_choices = [4]
 # 刷新数据的缓存文件名
 cache_file = 'latest_preferred_instance_charge.json'
+# 是否在日志中输出较多信息
+verbose = false
 
 [monitor.instance_charge.filters]
 # 实例最大可接受的交易价格，单位CNY。超过此价格的实例会被过滤
