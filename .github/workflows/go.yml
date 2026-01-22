@@ -31,12 +31,7 @@ jobs:
       run: go test -v $(go list ./... | grep -v /docs)
 
     - name: Combine
-      run:
-        - mkdir output
-        - cp *.tmpl.sh output
-        - cp go-aliyunmc output
-        - cp config.example.toml output
-        - cp README.md output
+      run: mkdir output && cp *.tmpl.sh go-aliyunmc config.example.toml README.md output
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v6.0.0
