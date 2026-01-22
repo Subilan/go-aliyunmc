@@ -1,8 +1,6 @@
 package templateData
 
 import (
-	"log"
-
 	"github.com/Subilan/go-aliyunmc/config"
 )
 
@@ -41,7 +39,6 @@ type ArchiveTemplateData struct {
 }
 
 func Archive() ArchiveTemplateData {
-	log.Println(config.Cfg.Deploy.BackupOSSPath())
 	return ArchiveTemplateData{
 		ArchiveOSSPath: config.Cfg.Deploy.ArchiveOSSPath(),
 		BackupOSSPath:  config.Cfg.Deploy.BackupOSSPath(),
