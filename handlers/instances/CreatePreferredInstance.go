@@ -49,11 +49,22 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 			return nil, &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "preferred instance charge not present"}
 		}
 
+		var cnt int
+		var err error
+
+		err = db.Pool.QueryRow("SELECT count(*) FROM instances WHERE deleted_at IS NULL").Scan(&cnt)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if cnt > 0 {
+			return nil, &helpers.HttpError{Code: http.StatusConflict, Details: "an instance already exists"}
+		}
+
 		inst := monitors.SnapshotPreferredInstanceCharge()
 		zoneId := inst.ZoneId
 		instanceType := inst.InstanceType
-
-		var err error
 
 		describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{
 			ZoneId:    tea.String(zoneId),
@@ -91,18 +102,6 @@ func createPreferredInstance() helpers.QueryHandlerFunc[CreateInstanceQuery] {
 
 		ctx, cancel := context.WithTimeout(c, createInstanceTimeout)
 		defer cancel()
-
-		var cnt int
-
-		err = db.Pool.QueryRowContext(ctx, "SELECT count(*) FROM instances WHERE deleted_at IS NULL").Scan(&cnt)
-
-		if err != nil {
-			return nil, err
-		}
-
-		if cnt > 0 {
-			return nil, &helpers.HttpError{Code: http.StatusConflict, Details: "an instance already exists"}
-		}
 
 		ecsConfig := config.Cfg.GetAliyunEcsConfig()
 
