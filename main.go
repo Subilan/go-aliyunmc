@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"log"
 	"net/http"
 	"os/signal"
 	"syscall"
 
+	"github.com/MarceloPetrucio/go-scalar-api-reference"
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
@@ -98,6 +100,20 @@ func bindRoutes(r *gin.Engine) {
 	r.GET("/", simple.HandleVersion())
 	r.GET("/stream", mid.JWTAuth(), handlers.HandleBeginStream())
 	r.GET("/stream/simple-public", handlers.HandleBeginSimplePublicStream())
+	r.GET("/__docs/*any", func(c *gin.Context) {
+		htmlContent, err := scalar.ApiReferenceHTML(&scalar.Options{
+			SpecURL: "./docs/swagger.json",
+			CustomOptions: scalar.CustomOptions{
+				PageTitle: "go-aliyunmc 接口文档参考",
+			},
+		})
+
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		c.Data(200, "text/html", []byte(htmlContent))
+	})
 }
 
 func runMonitors() {
@@ -126,6 +142,9 @@ func runMonitors() {
 
 // mainLogWriter 是指向 main.log 日志文件的日志 writer
 var mainLogWriter = filelog.NewLogWriter("main")
+
+//	@title		go-aliyunmc
+//	@version	0.0.1
 
 func main() {
 	var err error

@@ -1,0 +1,459 @@
+definitions:
+  consts.TaskStatus:
+    enum:
+    - running
+    - success
+    - failed
+    - cancelled
+    - timed_out
+    type: string
+    x-enum-varnames:
+    - TaskStatusRunning
+    - TaskStatusSuccess
+    - TaskStatusFailed
+    - TaskStatusCancelled
+    - TaskStatusTimedOut
+  consts.TaskType:
+    enum:
+    - instance_deployment
+    type: string
+    x-enum-varnames:
+    - TaskTypeInstanceDeployment
+  events.Event:
+    properties:
+      content:
+        description: Content 是该事件的内容，可能是序列化以后的字符串
+        type: string
+      createdAt:
+        description: CreatedAt 是事件的创建时间（由数据库记录）
+        type: string
+      isError:
+        description: IsError 决定前端该事件的显示效果。IsError 并不一定表示此事件与系统的严重错误有关。
+        type: boolean
+      isPublic:
+        description: IsPublic 决定该事件是否可以发送给未登录用户
+        type: boolean
+      ord:
+        description: Ord 是该事件在该任务内部的顺序（按照时间排序）。顺序的开始是任意的，但不可重复。
+        type: integer
+      taskId:
+        description: TaskId 是与该事件相关联的任务标识符，并充当 Ord 的命名空间
+        type: string
+      type:
+        $ref: '#/definitions/events.EventType'
+    type: object
+  events.EventType:
+    enum:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    type: integer
+    x-enum-varnames:
+    - TypeDeployment
+    - TypeServer
+    - TypeInstance
+    - TypeError
+    - TypeSync
+  helpers.DataResp-array_store_JoinedTask:
+    properties:
+      data:
+        description: Data 为该结构中的数据
+        items:
+          $ref: '#/definitions/store.JoinedTask'
+        type: array
+    type: object
+  helpers.DataResp-bool:
+    properties:
+      data:
+        description: Data 为该结构中的数据
+        type: boolean
+    type: object
+  helpers.DataResp-store_User:
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/store.User'
+        description: Data 为该结构中的数据
+    type: object
+  helpers.DataResp-tasks_GetTaskResponse:
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/tasks.GetTaskResponse'
+        description: Data 为该结构中的数据
+    type: object
+  helpers.DataResp-tasks_TaskOverview:
+    properties:
+      data:
+        allOf:
+        - $ref: '#/definitions/tasks.TaskOverview'
+        description: Data 为该结构中的数据
+    type: object
+  helpers.ErrorResp:
+    properties:
+      details:
+        description: Details 为错误信息
+        type: string
+    type: object
+  store.JoinedTask:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      status:
+        $ref: '#/definitions/consts.TaskStatus'
+      type:
+        $ref: '#/definitions/consts.TaskType'
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+      username:
+        type: string
+    type: object
+  store.User:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      username:
+        type: string
+    type: object
+  tasks.GetTaskQuery:
+    properties:
+      withJoinedPushedEvents:
+        description: WithJoinedPushedEvents 指定是否在结果中包含与该任务相关的所有推送事件内容的合并值
+        type: boolean
+      withPushedEvents:
+        description: WithPushedEvents 指定是否在结果中包含与该任务相关的所有推送事件
+        type: boolean
+    type: object
+  tasks.GetTaskResponse:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      joinedPushedEvents:
+        description: JoinedPushedEvents 由 GetTaskQuery.WithJoinedPushedEvents 指定是否包含
+        type: string
+      pushedEvents:
+        description: PushedEvents 由 GetTaskQuery.WithPushedEvents 指定是否包含
+        items:
+          $ref: '#/definitions/events.Event'
+        type: array
+      status:
+        $ref: '#/definitions/consts.TaskStatus'
+      type:
+        $ref: '#/definitions/consts.TaskType'
+      updatedAt:
+        type: string
+      userId:
+        type: integer
+    type: object
+  tasks.GetTasksQuery:
+    properties:
+      page:
+        minimum: 1
+        type: integer
+      pageSize:
+        minimum: 1
+        type: integer
+    type: object
+  tasks.TaskOverview:
+    properties:
+      latest:
+        allOf:
+        - $ref: '#/definitions/store.JoinedTask'
+        description: Latest 是系统中最新一条任务的信息
+      successCount:
+        description: SuccessCount 是成功任务的总数量
+        type: integer
+      unsuccessCount:
+        description: UnsuccessCount 是失败任务的总数量
+        type: integer
+    type: object
+  users.CreateUserRequest:
+    properties:
+      password:
+        description: Password 是要创建用户的密码明文
+        type: string
+      username:
+        description: Username 是要创建用户的用户名，不可与其他用户重复
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  users.UpdateUserRequest:
+    properties:
+      password:
+        description: Password 是新密码的明文
+        type: string
+    required:
+    - password
+    type: object
+info:
+  contact: {}
+  title: go-aliyunmc
+  version: 0.0.1
+paths:
+  /task:
+    get:
+      consumes:
+      - application/json
+      description: 根据指定的任务类型，获取数据库中的一条正在进行的相应类型任务记录，可以选择性地包含与该任务记录关联的推送事件内容。
+      parameters:
+      - description: 获取任务记录请求体
+        in: body
+        name: gettaskquery
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.GetTaskQuery'
+      - description: 任务类型
+        in: query
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-tasks_GetTaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 获取指定类型的一条运行任务记录
+      tags:
+      - tasks
+  /task/{taskId}:
+    get:
+      consumes:
+      - application/json
+      description: 根据标识符查询数据库中一条任务记录，可以选择性地包含与该任务记录关联的推送事件内容
+      parameters:
+      - description: 目标任务标识符
+        in: path
+        name: taskId
+        required: true
+        type: string
+      - description: 获取任务记录请求体
+        in: body
+        name: gettaskquery
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.GetTaskQuery'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-tasks_GetTaskResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 获取一条任务记录
+      tags:
+      - tasks
+  /task/cancel/{taskId}:
+    get:
+      description: 根据任务标识符，尝试取消一个可能正在运行的任务
+      parameters:
+      - description: 要取消的任务标识符
+        in: path
+        name: taskId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-bool'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 取消任务
+      tags:
+      - tasks
+      - admin
+  /task/overview:
+    get:
+      description: 返回系统任务模块的总览信息，如总任务数量、成功执行数量等。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-tasks_TaskOverview'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 获取任务总览
+      tags:
+      - tasks
+  /task/s:
+    get:
+      consumes:
+      - application/json
+      description: 根据传入的查询参数，返回多条任务记录。
+      parameters:
+      - description: 分页参数等
+        in: body
+        name: gettasksquery
+        required: true
+        schema:
+          $ref: '#/definitions/tasks.GetTasksQuery'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-array_store_JoinedTask'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 获取多条任务记录
+      tags:
+      - tasks
+  /user:
+    get:
+      description: 根据传入的凭证返回该用户的非敏感信息，例如用户名、ID、创建时间、权限组等信息。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.DataResp-store_User'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 获取当前已登入用户信息
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: 根据提供的用户名和密码创建一个新的用户。用户名是唯一的，如果与现有用户重复则返回409。
+      parameters:
+      - description: 创建用户请求体
+        in: body
+        name: createuserrequest
+        required: true
+        schema:
+          $ref: '#/definitions/users.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 创建用户
+      tags:
+      - users
+  /user/{userId}:
+    delete:
+      description: 删除某个用户，使得该用户名以后无法再次登录。此接口仅适用于用户主动注销，如果请求参数携带的用户ID与凭证中的用户ID不匹配，返回403
+      parameters:
+      - description: 删除目标用户ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 注销用户
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: 更新用户在数据库中存储的各个字段。目前仅支持更新密码。
+      parameters:
+      - description: 目标用户ID
+        in: path
+        name: userId
+        required: true
+        type: string
+      - description: 更新请求体
+        in: body
+        name: updateuserrequest
+        required: true
+        schema:
+          $ref: '#/definitions/users.UpdateUserRequest'
+      responses:
+        "200":
+          description: OK
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/helpers.ErrorResp'
+      summary: 更新用户信息
+      tags:
+      - users
+swagger: "2.0"

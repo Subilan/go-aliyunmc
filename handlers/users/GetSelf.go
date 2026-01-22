@@ -8,6 +8,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// HandleGetSelf 根据传入请求头中的凭证信息，返回该用户的非敏感字段数据。
+//
+//	@Summary		获取当前已登入用户信息
+//	@Description	根据传入的凭证返回该用户的非敏感信息，例如用户名、ID、创建时间、权限组等信息。
+//	@Tags			users
+//	@Produce		json
+//	@Success		200	{object}	helpers.DataResp[store.User]
+//	@Failure		404	{object}	helpers.ErrorResp
+//	@Failure		403	{object}	helpers.ErrorResp
+//	@Router			/user [get]
 func HandleGetSelf() gin.HandlerFunc {
 	return helpers.BasicHandler(func(c *gin.Context) (any, error) {
 		userId, _ := gctx.ShouldGetUserId(c)

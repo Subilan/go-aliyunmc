@@ -11,9 +11,23 @@ import (
 )
 
 type UpdateUserRequest struct {
+	// Password 是新密码的明文
 	Password string `json:"password" binding:"required"`
 }
 
+// HandleUserUpdate 对用户的信息进行修改
+//
+//	@Summary		更新用户信息
+//	@Description	更新用户在数据库中存储的各个字段。目前仅支持更新密码。
+//	@Tags			users
+//	@Accept			json
+//	@Param			userId				path	string				true	"目标用户ID"
+//	@Param			updateuserrequest	body	UpdateUserRequest	true	"更新请求体"
+//	@Success		200
+//	@Failure		403	{object}	helpers.ErrorResp
+//	@Failure		404	{object}	helpers.ErrorResp
+//	@Failure		500	{object}	helpers.ErrorResp
+//	@Router			/user/{userId} [patch]
 func HandleUserUpdate() gin.HandlerFunc {
 	return helpers.BodyHandler[UpdateUserRequest](func(body UpdateUserRequest, c *gin.Context) (any, error) {
 		userId := c.Param("userId")

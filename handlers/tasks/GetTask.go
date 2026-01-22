@@ -30,7 +30,7 @@ type GetTaskResponse struct {
 	// PushedEvents 由 GetTaskQuery.WithPushedEvents 指定是否包含
 	PushedEvents []events.Event `json:"pushedEvents,omitempty"`
 
-	// PushedEvents 由 GetTaskQuery.WithJoinedPushedEvents 指定是否包含
+	// JoinedPushedEvents 由 GetTaskQuery.WithJoinedPushedEvents 指定是否包含
 	JoinedPushedEvents string `json:"joinedPushedEvents,omitempty"`
 }
 
@@ -100,7 +100,19 @@ func getResponse(withPushedEvents bool, withJoinedPushedEvents bool, retrievalTy
 	}, nil
 }
 
-// HandleGetTask 接口用于获取数据库中的一条指定的任务记录，可以选择性地包含与该任务记录关联的推送事件内容
+// HandleGetTask 接口用于根据标识符获取数据库中的一条指定的任务记录，可以选择性地包含与该任务记录关联的推送事件内容
+//
+//	@Summary		获取一条任务记录
+//	@Description	根据标识符查询数据库中一条任务记录，可以选择性地包含与该任务记录关联的推送事件内容
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			taskId			path		string			true	"目标任务标识符"
+//	@Param			gettaskquery	body		GetTaskQuery	true	"获取任务记录请求体"
+//	@Success		200				{object}	helpers.DataResp[GetTaskResponse]
+//	@Failure		400				{object}	helpers.ErrorResp
+//	@Failure		404				{object}	helpers.ErrorResp
+//	@Router			/task/{taskId} [get]
 func HandleGetTask() gin.HandlerFunc {
 	return helpers.QueryHandler[GetTaskQuery](func(query GetTaskQuery, c *gin.Context) (any, error) {
 		// 为了避免冗余，二者互斥
@@ -124,6 +136,19 @@ func HandleGetTask() gin.HandlerFunc {
 	})
 }
 
+// HandleGetActiveTaskByType 接口用于根据任务类型来获取数据库中的一条活跃（正在进行的）任务记录
+//
+//	@Summary		获取指定类型的一条运行任务记录
+//	@Description	根据指定的任务类型，获取数据库中的一条正在进行的相应类型任务记录，可以选择性地包含与该任务记录关联的推送事件内容。
+//	@Tags			tasks
+//	@Accept			json
+//	@Produce		json
+//	@Param			gettaskquery	body		GetTaskQuery	true	"获取任务记录请求体"
+//	@Param			type			query		string			true	"任务类型"
+//	@Success		200				{object}	helpers.DataResp[GetTaskResponse]
+//	@Failure		400				{object}	helpers.ErrorResp
+//	@Failure		404				{object}	helpers.ErrorResp
+//	@Router			/task [get]
 func HandleGetActiveTaskByType() gin.HandlerFunc {
 	return helpers.QueryHandler[GetTaskQuery](func(query GetTaskQuery, c *gin.Context) (any, error) {
 		if query.WithJoinedPushedEvents && query.WithPushedEvents {
