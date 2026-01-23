@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/Subilan/go-aliyunmc/consts"
@@ -38,13 +37,17 @@ func HandleServerExecute() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "command not found"}
 		}
 
+		if !cmd.TestRole(c) {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "无权执行"}
+		}
+
 		ctx, cancel := cmd.DefaultContext()
 		defer cancel()
 
 		output, err := cmd.Run(ctx, *activeInstance.Ip, &userId, &commands.CommandRunOption{Output: body.WithOutput})
 
 		if err != nil {
-			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s", err.Error())}
+			return nil, err
 		}
 
 		return helpers.Data(output), nil

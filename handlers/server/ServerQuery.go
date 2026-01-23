@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -34,10 +33,14 @@ func HandleServerQuery() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusNotFound, Details: "query type not found"}
 		}
 
+		if !cmd.TestRole(c) {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "无权执行"}
+		}
+
 		output, err := cmd.Run(ctx, *activeInstance.Ip, nil, nil)
 
 		if err != nil {
-			return nil, &helpers.HttpError{Code: http.StatusInternalServerError, Details: fmt.Sprintf("command failed with error %s", err.Error())}
+			return nil, err
 		}
 
 		return helpers.Data(output), nil

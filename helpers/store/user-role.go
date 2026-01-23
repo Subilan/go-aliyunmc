@@ -17,7 +17,7 @@ func GetUserRole(userId int64, fallbackRole consts.UserRole) (consts.UserRole, e
 		if errors.Is(err, sql.ErrNoRows) {
 			return fallbackRole, nil
 		}
-		return "", err
+		return consts.UserRoleEmpty, err
 	}
 
 	return role, nil

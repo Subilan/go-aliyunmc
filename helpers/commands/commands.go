@@ -3,18 +3,20 @@ package commands
 import (
 	"bytes"
 	"context"
-	"errors"
 	"log"
+	"net/http"
 	"strings"
 	"text/template"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
+	"github.com/gin-gonic/gin"
 	"github.com/mcstatus-io/mcutil/v4/rcon"
 	"github.com/mcstatus-io/mcutil/v4/status"
 )
@@ -44,6 +46,9 @@ type Command struct {
 
 	// IsQuery 表示该指令是否属于查询类指令。查询类指令永远没有冷却时间，运行时也不会在数据库中记录其过程。
 	IsQuery bool
+
+	// Role 表示该指令要求的权限等级
+	Role consts.UserRole
 }
 
 // DefaultContext 获取该指令用于运行的默认上下文，它是 context.Background 的子上下文，附带了 Command.Timeout 对应的超时时间。
@@ -119,6 +124,23 @@ type CommandRunOption struct {
 	Comment string
 }
 
+// TestRole 判断 *gin.Context 中携带的权限等级信息是否大于或等于所要求的权限等级
+func (c *Command) TestRole(gctx *gin.Context) bool {
+	role, exists := gctx.Get("role")
+
+	if !exists {
+		return false
+	}
+
+	roleInt, ok := role.(int)
+
+	if !ok {
+		return false
+	}
+
+	return consts.UserRole(roleInt) >= c.Role
+}
+
 // Run 运行该指令。
 // option 可以填 nil 表示使用默认值。
 // 传入的上下文只会影响该指令的执行过程，不会影响数据库的记录过程。
@@ -130,11 +152,11 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 	}
 
 	if c.IsCoolingDown() && !option.IgnoreCooldown {
-		return "", errors.New("cooling down")
+		return "", &helpers.HttpError{Code: http.StatusTooManyRequests, Details: "该指令仍在冷却中"}
 	}
 
 	if c.Prerequisite != nil && !c.Prerequisite() {
-		return "", errors.New("prerequisite not met")
+		return "", &helpers.HttpError{Code: http.StatusServiceUnavailable, Details: "该指令前置条件未满足"}
 	}
 
 	doRecord := !option.DisableAudit && !c.IsQuery
@@ -203,13 +225,13 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 		if err != nil {
 			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "error", err.Error(), recordId)
 			return outputStr, err
-		} else {
-			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "success", option.Comment, recordId)
-			return outputStr, nil
 		}
-	} else {
-		return outputStr, err
+
+		_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "success", option.Comment, recordId)
+		return outputStr, nil
 	}
+
+	return outputStr, err
 }
 
 // RunWithoutCooldown 以无冷却时间相关考虑运行该指令。这样，指令的执行不会考虑冷却时间，亦不会重置冷却时间。仍然可以传入其它选项。
@@ -274,6 +296,7 @@ func Load() {
 			// 需要服务器在线
 			return err == nil
 		},
+		Role: consts.UserRoleAdmin,
 	}
 	Commands[consts.CmdTypeGetServerSizes] = &Command{
 		Type:            consts.CmdTypeGetServerSizes,
@@ -359,6 +382,7 @@ func Load() {
 			Cooldown:        30,
 			Content:         []string{buf.String()},
 			Timeout:         120,
+			Role:            consts.UserRoleAdmin,
 		}
 	}
 
