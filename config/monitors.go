@@ -25,4 +25,7 @@ type MonitorConfig struct {
 
 	// BssSync 是对 monitors.BssSync 的相关配置
 	BssSync BssSync `toml:"bss_sync" validate:"required"`
+
+	// Whitelist 是对 monitors.Whitelist 的相关配置
+	Whitelist Whitelist `toml:"whitelist" validate:"required"`
 }

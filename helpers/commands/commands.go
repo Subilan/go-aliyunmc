@@ -13,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
+	"github.com/Subilan/go-aliyunmc/helpers/gctx"
 	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/helpers/templateData"
@@ -49,6 +50,10 @@ type Command struct {
 
 	// Role 表示该指令要求的权限等级
 	Role consts.UserRole
+
+	// Whitelisted 表示该指令是否要求用户绑定游戏账号且有白名单
+	// 通常，当 Role 设置为高权限等级，如 admin 的时候，不需要设置此项
+	Whitelisted bool
 }
 
 // DefaultContext 获取该指令用于运行的默认上下文，它是 context.Background 的子上下文，附带了 Command.Timeout 对应的超时时间。
@@ -125,20 +130,40 @@ type CommandRunOption struct {
 }
 
 // TestRole 判断 *gin.Context 中携带的权限等级信息是否大于或等于所要求的权限等级
-func (c *Command) TestRole(gctx *gin.Context) bool {
-	role, exists := gctx.Get("role")
+func (c *Command) TestRole(ctx *gin.Context) bool {
+	role, exists := ctx.Get("role")
 
 	if !exists {
 		return false
 	}
 
-	roleInt, ok := role.(int)
+	roleInt, ok := role.(consts.UserRole)
 
 	if !ok {
 		return false
 	}
 
-	return consts.UserRole(roleInt) >= c.Role
+	return roleInt >= c.Role
+}
+
+func (c *Command) TestWhitelisted(ctx *gin.Context) bool {
+	if !c.Whitelisted {
+		return true
+	}
+
+	userId, err := gctx.ShouldGetUserId(ctx)
+
+	if err != nil {
+		return false
+	}
+
+	gameBound, exists := store.GetGameBound(userId)
+
+	if !exists {
+		return false
+	}
+
+	return gameBound.Whitelisted
 }
 
 // Run 运行该指令。
@@ -274,7 +299,9 @@ func Load() {
 			// 需要服务器不在线
 			return err != nil
 		},
+		Whitelisted: true,
 	}
+
 	Commands[consts.CmdTypeStopServer] = &Command{
 		Type:            consts.CmdTypeStopServer,
 		ExecuteLocation: consts.ExecuteLocationServer,
@@ -342,6 +369,21 @@ func Load() {
 			return err == nil
 		},
 	}
+
+	Commands[consts.CmdTypeGetWhitelist] = &Command{
+		Type:            consts.CmdTypeGetWhitelist,
+		ExecuteLocation: consts.ExecuteLocationShell,
+		Cooldown:        0,
+		Content:         []string{"cat /home/mc/server/archive/whitelist.json"},
+		Timeout:         5,
+		IsQuery:         true,
+		Prerequisite: func() bool {
+			_, err := store.GetDeployedActiveInstance()
+			return err == nil
+		},
+		Role: consts.UserRoleAdmin,
+	}
+
 	Commands[consts.CmdTypeGetOps] = &Command{
 		Type:            consts.CmdTypeGetOps,
 		ExecuteLocation: consts.ExecuteLocationShell,

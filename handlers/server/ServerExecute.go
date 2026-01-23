@@ -41,6 +41,10 @@ func HandleServerExecute() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "无权执行"}
 		}
 
+		if !cmd.TestWhitelisted(c) {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "需要白名单"}
+		}
+
 		ctx, cancel := cmd.DefaultContext()
 		defer cancel()
 

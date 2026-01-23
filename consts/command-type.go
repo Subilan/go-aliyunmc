@@ -22,4 +22,6 @@ const (
 	CmdTypeGetOps CommandType = "get_ops"
 	// CmdTypeGetCachedPlayers 是获取服务器 cached_players.json 文件内容的指令（基于 cat）
 	CmdTypeGetCachedPlayers CommandType = "get_cached_players"
+	// CmdTypeGetWhitelist 是获取服务器 whitelist.json 文件内容的指令（基于 cat）
+	CmdTypeGetWhitelist CommandType = "get_whitelist"
 )

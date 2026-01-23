@@ -37,6 +37,10 @@ func HandleServerQuery() gin.HandlerFunc {
 			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "无权执行"}
 		}
 
+		if !cmd.TestWhitelisted(c) {
+			return nil, &helpers.HttpError{Code: http.StatusForbidden, Details: "需要白名单"}
+		}
+
 		output, err := cmd.Run(ctx, *activeInstance.Ip, nil, nil)
 
 		if err != nil {

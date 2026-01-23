@@ -10,3 +10,4 @@ go-aliyunmc
 logs/
 upload.sh
 *.pem
+whitelist.json

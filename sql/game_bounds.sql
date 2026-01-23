@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS game_bounds
+(
+    `user_id`     INT         NOT NULL,
+    `game_id`     VARCHAR(20) NOT NULL,
+    `created_at`  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`  TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE CASCADE ON DELETE CASCADE,
+    UNIQUE INDEX `unique_game_id` (`game_id`)
+)

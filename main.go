@@ -46,7 +46,7 @@ func bindRoutes(r *gin.Engine) {
 	i.GET("/status", instances.HandleGetActiveInstanceStatus())
 	i.GET("/preferred-charge", instances.HandleGetPreferredInstanceCharge())
 	i.GET("/desc/:instanceId", instances.HandleDescribeInstance())
-	ij.GET("/create-and-deploy", instances.HandleCreateAndDeployInstance())
+	ij.GET("/create-and-deploy", mid.Whitelist(), instances.HandleCreateAndDeployInstance())
 	ia.GET("/create-preferred", instances.HandleCreatePreferredInstance())
 	ia.GET("/deploy", instances.HandleDeployInstance())
 	ia.DELETE("/:instanceId", instances.HandleDeleteInstance())
@@ -60,6 +60,10 @@ func bindRoutes(r *gin.Engine) {
 
 	u.POST("", users.HandleCreateUser())
 	uj.GET("", users.HandleGetSelf())
+	uj.POST("/game-bound", users.HandleBindGameId())
+	uj.PATCH("/game-bound", users.HandleUpdateBindGameId())
+	uj.GET("/game-bound", users.HandleGetSelfGameBound())
+	uj.DELETE("/game-bound", users.HandleDeleteSelfGameBound())
 	uj.PATCH("/:userId", users.HandleUserUpdate())
 	uj.DELETE("/:userId", users.HandleUserDelete())
 
@@ -71,13 +75,16 @@ func bindRoutes(r *gin.Engine) {
 	auj.GET("/payload", auth.HandleGetPayload())
 	auj.GET("/ping", simple.HandleGenerate200())
 
-	tj := r.Group("/task")
+	t := r.Group("/task")
+	tj := t.Group("")
 	tj.Use(mid.JWTAuth())
+	ta := tj.Group("")
+	ta.Use(mid.Role(consts.UserRoleAdmin))
 	tj.GET("/s", tasks.HandleGetTasks())
 	tj.GET("/overview", tasks.HandleGetTaskOverview())
 	tj.GET("/:taskId", tasks.HandleGetTask())
 	tj.GET("", tasks.HandleGetActiveTaskByType())
-	tj.GET("/cancel/:taskId", tasks.HandleCancelTask())
+	ta.GET("/cancel/:taskId", tasks.HandleCancelTask())
 
 	s := r.Group("/server")
 	s.GET("/info", server.HandleGetServerInfo())
@@ -124,6 +131,7 @@ func runMonitors() {
 	var quitInstanceCharge = make(chan bool)
 	var quitEmptyServer = make(chan bool)
 	var quitBssSync = make(chan bool)
+	var quitWhitelist = make(chan bool)
 
 	var ip string
 
@@ -138,6 +146,7 @@ func runMonitors() {
 	go monitors.InstanceCharge(quitInstanceCharge)
 	go monitors.EmptyServer(quitEmptyServer)
 	go monitors.BssSync(quitBssSync)
+	go monitors.Whitelist(quitWhitelist)
 }
 
 // mainLogWriter 是指向 main.log 日志文件的日志 writer

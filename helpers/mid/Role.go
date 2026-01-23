@@ -28,7 +28,7 @@ func Role(expect consts.UserRole) gin.HandlerFunc {
 			return
 		}
 
-		if userRole != expect {
+		if userRole < expect {
 			c.JSON(http.StatusForbidden, helpers.Details("拒绝访问"))
 			c.Abort()
 			return
