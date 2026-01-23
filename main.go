@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
+	"time"
 
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
 	"github.com/Subilan/go-aliyunmc/clients"
@@ -152,11 +154,49 @@ func runMonitors() {
 // mainLogWriter 是指向 main.log 日志文件的日志 writer
 var mainLogWriter = filelog.NewLogWriter("main")
 
+// InstallCrashHandler 必须在 main 最开始 defer
+func InstallCrashHandler() {
+	if r := recover(); r != nil {
+		writeCrashLog(r)
+		panic(r) // 继续抛出，让程序按原方式崩溃退出
+	}
+}
+
+func writeCrashLog(reason interface{}) {
+	ts := time.Now().Format("2006-01-02_15-04-05")
+	filename := fmt.Sprintf("./logs/crash_report_%s.log", ts)
+
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return // 实在写不了也没办法
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "=== PANIC CRASH REPORT ===\n")
+	fmt.Fprintf(f, "Time: %s\n", time.Now().Format(time.RFC3339))
+	fmt.Fprintf(f, "Reason: %v\n\n", reason)
+	fmt.Fprintf(f, "Stack Trace:\n%s\n", debug.Stack())
+}
+
 //	@title		go-aliyunmc
 //	@version	0.0.1
 
 func main() {
+	defer InstallCrashHandler()
 	var err error
+
+	errorLogFile, err := os.OpenFile("./logs/latest_run_error.log", os.O_CREATE|os.O_WRONLY, 0644)
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	defer errorLogFile.Close()
+
+	if err := syscall.Dup2(int(errorLogFile.Fd()), int(os.Stderr.Fd())); err != nil {
+		log.Fatalln(err)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -210,6 +250,7 @@ func main() {
 	engine := gin.New()
 
 	gin.DefaultWriter = mainLogWriter
+	gin.DefaultErrorWriter = mainLogWriter
 
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
