@@ -4,8 +4,11 @@ go 1.24.0
 
 toolchain go1.24.10
 
+replace github.com/Subilan/go-aliyunmc/autotls => ./autotls
+
 require (
 	github.com/MarceloPetrucio/go-scalar-api-reference v0.0.0-20240521013641-ce5d2efe0e06
+	github.com/Subilan/go-aliyunmc/autotls v0.0.0-00010101000000-000000000000
 	github.com/alibabacloud-go/bssopenapi-20171214/v6 v6.1.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.13
 	github.com/alibabacloud-go/ecs-20140526/v7 v7.2.4
@@ -22,7 +25,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/swaggo/swag v1.8.12
 	go.jetify.com/sse v0.1.0
-	golang.org/x/crypto v0.45.0
+	golang.org/x/crypto v0.46.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -62,11 +65,11 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	golang.org/x/arch v0.20.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
-	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/tools v0.39.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
