@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MarceloPetrucio/go-scalar-api-reference"
+	"github.com/Subilan/go-aliyunmc/autotls"
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
@@ -31,7 +32,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/helpers/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,6 +48,7 @@ func bindRoutes(r *gin.Engine) {
 	i.GET("/status", instances.HandleGetActiveInstanceStatus())
 	i.GET("/preferred-charge", instances.HandleGetPreferredInstanceCharge())
 	i.GET("/desc/:instanceId", instances.HandleDescribeInstance())
+	i.GET("/ip-raw", instances.HandleGetInstanceIpRaw())
 	ij.GET("/create-and-deploy", mid.Whitelist(), instances.HandleCreateAndDeployInstance())
 	ia.GET("/create-preferred", instances.HandleCreatePreferredInstance())
 	ia.GET("/deploy", instances.HandleDeployInstance())
@@ -172,10 +173,10 @@ func writeCrashLog(reason interface{}) {
 	}
 	defer f.Close()
 
-	fmt.Fprintf(f, "=== PANIC CRASH REPORT ===\n")
-	fmt.Fprintf(f, "Time: %s\n", time.Now().Format(time.RFC3339))
-	fmt.Fprintf(f, "Reason: %v\n\n", reason)
-	fmt.Fprintf(f, "Stack Trace:\n%s\n", debug.Stack())
+	_, _ = fmt.Fprintf(f, "=== PANIC CRASH REPORT ===\n")
+	_, _ = fmt.Fprintf(f, "Time: %s\n", time.Now().Format(time.RFC3339))
+	_, _ = fmt.Fprintf(f, "Reason: %v\n\n", reason)
+	_, _ = fmt.Fprintf(f, "Stack Trace:\n%s\n", debug.Stack())
 }
 
 //	@title		go-aliyunmc

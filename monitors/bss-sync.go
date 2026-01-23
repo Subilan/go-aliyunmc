@@ -23,7 +23,7 @@ func fetchAllTransactions(ctx context.Context, client *bss20171214.Client, creat
 	for {
 		req := &bss20171214.QueryAccountTransactionDetailsRequest{
 			CreateTimeStart: tea.String(createTimeStart.Format("2006-01-02T15:04:05Z")),
-			//CreateTimeEnd:   tea.String(time.Now().Format("2006-01-02T15:04:05Z")),
+			// CreateTimeEnd:   tea.String(time.Now().Format("2006-01-02T15:04:05Z")),
 			NextToken: tea.String(nextToken),
 		}
 
@@ -40,7 +40,7 @@ func fetchAllTransactions(ctx context.Context, client *bss20171214.Client, creat
 		if res.Body.Data.AccountTransactionsList != nil && res.Body.Data.AccountTransactionsList.AccountTransactionsList != nil {
 			allItems = append(allItems, res.Body.Data.AccountTransactionsList.AccountTransactionsList...)
 			total = *res.Body.Data.TotalCount
-			//logger.Println("got length %d, all length %d, total %d, left %d", len(res.Body.Data.AccountTransactionsList.AccountTransactionsList), len(allItems), total, int(total)-len(allItems))
+			// logger.Println("got length %d, all length %d, total %d, left %d", len(res.Body.Data.AccountTransactionsList.AccountTransactionsList), len(allItems), total, int(total)-len(allItems))
 
 			if total == int32(len(allItems)) || len(res.Body.Data.AccountTransactionsList.AccountTransactionsList) == 0 {
 				break
@@ -95,6 +95,9 @@ func BssSync(quit chan bool) {
 					logger.Printf("warn: transaction time %s is malformed, skipping", *transaction.TransactionTime)
 					continue
 				}
+
+				// fix aliyun wrong CST expressed in UTC
+				parsedTime = parsedTime.Add(-8 * time.Hour)
 
 				result, err := db.Pool.ExecContext(ctx,
 					`INSERT INTO transactions (amount, balance, time, flow, type, remarks, billing_cycle) 

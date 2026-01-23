@@ -13,7 +13,6 @@ require (
 	github.com/alibabacloud-go/vpc-20160428/v6 v6.14.0
 	github.com/aliyun/credentials-go v1.4.5
 	github.com/gin-contrib/cors v1.7.6
-	github.com/gin-gonic/autotls v1.2.2
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-sql-driver/mysql v1.9.3

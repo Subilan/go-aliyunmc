@@ -20,7 +20,7 @@ type DatabaseConfig struct {
 	Database string `toml:"database" validate:"required" comment:"存储本系统数据的模式名"`
 }
 
-// Dsn 返回数据库的数据源（用于连接的字符串）。
+// Dsn 返回数据库的数据源（用于连接数据库的字符串）。
 func (d DatabaseConfig) Dsn() string {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local", d.Username, d.Password, d.Host, d.Port, d.Database)
 }
