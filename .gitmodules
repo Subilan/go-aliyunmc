@@ -1,3 +1,3 @@
 [submodule "autotls"]
 	path = autotls
-	url = https://github.com/gin-gonic/autotls.git
+	url = git@github.com:Subilan/autotls.git
