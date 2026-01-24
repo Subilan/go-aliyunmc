@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -64,7 +65,7 @@ func HandleCreateUser() gin.HandlerFunc {
 			return nil, err
 		}
 
-		_, err = tx.ExecContext(c, "INSERT INTO user_roles (user_id, `role`) VALUES (?, ?)", userId, "user")
+		_, err = tx.ExecContext(c, "INSERT INTO user_roles (user_id, `role`) VALUES (?, ?)", userId, consts.UserRoleUser)
 
 		if err != nil {
 			_ = tx.Rollback()
