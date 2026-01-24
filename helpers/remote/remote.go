@@ -15,6 +15,27 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+func TryDialRoot(host string, timeout time.Duration) bool {
+	cfg := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.Password(config.Cfg.Aliyun.Ecs.RootPassword),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // replace in prod
+		Timeout:         timeout,
+	}
+
+	client, err := ssh.Dial("tcp", host+":22", cfg)
+
+	if err != nil {
+		return false
+	}
+
+	client.Close()
+
+	return true
+}
+
 // RunScriptAsRootAsync 用于在远程服务器上运行指定的脚本，运行过程的信息可通过传入回调函数实现。
 // 警告：该函数以 Root 身份运行脚本。禁止用于运行客户端提供的内容。
 func RunScriptAsRootAsync(

@@ -8,6 +8,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
+	"github.com/Subilan/go-aliyunmc/helpers/remote"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,25 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 					if status == consts.InstanceRunning {
 						event := events.Instance(events.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
 						stream.Broadcast(event)
-						time.Sleep(20 * time.Second)
+
+						waitSSHTimeout := time.NewTimer(40 * time.Second)
+						waitSSHTicker := time.NewTicker(3 * time.Second)
+
+					waitSSHLoop:
+						for {
+							select {
+							case <-waitSSHTicker.C:
+								ok := remote.TryDialRoot(monitors.SnapshotInstanceIp(), time.Second*5)
+								if ok {
+									break waitSSHLoop
+								}
+							case <-waitSSHTimeout.C:
+								event := events.Instance(events.InstanceEventCreateAndDeployFailed, "instance initialization timeout")
+								stream.Broadcast(event)
+								return
+							}
+						}
+
 						_, err = deployInstanceFunc(ctxCopy)
 
 						if err != nil {
