@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
@@ -48,7 +49,13 @@ func RunScriptAsRootAsync(
 	okHandler func(),
 	finalHandler func(),
 ) {
-	defer finalHandler()
+	// 等待当前goroutine发起的goroutine
+	var wg sync.WaitGroup
+
+	defer func() {
+		wg.Wait()
+		finalHandler()
+	}()
 	// 1. Read scripts in order
 	scriptsTempl, err := template.ParseFiles(templatePath)
 
@@ -94,9 +101,16 @@ func RunScriptAsRootAsync(
 	stderr, _ := session.StderrPipe()
 	stdin, _ := session.StdinPipe()
 
+	wg.Add(2)
 	// 3. Stream output in real time
-	go relayWithContext(ctx, stdout, sink)
-	go relayWithContext(ctx, stderr, sink)
+	go func() {
+		defer wg.Done()
+		relayWithContext(ctx, stdout, sink)
+	}()
+	go func() {
+		defer wg.Done()
+		relayWithContext(ctx, stderr, sink)
+	}()
 	go closeSessionOnContextDone(ctx, session)
 
 	// 4. Start shell

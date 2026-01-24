@@ -76,7 +76,10 @@ func (s *UserStream) Send(wrapped *events.Event) {
 
 // RecordStateForTask 创建一个全局流状态表项，并将顺序字段设置为 0。
 func RecordStateForTask(taskId string) {
-	var ord = 0
+	taskStreamStatesMu.Lock()
+	defer taskStreamStatesMu.Unlock()
+
+	ord := 0
 	taskStreamStates[taskId] = &events.EventState{TaskId: &taskId, Ord: &ord}
 }
 
@@ -90,19 +93,25 @@ func DeleteStateOfTask(taskId string) {
 // GetStateOfTask 从全局流状态表中获取 taskId 对应的状态信息。
 //
 // Warning: 该方法不会对键的合法性做检查，调用时请确保该键未被删除。
-func GetStateOfTask(taskId string) *events.EventState {
+func GetStateOfTask(taskId string) (*events.EventState, bool) {
 	taskStreamStatesMu.Lock()
 	defer taskStreamStatesMu.Unlock()
-	return taskStreamStates[taskId]
+
+	state, ok := taskStreamStates[taskId]
+
+	return state, ok
 }
 
 // IncrStateOrdOfTask 为全局流状态表对应状态信息的顺序字段增加 1。
 //
-// Warning: 该方法不会对键的合法性做检查，调用时请确保该键未被删除。
+// 如果对应的状态信息不存在，则此函数不做操作。
 func IncrStateOrdOfTask(taskId string) {
 	taskStreamStatesMu.Lock()
 	defer taskStreamStatesMu.Unlock()
-	taskStreamStates[taskId].IncrOrd()
+
+	if state, ok := taskStreamStates[taskId]; ok && state != nil {
+		state.IncrOrd()
+	}
 }
 
 // Register 将用户的 SSE 连接信息记录到全局表中，用于后续推送信息

@@ -120,9 +120,14 @@ func deployInstance() helpers.BasicHandlerFunc {
 		// 运行并借助全局流输出内容
 		go remote.RunScriptAsRootAsync(runCtx, ip, "deploy.tmpl.sh", templateData.Deploy(),
 			func(bytes []byte) {
-				//log.Println("debug: deploy.sh stdout: ", string(bytes))
+				// log.Println("debug: deploy.sh stdout: ", string(bytes))
 
-				state := stream.GetStateOfTask(taskId)
+				state, stateExists := stream.GetStateOfTask(taskId)
+
+				if !stateExists {
+					log.Println("warning: trying to get state but state does not exist")
+					return
+				}
 
 				err = stream.BroadcastAndSave(&events.Event{
 					EventState: *state,
@@ -139,7 +144,13 @@ func deployInstance() helpers.BasicHandlerFunc {
 			func(err error) {
 				log.Println("dedug: deploy.sh stderr: ", err.Error())
 
-				state := stream.GetStateOfTask(taskId)
+				state, stateExists := stream.GetStateOfTask(taskId)
+
+				if !stateExists {
+					log.Println("warning: trying to get state but state does not exist")
+					return
+				}
+
 				sendAndSaveError := stream.BroadcastAndSave(&events.Event{
 					EventState: *state,
 					IsError:    true,
