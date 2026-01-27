@@ -23,7 +23,7 @@ fi
 # ===== Step 1: 上传到 archive-new =====
 echo "上传新归档 -> ${ARCHIVE_NEW}"
 
-ossutil cp -r \
+ossutil cp -r -f \
     "${LOCAL_ARCHIVE_DIR}" \
     "${OSS_BUCKET}/${ARCHIVE_NEW}/"
 
@@ -36,7 +36,7 @@ fi
 # ===== Step 3: archive -> archive-old（复制）=====
 if has_objects "${OSS_BUCKET}/${ARCHIVE}/"; then
     echo "复制 ${ARCHIVE} -> ${ARCHIVE_OLD}"
-    ossutil cp -r \
+    ossutil cp -r -f \
         "${OSS_BUCKET}/${ARCHIVE}/" \
         "${OSS_BUCKET}/${ARCHIVE_OLD}/"
 
@@ -49,7 +49,7 @@ fi
 # ===== Step 4: archive-new -> archive =====
 echo "复制 ${ARCHIVE_NEW} -> ${ARCHIVE}"
 
-ossutil cp -r \
+ossutil cp -r -f \
     "${OSS_BUCKET}/${ARCHIVE_NEW}/" \
     "${OSS_BUCKET}/${ARCHIVE}/"
 
