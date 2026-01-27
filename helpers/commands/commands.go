@@ -423,7 +423,7 @@ func Load() {
 			ExecuteLocation: consts.ExecuteLocationShell,
 			Cooldown:        30,
 			Content:         []string{buf.String()},
-			Timeout:         120,
+			Timeout:         300,
 			Role:            consts.UserRoleAdmin,
 		}
 	}
