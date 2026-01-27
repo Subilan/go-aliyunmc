@@ -2,4 +2,4 @@ package consts
 
 import "time"
 
-const StopAndArchiveTimeout = 6 * time.Minute
+const StopAndArchiveTimeout = 15 * time.Minute
