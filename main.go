@@ -17,6 +17,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/clients"
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/consts"
+	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/handlers"
@@ -34,6 +35,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func bindRoutes(r *gin.Engine) {
@@ -189,6 +191,10 @@ func writeCrashLog(reason interface{}) {
 
 func main() {
 	defer InstallCrashHandler()
+
+	_ = godotenv.Load(".env")
+	env.Load()
+
 	var err error
 
 	errorLogFile, err := os.OpenFile("./logs/latest_run_error.log", os.O_CREATE|os.O_WRONLY, 0644)

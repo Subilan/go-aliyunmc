@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
 	"github.com/Subilan/go-aliyunmc/helpers/gctx"
@@ -14,7 +15,7 @@ import (
 )
 
 const deleteInstanceTimeout = 15 * time.Second
-const safeDeleteInstanceTimeout = 5 * time.Minute
+const safeDeleteInstanceTimeout = consts.StopAndArchiveTimeout
 
 type DeleteInstanceQuery struct {
 	// Force 表示是否要强制删除实例。此选项只应该在实例上的重要资料已经备份的情况下指定。

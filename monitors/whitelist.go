@@ -71,9 +71,8 @@ func Whitelist(quit chan bool) {
 				sort.SliceStable(result, func(i, j int) bool {
 					return result[i].Name < result[j].Name
 				})
-
 				sort.SliceStable(whitelist, func(i, j int) bool {
-					return whitelist[i].Uuid < whitelist[j].Uuid
+					return whitelist[i].Name < whitelist[j].Name
 				})
 
 				resultPtr := 0

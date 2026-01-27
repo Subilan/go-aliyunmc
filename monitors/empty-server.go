@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/commands"
@@ -28,7 +29,7 @@ func safeDeleteServer(logger *log.Logger) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), consts.StopAndArchiveTimeout)
 	defer cancel()
 
 	if err := commands.StopAndArchiveServer(ctx, *activeInstance.Ip, nil, "The server has been empty for too long."); err != nil {

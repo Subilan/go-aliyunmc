@@ -16,7 +16,7 @@ import (
 // EcsClient 是系统全局云服务器服务客户端
 var EcsClient *ecs20140526.Client
 
-// GetOssClient 根据凭据创建一个云服务器服务客户端
+// ShouldCreateEcsClient 根据凭据创建一个云服务器服务客户端
 func ShouldCreateEcsClient() (*ecs20140526.Client, error) {
 	return ecs20140526.NewClient(&openapi.Config{
 		Credential: MustGetAKCredential(),
