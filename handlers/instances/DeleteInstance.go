@@ -14,7 +14,7 @@ import (
 )
 
 const deleteInstanceTimeout = 15 * time.Second
-const safeDeleteInstanceTimeout = 2 * time.Minute
+const safeDeleteInstanceTimeout = 5 * time.Minute
 
 type DeleteInstanceQuery struct {
 	// Force 表示是否要强制删除实例。此选项只应该在实例上的重要资料已经备份的情况下指定。

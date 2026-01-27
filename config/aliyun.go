@@ -69,6 +69,11 @@ func (c AliyunConfig) EcsEndpoint() string {
 	return fmt.Sprintf("ecs.%s.aliyuncs.com", c.RegionId)
 }
 
+// OssEndpoint 返回对象存储（OSS）的服务地址，由 RegionId 决定。
+func (c AliyunConfig) OssEndpoint() string {
+	return fmt.Sprintf("oss-%s.aliyuncs.com", c.RegionId)
+}
+
 // VpcEndpoint 返回专有网络（VPC）的服务地址，由 RegionId 决定。
 func (c AliyunConfig) VpcEndpoint() string {
 	return fmt.Sprintf("vpc.%s.aliyuncs.com", c.RegionId)

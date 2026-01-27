@@ -329,7 +329,7 @@ func Load() {
 		Type:            consts.CmdTypeGetServerSizes,
 		ExecuteLocation: consts.ExecuteLocationShell,
 		Cooldown:        0,
-		Content:         []string{"du -sh /home/mc/server/archive", "du -sh /home/mc/server/archive/world", "du -sh /home/mc/server/archive/world_nether", "du -sh /home/mc/server/archive/world_the_end"},
+		Content:         []string{"du -sh /home/mc/server/archive", "du -sh /home/mc/server/archive/world", "du -sh /home/mc/server/archive/world_nether", "du -sh /home/mc/server/archive/world_the_end", "du -sh /home/mc/server/archive/bluemap"},
 		Timeout:         5,
 		IsQuery:         true,
 		Prerequisite: func() bool {

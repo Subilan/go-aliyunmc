@@ -14,13 +14,17 @@ type DeployConfig struct {
 	JavaVersion uint `toml:"java_version" validate:"required,min=8" comment:"需要预装的Java版本，最低为8"`
 
 	// OSSRoot 是用于存储归档和备份信息的存储桶地址，必须以 oss:// 开头
-	OSSRoot string `toml:"oss_root" validate:"required" comment:"用于存储归档和备份的OSS存储桶地址，必须以oss://开头"`
+	OSSRoot string `toml:"oss_root" validate:"required,startswith=oss://" comment:"用于存储归档和备份的OSS存储桶地址，必须以oss://开头"`
 
 	// BackupPath 是用于存放备份的存储桶内地址，相对于 OSSRoot
 	BackupPath string `toml:"backup_path" validate:"required" comment:"用于存储备份的存储桶内地址，相对于OSSRoot，例如/backups"`
 
 	// ArchivePath 是用于存储归档的存储桶内地址，相对于 OSSRoot
 	ArchivePath string `toml:"archive_path" validate:"required" comment:"用于存储归档的备份桶内地址，相对于OSSRoot，例如/archive"`
+}
+
+func (d DeployConfig) BucketName() string {
+	return d.OSSRoot[6:]
 }
 
 // BackupOSSPath 返回从 OSSRoot 和 BackupPath 合并出的最终存储桶内地址

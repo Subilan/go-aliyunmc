@@ -23,6 +23,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/handlers/auth"
 	"github.com/Subilan/go-aliyunmc/handlers/bss"
 	"github.com/Subilan/go-aliyunmc/handlers/instances"
+	"github.com/Subilan/go-aliyunmc/handlers/oss_routes"
 	"github.com/Subilan/go-aliyunmc/handlers/server"
 	"github.com/Subilan/go-aliyunmc/handlers/simple"
 	"github.com/Subilan/go-aliyunmc/handlers/tasks"
@@ -105,6 +106,10 @@ func bindRoutes(r *gin.Engine) {
 	bj.Use(mid.JWTAuth())
 	bj.GET("/transactions", bss.HandleGetTransactions())
 	bj.GET("/overview", bss.HandleGetOverview())
+
+	oj := r.Group("/oss")
+	oj.Use(mid.JWTAuth())
+	oj.GET("/list", oss_routes.ListObjects())
 
 	r.GET("/ping", simple.HandleGenerate200())
 	r.GET("/", simple.HandleVersion())
@@ -225,6 +230,8 @@ func main() {
 	if err != nil {
 		log.Fatalln("Error creating BSS client:", err)
 	}
+
+	clients.OssClient = clients.GetOssClient()
 
 	log.Print("Initializing database pool...")
 
