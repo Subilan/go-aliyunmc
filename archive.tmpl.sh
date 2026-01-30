@@ -9,9 +9,15 @@ OSS_BUCKET="{{ .OSSRoot }}"
 ARCHIVE="archive"
 ARCHIVE_NEW="archive-new"
 ARCHIVE_OLD="archive-old"
+J=20
+P=4
 
 has_objects() {
     ossutil ls "$1" | awk '/Object Number is:/ {print $4}' | grep -qv '^0$'
+}
+
+oss_cp() {
+  ossutil --jobs=$J --parallel=$P cp -r -f $1 $2
 }
 
 # ===== 基本校验 =====
@@ -23,7 +29,7 @@ fi
 # ===== Step 1: 上传到 archive-new =====
 echo "上传新归档 -> ${ARCHIVE_NEW}"
 
-ossutil cp -r -f \
+oss_cp \
     "${LOCAL_ARCHIVE_DIR}" \
     "${OSS_BUCKET}/${ARCHIVE_NEW}/"
 
@@ -36,7 +42,7 @@ fi
 # ===== Step 3: archive -> archive-old（复制）=====
 if has_objects "${OSS_BUCKET}/${ARCHIVE}/"; then
     echo "复制 ${ARCHIVE} -> ${ARCHIVE_OLD}"
-    ossutil cp -r -f \
+    oss_cp \
         "${OSS_BUCKET}/${ARCHIVE}/" \
         "${OSS_BUCKET}/${ARCHIVE_OLD}/"
 
@@ -49,7 +55,7 @@ fi
 # ===== Step 4: archive-new -> archive =====
 echo "复制 ${ARCHIVE_NEW} -> ${ARCHIVE}"
 
-ossutil cp -r -f \
+oss_cp \
     "${OSS_BUCKET}/${ARCHIVE_NEW}/" \
     "${OSS_BUCKET}/${ARCHIVE}/"
 

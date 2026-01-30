@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"text/template"
 	"time"
@@ -249,6 +250,7 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 	if doRecord {
 		if err != nil {
 			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", consts.CommandExecError, err.Error(), recordId)
+			_ = os.WriteFile("latest_failed_command_exec.log", []byte(outputStr), 0644)
 			return outputStr, err
 		}
 
