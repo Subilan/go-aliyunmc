@@ -190,7 +190,7 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 	var recordId int64
 
 	if doRecord {
-		row, err := db.Pool.Exec("INSERT INTO command_exec (`type`, `by`, `status`, `auto`) VALUES (?, ?, ?, ?)", c.Type, by, "created", by == nil)
+		row, err := db.Pool.Exec("INSERT INTO command_exec (`type`, `by`, `status`, `auto`) VALUES (?, ?, ?, ?)", c.Type, by, consts.CommandExecCreated, by == nil)
 
 		if err != nil {
 			return "", err
@@ -248,11 +248,11 @@ func (c *Command) Run(ctx context.Context, host string, by *int64, option *Comma
 
 	if doRecord {
 		if err != nil {
-			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "error", err.Error(), recordId)
+			_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", consts.CommandExecError, err.Error(), recordId)
 			return outputStr, err
 		}
 
-		_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", "success", option.Comment, recordId)
+		_, _ = db.Pool.Exec("UPDATE `command_exec` SET `status` = ?, `comment` = ? WHERE id = ?", consts.CommandExecSuccess, option.Comment, recordId)
 		return outputStr, nil
 	}
 

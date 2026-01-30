@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/Subilan/go-aliyunmc/consts"
 	"github.com/Subilan/go-aliyunmc/helpers"
 	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/Subilan/go-aliyunmc/helpers/store"
@@ -23,7 +24,10 @@ func HandleGetCommandExecs() gin.HandlerFunc {
 
 		var results = make([]store.JoinedCommandExec, 0, 10)
 
-		rows, err := db.Pool.Query("SELECT c.id, c.type, c.by, c.created_at, c.updated_at, c.status, c.auto, c.comment, u.username FROM command_exec c LEFT JOIN users u ON c.by=u.id ORDER BY c.created_at DESC LIMIT ? OFFSET ?", query.PageSize, (query.Page-1)*query.PageSize)
+		rows, err := db.Pool.Query(
+			"SELECT c.id, c.type, c.by, c.created_at, c.updated_at, c.status, c.auto, c.comment, u.username FROM command_exec c LEFT JOIN users u ON c.by=u.id WHERE c.status IN (?, ?) ORDER BY c.created_at DESC LIMIT ? OFFSET ?",
+			consts.CommandExecError, consts.CommandExecSuccess, query.PageSize, (query.Page-1)*query.PageSize,
+		)
 
 		if err != nil {
 			return nil, err
