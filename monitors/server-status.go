@@ -15,6 +15,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/events/stream"
 	"github.com/Subilan/go-aliyunmc/filelog"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/db"
 	"github.com/mcstatus-io/mcutil/v4/query"
 	"github.com/mcstatus-io/mcutil/v4/response"
 	"github.com/mcstatus-io/mcutil/v4/status"
@@ -122,6 +123,21 @@ func setServerStatus(status bool) {
 	}
 }
 
+func recordPlayerHistory(playerCount int64, players []string) {
+	marshalledPlayers, err := json.Marshal(players)
+
+	if err != nil {
+		log.Println("cannot marshal players:", err)
+		return
+	}
+
+	_, err = db.Pool.Exec("INSERT INTO `online_player_history` (`player_count`, `players`) VALUES (?, ?)", playerCount, marshalledPlayers)
+
+	if err != nil {
+		log.Println("cannot save online player history:", err)
+	}
+}
+
 func ServerStatus(quit chan bool) {
 	var err error
 
@@ -189,6 +205,11 @@ func ServerStatus(quit chan bool) {
 								onlinePlayersMu.Unlock()
 								onlinePlayersBroker.Publish(onlinePlayers)
 							}
+
+							onlinePlayersMu.Lock()
+							// record only if playerCount > 0 and got onlinePlayers
+							recordPlayerHistory(playerCount.Load(), onlinePlayers)
+							onlinePlayersMu.Unlock()
 						}
 					} else if len(onlinePlayers) > 0 {
 						onlinePlayersMu.Lock()
