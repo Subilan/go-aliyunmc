@@ -105,7 +105,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 							ctx, cancel := cmd.DefaultContext()
 							defer cancel()
 
-							_, err = cmd.RunWithoutCooldown(ctx, *instance.Ip, nil, nil)
+							_, err = cmd.Run(ctx, *instance.Ip, nil, nil)
 
 							if err != nil {
 								event := events.Instance(events.InstanceEventCreateAndDeployFailed, "cannot start server: "+err.Error())
