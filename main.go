@@ -96,6 +96,7 @@ func bindRoutes(r *gin.Engine) {
 	s.GET("/info", server.HandleGetServerInfo())
 	sj := s.Group("")
 	sj.Use(mid.JWTAuth())
+	sj.GET("/online-player-overview", server.HandleGetOnlinePlayerOverview())
 	sj.GET("/online-player-history", server.HandleGetOnlinePlayerHistory())
 	sj.GET("/exec", server.HandleServerExecute())
 	sj.GET("/query", server.HandleServerQuery())

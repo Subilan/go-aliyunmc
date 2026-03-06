@@ -278,6 +278,27 @@ func (c *Command) RunWithoutCooldown(ctx context.Context, host string, by *int64
 
 var commandCooldownLeft = make(map[consts.CommandType]int)
 
+func prerequisiteIsServerOnline(online bool) func() bool {
+	return func() bool {
+		activeInstance, err := store.GetDeployedActiveInstance()
+
+		if err != nil {
+			return false
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_, err = status.Modern(ctx, *activeInstance.Ip, config.Cfg.GetGamePort())
+
+		if online {
+			return err == nil
+		}
+
+		return err != nil
+	}
+}
+
 // Load 加载系统的所有指令并写入到 Commands 字典中，用于调用。应当在系统初始化时调用，且在所有依赖指令的操作开始之前调用。
 func Load() {
 	Commands[consts.CmdTypeStartServer] = &Command{
@@ -286,22 +307,8 @@ func Load() {
 		Cooldown:        60,
 		Content:         []string{"cd /home/mc/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || echo 'server cannot be started'"},
 		Timeout:         5,
-		Prerequisite: func() bool {
-			activeInstance, err := store.GetDeployedActiveInstance()
-
-			if err != nil {
-				return false
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			_, err = status.Modern(ctx, *activeInstance.Ip, config.Cfg.GetGamePort())
-
-			// 需要服务器不在线
-			return err != nil
-		},
-		Whitelisted: true,
+		Prerequisite:    prerequisiteIsServerOnline(false),
+		Whitelisted:     true,
 	}
 
 	Commands[consts.CmdTypeStopServer] = &Command{
@@ -310,23 +317,10 @@ func Load() {
 		Cooldown:        60,
 		Content:         []string{"stop"},
 		Timeout:         5,
-		Prerequisite: func() bool {
-			activeInstance, err := store.GetDeployedActiveInstance()
-
-			if err != nil {
-				return false
-			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			_, err = status.Modern(ctx, *activeInstance.Ip, config.Cfg.GetGamePort())
-
-			// 需要服务器在线
-			return err == nil
-		},
-		Role: consts.UserRoleAdmin,
+		Prerequisite:    prerequisiteIsServerOnline(true),
+		Role:            consts.UserRoleAdmin,
 	}
+
 	Commands[consts.CmdTypeGetServerSizes] = &Command{
 		Type:            consts.CmdTypeGetServerSizes,
 		ExecuteLocation: consts.ExecuteLocationShell,

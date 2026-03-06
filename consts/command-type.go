@@ -24,4 +24,6 @@ const (
 	CmdTypeGetCachedPlayers CommandType = "get_cached_players"
 	// CmdTypeGetWhitelist 是获取服务器 whitelist.json 文件内容的指令（基于 cat）
 	CmdTypeGetWhitelist CommandType = "get_whitelist"
+	// CmdTypePlaytimeTop 是获取服务器内游玩时间排行榜的指令
+	CmdTypePlaytimeTop CommandType = "playtime_top"
 )

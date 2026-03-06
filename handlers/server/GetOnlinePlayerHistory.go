@@ -10,7 +10,7 @@ import (
 )
 
 type GetOnlinePlayerHistoryRequest struct {
-	TimeRange string `form:"time_range" binding:"required,oneof=1w 1d 1h 6h"`
+	TimeRange string `form:"timeRange" binding:"required,oneof=1w 1d 1h 6h"`
 }
 
 type OnlinePlayerHistoryRecord struct {
@@ -40,10 +40,10 @@ func HandleGetOnlinePlayerHistory() gin.HandlerFunc {
 		}
 
 		records, err := db.Pool.Query("SELECT created_at, `player_count`, `players` FROM `online_player_history` WHERE `created_at` > ? ORDER BY `created_at`", minCreatedAt)
-
 		if err != nil {
 			return nil, err
 		}
+		defer records.Close()
 
 		var results = make([]OnlinePlayerHistoryRecord, 0)
 
