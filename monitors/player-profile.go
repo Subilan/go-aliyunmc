@@ -26,12 +26,18 @@ func PlayerProfile(quit chan bool) {
 	logger.Println("starting...")
 
 	// 确保本地目录存在
-	if err := os.MkdirAll(cfg.EssentialsDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.LocalEssentialsPath, 0755); err != nil {
 		logger.Println("error creating essentials dir:", err)
 		return
 	}
-	if err := os.MkdirAll(cfg.StatsDir, 0755); err != nil {
+	if err := os.MkdirAll(cfg.LocalStatsPath, 0755); err != nil {
 		logger.Println("error creating stats dir:", err)
+		return
+	}
+	// 确保 PlayTimeDb 文件所在目录存在
+	localPlayTimeDbDir := filepath.Dir(cfg.LocalPlayTimeDbFile)
+	if err := os.MkdirAll(localPlayTimeDbDir, 0755); err != nil {
+		logger.Println("error creating play_time db dir:", err)
 		return
 	}
 
@@ -53,7 +59,7 @@ func PlayerProfile(quit chan bool) {
 
 			// 下载 Essentials 玩家数据
 			logger.Println("downloading Essentials player data...")
-			err = downloadFiles(ctx, *activeInstance.Ip, cfg.EssentialsPath, cfg.EssentialsDir)
+			err = downloadFiles(ctx, *activeInstance.Ip, cfg.EssentialsPath, cfg.LocalEssentialsPath)
 
 			if err != nil {
 				logger.Println("error downloading essentials:", err)
@@ -63,12 +69,22 @@ func PlayerProfile(quit chan bool) {
 
 			// 下载 Minecraft 统计数据
 			logger.Println("downloading Minecraft stats...")
-			err = downloadFiles(ctx, *activeInstance.Ip, cfg.StatsPath, cfg.StatsDir)
+			err = downloadFiles(ctx, *activeInstance.Ip, cfg.StatsPath, cfg.LocalStatsPath)
 
 			if err != nil {
 				logger.Println("error downloading stats:", err)
 			} else {
 				logger.Println("stats download ok")
+			}
+
+			// 下载 PlayTimeManager 数据库
+			logger.Println("downloading PlayTimeManager database...")
+			err = downloadSingleFile(ctx, *activeInstance.Ip, cfg.PlayTimeDbFile, cfg.LocalPlayTimeDbFile)
+
+			if err != nil {
+				logger.Println("error downloading play_time db:", err)
+			} else {
+				logger.Println("play_time db download ok")
 			}
 
 			logger.Println("next download in", interval.String())
@@ -180,4 +196,33 @@ func downloadFile(ctx context.Context, sftpClient *sftp.Client, remotePath strin
 			return fmt.Errorf("read remote file: %w", err)
 		}
 	}
+}
+
+// downloadSingleFile 通过 SFTP 从服务器下载单个文件到本地
+func downloadSingleFile(ctx context.Context, ip string, remotePath string, localPath string) error {
+	// SSH 配置
+	cfg := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.Password(config.Cfg.Aliyun.Ecs.RootPassword),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	// 建立 SSH 连接
+	client, err := ssh.Dial("tcp", ip+":22", cfg)
+	if err != nil {
+		return fmt.Errorf("ssh dial: %w", err)
+	}
+	defer client.Close()
+
+	// 创建 SFTP 客户端
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		return fmt.Errorf("sftp new client: %w", err)
+	}
+	defer sftpClient.Close()
+
+	return downloadFile(ctx, sftpClient, remotePath, localPath)
 }

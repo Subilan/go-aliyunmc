@@ -145,13 +145,17 @@ interval = 300
 # 下载超时时间，单位秒
 timeout = 60
 # 服务器上 Essentials 玩家数据路径
-essentials_path = '/home/mc/archive/plugins/Essentials/userdata/*.yml'
+essentials_path = '/home/mc/archive/plugins/Essentials/userdata'
 # 服务器上 Minecraft 统计数据路径
-stats_path = '/home/mc/archive/world/stats/*.json'
-# 本地 Essentials 玩家数据存储目录
-essentials_dir = 'playerprofiles/essentials'
-# 本地 Minecraft 统计数据存储目录
-stats_dir = 'playerprofiles/stats'
+stats_path = '/home/mc/archive/world/stats'
+# 服务器上 PlayTimeManager 数据库文件路径
+playtime_db_file = '/home/mc/server/archive/plugins/PlayTimeManager/play_time.db'
+# 本地 Essentials 玩家数据存储路径
+local_essentials_path = 'playerprofiles/essentials'
+# 本地 Minecraft 统计数据存储路径
+local_stats_path = 'playerprofiles/stats'
+# 本地 PlayTimeManager 数据库存储文件路径
+local_playtime_db_file = 'playerprofiles/play_time.db'
 
 [deploy]
 # 部署阶段需要安装的包名称，注意拼写正确，不包含Java

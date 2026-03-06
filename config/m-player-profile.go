@@ -16,11 +16,17 @@ type PlayerProfile struct {
 	// StatsPath 是服务器上 Minecraft 统计数据的 JSON 路径
 	StatsPath string `toml:"stats_path" validate:"required" comment:"服务器上 Minecraft 统计数据路径"`
 
-	// EssentialsDir 是本地 Essentials 玩家数据的存储目录
-	EssentialsDir string `toml:"essentials_dir" validate:"required" comment:"本地 Essentials 玩家数据存储目录"`
+	// PlayTimeDbFile 是服务器上 PlayTimeManager 数据库的文件路径
+	PlayTimeDbFile string `toml:"playtime_db_file" validate:"required" comment:"服务器上 PlayTimeManager 数据库文件路径"`
 
-	// StatsDir 是本地 Minecraft 统计数据的存储目录
-	StatsDir string `toml:"stats_dir" validate:"required" comment:"本地 Minecraft 统计数据存储目录"`
+	// LocalEssentialsPath 是本地 Essentials 玩家数据的存储路径
+	LocalEssentialsPath string `toml:"local_essentials_path" validate:"required" comment:"本地 Essentials 玩家数据存储路径"`
+
+	// LocalStatsPath 是本地 Minecraft 统计数据的存储路径
+	LocalStatsPath string `toml:"local_stats_path" validate:"required" comment:"本地 Minecraft 统计数据存储路径"`
+
+	// LocalPlayTimeDbFile 是本地 PlayTimeManager 数据库的存储文件路径
+	LocalPlayTimeDbFile string `toml:"local_playtime_db_file" validate:"required" comment:"本地 PlayTimeManager 数据库存储文件路径"`
 }
 
 func (p PlayerProfile) IntervalDuration() time.Duration {
