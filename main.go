@@ -144,6 +144,7 @@ func runMonitors() {
 	var quitEmptyServer = make(chan bool)
 	var quitBssSync = make(chan bool)
 	var quitWhitelist = make(chan bool)
+	var quitPlayerProfile = make(chan bool)
 
 	var ip string
 
@@ -159,6 +160,7 @@ func runMonitors() {
 	go monitors.EmptyServer(quitEmptyServer)
 	go monitors.BssSync(quitBssSync)
 	go monitors.Whitelist(quitWhitelist)
+	go monitors.PlayerProfile(quitPlayerProfile)
 }
 
 // mainLogWriter 是指向 main.log 日志文件的日志 writer

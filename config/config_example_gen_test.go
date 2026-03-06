@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -86,6 +87,24 @@ func TestGenConfig(t *testing.T) {
 			StartInstance: StartInstance{
 				Interval: 5,
 				Timeout:  120,
+			},
+			BssSync: BssSync{
+				Interval:    3600,
+				Timeout:     30,
+				InitialTime: time.Date(2021, 2, 1, 0, 0, 0, 0, time.UTC),
+			},
+			Whitelist: Whitelist{
+				Interval:  60,
+				Timeout:   15,
+				CacheFile: "whitelist.json",
+			},
+			PlayerProfile: PlayerProfile{
+				Interval:       300,
+				Timeout:        60,
+				EssentialsPath: "/home/mc/archive/plugins/Essentials/userdata/*.yml",
+				StatsPath:      "/home/mc/archive/world/stats/*.json",
+				EssentialsDir:  "playerprofiles/essentials",
+				StatsDir:       "playerprofiles/stats",
 			},
 		},
 		Deploy: DeployConfig{

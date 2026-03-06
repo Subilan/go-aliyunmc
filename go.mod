@@ -11,6 +11,7 @@ require (
 	github.com/alibabacloud-go/ecs-20140526/v7 v7.2.4
 	github.com/alibabacloud-go/tea v1.3.13
 	github.com/alibabacloud-go/vpc-20160428/v6 v6.14.0
+	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.3.0
 	github.com/aliyun/credentials-go v1.4.5
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
@@ -18,8 +19,10 @@ require (
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/mcstatus-io/mcutil/v4 v4.0.1
 	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/pkg/sftp v1.13.10
 	github.com/swaggo/swag v1.8.12
 	go.jetify.com/sse v0.1.0
 	golang.org/x/crypto v0.46.0
@@ -35,7 +38,6 @@ require (
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.7 // indirect
-	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.3.0 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
@@ -50,10 +52,10 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

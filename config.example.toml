@@ -127,9 +127,31 @@ interval = 5
 timeout = 120
 
 [monitor.bss_sync]
-interval = 0
-timeout = 0
-initial_time = 0001-01-01T00:00:00Z
+interval = 3600
+timeout = 30
+initial_time = 2021-02-01T00:00:00Z
+
+[monitor.whitelist]
+# 刷新间隔，单位秒
+interval = 60
+# 超时时间，单位秒
+timeout = 15
+# 白名单缓存文件名
+cache_file = 'whitelist.json'
+
+[monitor.player_profile]
+# 刷新间隔，单位秒
+interval = 300
+# 下载超时时间，单位秒
+timeout = 60
+# 服务器上 Essentials 玩家数据路径
+essentials_path = '/home/mc/archive/plugins/Essentials/userdata/*.yml'
+# 服务器上 Minecraft 统计数据路径
+stats_path = '/home/mc/archive/world/stats/*.json'
+# 本地 Essentials 玩家数据存储目录
+essentials_dir = 'playerprofiles/essentials'
+# 本地 Minecraft 统计数据存储目录
+stats_dir = 'playerprofiles/stats'
 
 [deploy]
 # 部署阶段需要安装的包名称，注意拼写正确，不包含Java

@@ -28,4 +28,7 @@ type MonitorConfig struct {
 
 	// Whitelist 是对 monitors.Whitelist 的相关配置
 	Whitelist Whitelist `toml:"whitelist" validate:"required"`
+
+	// PlayerProfile 是对 monitors.PlayerProfile 的相关配置
+	PlayerProfile PlayerProfile `toml:"player_profile" validate:"required"`
 }
