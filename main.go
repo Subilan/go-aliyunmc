@@ -70,6 +70,9 @@ func bindRoutes(r *gin.Engine) {
 	uj.PATCH("/game-bound", users.HandleUpdateBindGameId())
 	uj.GET("/game-bound", users.HandleGetSelfGameBound())
 	uj.DELETE("/game-bound", users.HandleDeleteSelfGameBound())
+	uj.GET("/preferences", users.HandleGetPreferences())
+	uj.PUT("/preferences", users.HandleUpsertPreference())
+	uj.POST("/preferences/reset", users.HandleResetPreferences())
 	uj.PATCH("/:userId", users.HandleUserUpdate())
 	uj.DELETE("/:userId", users.HandleUserDelete())
 
@@ -105,6 +108,7 @@ func bindRoutes(r *gin.Engine) {
 	sj.GET("/latest-success-archive", server.HandleGetLatestSuccessArchive())
 	sj.GET("/exec/s", server.HandleGetCommandExecs())
 	sj.GET("/exec-overview", server.HandleGetCommandExecOverview())
+	sj.GET("/player-profile/:gameName", server.HandleGetPlayerProfile())
 
 	bj := r.Group("/bss")
 	bj.Use(mid.JWTAuth())
