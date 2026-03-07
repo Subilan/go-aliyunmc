@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
@@ -15,6 +16,18 @@ import (
 )
 
 var whitelist []store.WhitelistItem
+var whitelistMu sync.RWMutex
+
+// SnapshotWhitelist 返回截止目前最新的白名单数据
+func SnapshotWhitelist() []store.WhitelistItem {
+	whitelistMu.RLock()
+	defer whitelistMu.RUnlock()
+
+	// 返回副本，避免外部修改
+	result := make([]store.WhitelistItem, len(whitelist))
+	copy(result, whitelist)
+	return result
+}
 
 func Whitelist(quit chan bool) {
 	logger := filelog.NewLogger("whitelist", "Whitelist")
@@ -65,6 +78,7 @@ func Whitelist(quit chan bool) {
 
 			isSame := false
 
+			whitelistMu.RLock()
 			if len(result) == len(whitelist) {
 				isSame = true
 
@@ -88,11 +102,14 @@ func Whitelist(quit chan bool) {
 					whitelistPtr++
 				}
 			}
+			whitelistMu.RUnlock()
 
 			if !isSame {
 				logger.Println("whitelist has changed")
 
+				whitelistMu.Lock()
 				whitelist = result
+				whitelistMu.Unlock()
 				logger.Println("updating cache file")
 				err = os.WriteFile(config.Cfg.Monitor.Whitelist.CacheFile, []byte(output), 0644)
 
