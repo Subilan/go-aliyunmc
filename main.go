@@ -109,6 +109,8 @@ func bindRoutes(r *gin.Engine) {
 	sj.GET("/exec/s", server.HandleGetCommandExecs())
 	sj.GET("/exec-overview", server.HandleGetCommandExecOverview())
 	sj.GET("/player-profile/:gameName", server.HandleGetPlayerProfile())
+	sj.GET("/play-time-ranking", server.HandleGetPlayTimeRanking())
+	sj.GET("/play-time-overview", server.HandleGetPlayTimeOverview())
 
 	bj := r.Group("/bss")
 	bj.Use(mid.JWTAuth())

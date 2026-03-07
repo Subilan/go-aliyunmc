@@ -10,10 +10,10 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/helpers"
+	"github.com/Subilan/go-aliyunmc/helpers/store"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
-	_ "modernc.org/sqlite"
 )
 
 type EssentialsData struct {
@@ -32,23 +32,12 @@ type LocationData struct {
 	Pitch     float64 `yaml:"pitch" json:"pitch,omitempty"`
 }
 
-type PlayTimeData struct {
-	UUID               string `json:"uuid,omitempty"`
-	PlayTime           int64  `json:"playTime,omitempty"`
-	ArtificialPlayTime int64  `json:"artificialPlayTime,omitempty"`
-	AfkPlayTime        int64  `json:"afkPlayTime,omitempty"`
-	LastSeen           int64  `json:"lastSeen,omitempty"`
-	FirstJoin          int64  `json:"firstJoin,omitempty"`
-	RelativeJoinStreak int    `json:"relativeJoinStreak,omitempty"`
-	AbsoluteJoinStreak int    `json:"absoluteJoinStreak,omitempty"`
-}
-
 type GetPlayerProfileResponse struct {
 	UUID       string                      `json:"uuid"`
 	GameName   string                      `json:"gameName"`
 	Essentials *EssentialsData             `json:"essentials,omitempty"`
 	Stats      map[string]map[string]int64 `json:"stats,omitempty"`
-	PlayTime   *PlayTimeData               `json:"playTime,omitempty"`
+	PlayTime   *store.PlayTimeData         `json:"playTime,omitempty"`
 }
 
 func HandleGetPlayerProfile() gin.HandlerFunc {
@@ -101,7 +90,7 @@ func HandleGetPlayerProfile() gin.HandlerFunc {
 		}
 
 		// 加载 PlayTime 数据
-		playTime, err := loadPlayTime(uuid)
+		playTime, err := store.GetPlayTimeByUUID(uuid)
 		if err != nil {
 			if !errors.Is(err, sql.ErrNoRows) {
 				return nil, err
@@ -168,38 +157,4 @@ func loadStats(uuid string) (map[string]map[string]int64, error) {
 	}
 
 	return result, nil
-}
-
-func loadPlayTime(uuid string) (*PlayTimeData, error) {
-	dbPath := config.Cfg.Monitor.PlayerProfile.LocalPlayTimeDbFile
-
-	db, err := sql.Open("sqlite", dbPath)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	var data PlayTimeData
-
-	err = db.QueryRow(`
-		SELECT uuid, playtime, artificial_playtime, afk_playtime, 
-		       last_seen, first_join, relative_join_streak, absolute_join_streak
-		FROM play_time
-		WHERE uuid = ?
-	`, uuid).Scan(
-		&data.UUID,
-		&data.PlayTime,
-		&data.ArtificialPlayTime,
-		&data.AfkPlayTime,
-		&data.LastSeen,
-		&data.FirstJoin,
-		&data.RelativeJoinStreak,
-		&data.AbsoluteJoinStreak,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &data, nil
 }
