@@ -156,12 +156,15 @@ func buildWhereClause(excludedNicknames []string) (string, []interface{}) {
 }
 
 // getExcludedNicknames 从 MySQL 查询不参与排行榜的用户名列表
+// 查询逻辑：user_preferences.username -> users.id -> game_bounds.game_id
 func getExcludedNicknames() ([]string, error) {
 	rows, err := db.Pool.Query(`
-		SELECT username
-		FROM user_preferences
-		WHERE preference_key = 'participate_in_play_time_ranking'
-		AND preference_value = 'false'
+		SELECT gb.game_id
+		FROM user_preferences up
+		JOIN users u ON up.username = u.username
+		JOIN game_bounds gb ON u.id = gb.user_id
+		WHERE up.preference_key = 'participate_in_play_time_ranking'
+		AND up.preference_value = 'false'
 	`)
 	if err != nil {
 		return nil, err
