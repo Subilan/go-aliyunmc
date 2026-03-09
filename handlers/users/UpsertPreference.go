@@ -21,7 +21,7 @@ type UpsertPreferenceRequest struct {
 //	@Accept			json
 //	@Produce		json
 //	@Param			body	body	UpsertPreferenceRequest	true	"偏好设置"
-//	@Success		200		{object}	gin.H
+//	@Success		200
 //	@Failure		400		{object}	helpers.ErrorResp
 //	@Failure		500		{object}	helpers.ErrorResp
 //	@Router			/user/preferences [put]

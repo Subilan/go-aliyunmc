@@ -14,7 +14,7 @@ import (
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Success		200		{object}	gin.H
+//	@Success		200
 //	@Failure		401		{object}	helpers.ErrorResp
 //	@Failure		500		{object}	helpers.ErrorResp
 //	@Router			/user/preferences/reset [post]
