@@ -40,7 +40,7 @@ func HandleCreateAndDeployInstance() gin.HandlerFunc {
 						event := events.Instance(events.InstanceEventCreateAndDeployStep, "waiting for instance to be initialized")
 						stream.Broadcast(event)
 
-						waitSSHTimeout := time.NewTimer(40 * time.Second)
+						waitSSHTimeout := time.NewTimer(1 * time.Minute)
 						waitSSHTicker := time.NewTicker(3 * time.Second)
 
 					waitSSHLoop:
