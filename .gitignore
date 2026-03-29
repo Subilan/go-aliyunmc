@@ -1,0 +1,10 @@
+config.toml
+.idea
+
+*.drawio.bkp
+go-aliyunmc*
+logs/
+upload.sh
+*.pem
+playerprofiles
+*.db

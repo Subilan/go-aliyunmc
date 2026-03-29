@@ -1,0 +1,40 @@
+package user_routes
+
+import (
+	"go-aliyunmc-v2/h"
+	"go-aliyunmc-v2/store"
+	"go-aliyunmc-v2/store/models"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// HandleRegister 用户注册处理函数
+func HandleRegister(req RegisterRequest, c *gin.Context) (any, error) {
+	// 检查用户名是否已存在
+	var existingUser models.User
+	if err := store.DB.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		return nil, h.HttpError(http.StatusConflict, "用户名已存在")
+	}
+
+	// 加密密码
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建用户
+	user := models.User{
+		Username:     req.Username,
+		Password:     req.Password,
+		PasswordHash: string(hashedPassword),
+		Role:         "basic",
+	}
+
+	if err := store.DB.Create(&user).Error; err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
