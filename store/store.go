@@ -2,7 +2,7 @@ package store
 
 import (
 	"fmt"
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/store/models"
 	"log"
 
 	"gorm.io/driver/mysql"

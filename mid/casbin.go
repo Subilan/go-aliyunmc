@@ -1,8 +1,8 @@
 package mid
 
 import (
-	"go-aliyunmc-v2/casbin"
-	"go-aliyunmc-v2/contextutil"
+	"go-aliyunmc/casbin"
+	"go-aliyunmc/contextutil"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"go-aliyunmc-v2/config"
-	"go-aliyunmc-v2/store"
+	"go-aliyunmc/config"
+	"go-aliyunmc/store"
 
 	"github.com/pelletier/go-toml/v2"
 )

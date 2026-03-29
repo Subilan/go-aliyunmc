@@ -2,7 +2,7 @@ package user_routes
 
 import (
 	"fmt"
-	"go-aliyunmc-v2/contextutil"
+	"go-aliyunmc/contextutil"
 
 	"github.com/gin-gonic/gin"
 )

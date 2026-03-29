@@ -3,9 +3,9 @@ package user_routes
 import (
 	"bytes"
 	"encoding/json"
-	"go-aliyunmc-v2/config"
-	"go-aliyunmc-v2/store"
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/config"
+	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"net/http"
 	"net/http/httptest"
 	"os"

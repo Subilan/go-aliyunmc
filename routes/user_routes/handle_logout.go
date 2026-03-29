@@ -1,9 +1,9 @@
 package user_routes
 
 import (
-	"go-aliyunmc-v2/contextutil"
-	"go-aliyunmc-v2/globals"
-	"go-aliyunmc-v2/logs"
+	"go-aliyunmc/contextutil"
+	"go-aliyunmc/globals"
+	"go-aliyunmc/logs"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
