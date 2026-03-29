@@ -1,7 +1,7 @@
 package config
 
 import (
-	"go-aliyunmc-v2/store"
+	"go-aliyunmc/store"
 	"log"
 	"os"
 

@@ -1,11 +1,11 @@
 package user_routes
 
 import (
-	"go-aliyunmc-v2/globals"
-	"go-aliyunmc-v2/h"
-	"go-aliyunmc-v2/logs"
-	"go-aliyunmc-v2/store"
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/globals"
+	"go-aliyunmc/h"
+	"go-aliyunmc/logs"
+	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"

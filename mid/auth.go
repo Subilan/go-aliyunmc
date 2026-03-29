@@ -1,8 +1,8 @@
 package mid
 
 import (
-	"go-aliyunmc-v2/store"
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"

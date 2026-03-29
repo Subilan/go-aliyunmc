@@ -1,7 +1,7 @@
 package contextutil
 
 import (
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/store/models"
 
 	"github.com/gin-gonic/gin"
 )

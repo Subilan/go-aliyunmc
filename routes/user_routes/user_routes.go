@@ -1,8 +1,8 @@
 package user_routes
 
 import (
-	"go-aliyunmc-v2/h"
-	"go-aliyunmc-v2/mid"
+	"go-aliyunmc/h"
+	"go-aliyunmc/mid"
 
 	"github.com/gin-gonic/gin"
 )

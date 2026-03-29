@@ -1,4 +1,4 @@
-module go-aliyunmc-v2
+module go-aliyunmc
 
 go 1.25.0
 

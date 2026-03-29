@@ -1,9 +1,9 @@
 package user_routes
 
 import (
-	"go-aliyunmc-v2/h"
-	"go-aliyunmc-v2/store"
-	"go-aliyunmc-v2/store/models"
+	"go-aliyunmc/h"
+	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
