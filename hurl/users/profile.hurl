@@ -1,13 +1,13 @@
 POST {{baseURL}}/user/login
 {
-    "username": "test",
+    "username": "{{username}}",
     "password": "password"
 }
 HTTP 200
 [Captures]
 session-id: cookie "session"
 
-GET {{baseURL}}/user/profile?username=test
+GET {{baseURL}}/user/profile
 [Cookies]
 session: {{session-id}}
 HTTP 200
