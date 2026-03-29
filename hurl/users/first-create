@@ -1,3 +1,0 @@
-#!/bin/bash
-
-hurl ./first-create.hurl --variable username=$1 --variables-file ../env/dev.env

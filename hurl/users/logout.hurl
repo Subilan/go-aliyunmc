@@ -1,6 +1,6 @@
 POST {{baseURL}}/user/login
 {
-    "username": "test",
+    "username": "{{username}}",
     "password": "password"
 }
 HTTP 200
