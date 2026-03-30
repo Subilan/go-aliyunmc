@@ -1,6 +1,6 @@
 POST {{baseURL}}/user/register
 {
-    "username": "test",
+    "username": "{{username}}",
     "password": "password"
 }
 HTTP 409

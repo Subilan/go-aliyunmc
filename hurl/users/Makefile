@@ -1,6 +1,5 @@
 # hurl/users/Makefile
 HURL=hurl --variables-file ../env/dev.env
-USER ?= testuser
 
 .PHONY: test-login test-delete test-create test-profile test-logout test-all report
 
@@ -12,6 +11,9 @@ test-delete:
 
 test-create:
 	$(HURL) first-create.hurl --variable username=$(USER)
+
+test-dupliate-create:
+	$(HURL) duplicate-create.hurl --variable username=$(USER)
 
 test-profile:
 	$(HURL) profile.hurl --variable username=$(USER)
