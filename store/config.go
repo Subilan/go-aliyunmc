@@ -2,10 +2,18 @@ package store
 
 import (
 	"fmt"
+	"go-aliyunmc/utils"
 )
 
-// StoreConfig 数据库配置
-type StoreConfig struct {
+var C Config
+
+// MustLoadConfig 加载配置
+func MustLoadConfig() {
+	utils.MustBindConfig(&C, "store")
+}
+
+// Config 数据库配置
+type Config struct {
 	// Driver 数据库驱动类型，支持 mysql, postgres, sqlite
 	Driver string `toml:"driver" validate:"required,oneof=mysql postgres sqlite" comment:"数据库驱动类型"`
 	// Host 数据库主机地址
@@ -27,7 +35,7 @@ type StoreConfig struct {
 }
 
 // DSN 返回数据库连接字符串
-func (s *StoreConfig) DSN() string {
+func (s *Config) DSN() string {
 	switch s.Driver {
 	case "mysql":
 		charset := s.Charset

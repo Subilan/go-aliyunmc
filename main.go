@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-aliyunmc/aliyun/clients"
+	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
-	"go-aliyunmc/config"
-	"go-aliyunmc/globals"
+	"go-aliyunmc/env"
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/store"
 	"log"
@@ -22,13 +21,19 @@ import (
 )
 
 func main() {
-	config.MustInitialize()
-	globals.MustInitialize()
-	store.MustInitialize(config.G.Store)
-	casbin.MustInitialize()
-	clients.MustInitialize()
+	// 加载配置
+	MustLoadConfig()
+	store.MustLoadConfig()
+	casbin.MustLoadConfig()
+	aliyun.MustLoadConfig()
 
-	if globals.DEV {
+	// 初始化模块
+	store.MustInitialize()
+	casbin.MustInitialize()
+	aliyun.MustInitialize()
+	env.MustInitialize()
+
+	if env.DEV {
 		store.AutoMigrate()
 	}
 
@@ -37,9 +42,9 @@ func main() {
 	engine.Use(gin.Recovery())
 
 	// 配置session中间件
-	engine.Use(sessions.Sessions("session", config.G.Base.Session.GetSessionStore()))
+	engine.Use(sessions.Sessions("session", C.Session.GetSessionStore()))
 
-	engine.Use(cors.New(config.G.Base.Cors.GinCorsConfig()))
+	engine.Use(cors.New(C.Cors.GinCorsConfig()))
 
 	// 注册用户路由
 	user_routes.Bind(engine)
@@ -47,11 +52,11 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	if !globals.DEV {
+	if !env.DEV {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	if globals.DEV || !config.G.Base.Autotls.Enabled {
+	if env.DEV || !C.Autotls.Enabled {
 		run(engine, stop)
 	} else {
 		runTLS(engine, ctx, stop)
@@ -64,7 +69,7 @@ func main() {
 
 func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) {
 	go func() {
-		if err := autotls.RunWithContext(ctx, engine, config.G.Base.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := autotls.RunWithContext(ctx, engine, C.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
@@ -73,7 +78,7 @@ func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) 
 
 func run(engine *gin.Engine, cancel context.CancelFunc) {
 	go func() {
-		if err := engine.Run(fmt.Sprintf(":%d", config.G.Base.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := engine.Run(fmt.Sprintf(":%d", C.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}

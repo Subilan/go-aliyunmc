@@ -10,7 +10,7 @@ var En *casbin.Enforcer
 
 // MustInitialize 初始化Casbin权限管理
 func MustInitialize() {
-	enforcer, err := casbin.NewEnforcer("casbin/rbac_model.conf", "casbin/rbac_policy.csv")
+	enforcer, err := casbin.NewEnforcer(C.ModelPath, C.PolicyPath)
 	if err != nil {
 		log.Fatalf("Failed to initialize casbin enforcer: %v", err)
 	}

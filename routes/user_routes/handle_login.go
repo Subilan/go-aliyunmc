@@ -1,7 +1,7 @@
 package user_routes
 
 import (
-	"go-aliyunmc/globals"
+	"go-aliyunmc/env"
 	"go-aliyunmc/h"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/store"
@@ -43,7 +43,7 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 	}
 
 	// 在DEV模式下输出登录信息
-	if globals.DEV {
+	if env.DEV {
 		logs.Dev("用户登录: ID=%d, 用户名=%s, 角色=%s, 记住我=%v",
 			user.ID, user.Username, user.Role, req.Remember)
 	}

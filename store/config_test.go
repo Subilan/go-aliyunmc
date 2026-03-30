@@ -7,7 +7,7 @@ import (
 // TestStoreConfigDefaultValues 测试StoreConfig的默认值
 func TestStoreConfigDefaultValues(t *testing.T) {
 	// 测试MySQL默认值
-	mysqlConfig := StoreConfig{
+	mysqlConfig := Config{
 		Driver:   "mysql",
 		Host:     "localhost",
 		Port:     3306,
@@ -24,7 +24,7 @@ func TestStoreConfigDefaultValues(t *testing.T) {
 	}
 
 	// 测试PostgreSQL默认值
-	postgresConfig := StoreConfig{
+	postgresConfig := Config{
 		Driver:   "postgres",
 		Host:     "localhost",
 		Port:     5432,
@@ -41,7 +41,7 @@ func TestStoreConfigDefaultValues(t *testing.T) {
 	}
 
 	// 测试SQLite默认值
-	sqliteConfig := StoreConfig{
+	sqliteConfig := Config{
 		Driver: "sqlite",
 		DBName: "aliyunmc",
 		Path:   "", // 应该使用默认值aliyunmc.db
@@ -57,7 +57,7 @@ func TestStoreConfigDefaultValues(t *testing.T) {
 // TestStoreConfigCustomValues 测试StoreConfig的自定义值
 func TestStoreConfigCustomValues(t *testing.T) {
 	// 测试MySQL自定义值
-	mysqlConfig := StoreConfig{
+	mysqlConfig := Config{
 		Driver:   "mysql",
 		Host:     "db.example.com",
 		Port:     3307,
@@ -74,7 +74,7 @@ func TestStoreConfigCustomValues(t *testing.T) {
 	}
 
 	// 测试PostgreSQL自定义值
-	postgresConfig := StoreConfig{
+	postgresConfig := Config{
 		Driver:   "postgres",
 		Host:     "db.example.com",
 		Port:     5433,
@@ -91,7 +91,7 @@ func TestStoreConfigCustomValues(t *testing.T) {
 	}
 
 	// 测试SQLite自定义值
-	sqliteConfig := StoreConfig{
+	sqliteConfig := Config{
 		Driver: "sqlite",
 		DBName: "mydb",
 		Path:   "./data/mydb.sqlite",

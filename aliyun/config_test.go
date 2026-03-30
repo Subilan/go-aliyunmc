@@ -5,7 +5,7 @@ import (
 )
 
 func TestAliyunConfig_Endpoints(t *testing.T) {
-	config := AliyunConfig{
+	config := Config{
 		RegionId: "cn-hangzhou",
 	}
 
