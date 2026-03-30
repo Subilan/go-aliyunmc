@@ -1,12 +1,15 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 // User 是用户模型
 type User struct {
 	gorm.Model
+	DeletedAt gorm.DeletedAt `gorm:"uniqueIndex:idx_username_deleted_at"`
 	// Username 是用户名
-	Username string `gorm:"unique" json:"username"`
+	Username string `gorm:"uniqueIndex:idx_username_deleted_at" json:"username"`
 	// Password 是密码
 	Password string `gorm:"not null" json:"-"`
 	// PasswordHash 是密码哈希

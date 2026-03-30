@@ -29,8 +29,8 @@ func Details(reason error) gin.H {
 	return gin.H{"details": reason.Error()}
 }
 
-// Errorf 用于包装格式化错误信息
-func Errorf(format string, args ...any) gin.H {
+// DetailsF 用于包装格式化错误信息
+func DetailsF(format string, args ...any) gin.H {
 	return gin.H{"details": fmt.Errorf(format, args...)}
 }
 

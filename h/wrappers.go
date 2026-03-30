@@ -45,7 +45,7 @@ func G(handler BasicHandler) gin.HandlerFunc {
 				c.JSON(http.StatusNotFound, Details(err))
 				return
 			}
-			
+
 			c.JSON(http.StatusInternalServerError, Details(err))
 			return
 		}
