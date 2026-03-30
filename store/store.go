@@ -16,20 +16,20 @@ import (
 var DB *gorm.DB
 
 // MustInitialize 初始化GORM连接池
-func MustInitialize(config StoreConfig) {
+func MustInitialize() {
 	var err error
 	var dialector gorm.Dialector
 
 	// 根据驱动类型选择对应的dialector
-	switch config.Driver {
+	switch C.Driver {
 	case "mysql":
-		dialector = mysql.Open(config.DSN())
+		dialector = mysql.Open(C.DSN())
 	case "postgres":
-		dialector = postgres.Open(config.DSN())
+		dialector = postgres.Open(C.DSN())
 	case "sqlite":
-		dialector = sqlite.Open(config.DSN())
+		dialector = sqlite.Open(C.DSN())
 	default:
-		log.Fatalf("不支持的数据库驱动: %s", config.Driver)
+		log.Fatalf("不支持的数据库驱动: %s", C.Driver)
 	}
 
 	// 配置GORM

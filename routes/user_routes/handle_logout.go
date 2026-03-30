@@ -2,7 +2,7 @@ package user_routes
 
 import (
 	"go-aliyunmc/contextutil"
-	"go-aliyunmc/globals"
+	"go-aliyunmc/env"
 	"go-aliyunmc/logs"
 
 	"github.com/gin-contrib/sessions"
@@ -23,7 +23,7 @@ func HandleLogout(c *gin.Context) (any, error) {
 	}
 
 	// 在DEV模式下输出登出信息
-	if globals.DEV {
+	if env.DEV {
 		user, _ := contextutil.GetUser(c)
 		logs.Dev("用户登出: ID=%d, 用户名=%s", user.ID, user.Username)
 	}

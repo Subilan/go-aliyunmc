@@ -1,9 +1,20 @@
 package aliyun
 
-import "fmt"
+import (
+	"fmt"
 
-// AliyunConfig 包括与阿里云相关的所有配置项目。
-type AliyunConfig struct {
+	"go-aliyunmc/utils"
+)
+
+var C Config
+
+// MustLoadConfig 加载配置
+func MustLoadConfig() {
+	utils.MustBindConfig(&C, "aliyun")
+}
+
+// Config 包括与阿里云相关的所有配置项目。
+type Config struct {
 	// RegionId 表示系统运作时所考虑的实例所在的地域。关于地域和可用区，详细请参考阿里云官方文档 https://help.aliyun.com/document_detail/40654.html
 	//
 	// 关于地域：地域决定了实例与 OSS 之间的内网连通性。如果实例与对象存储（OSS）的存储桶（bucket）不处于同一个地域，则它们无法进行内网传输。
@@ -65,17 +76,17 @@ type AliyunEcsConfig struct {
 }
 
 // EcsEndpoint 返回云服务器（ECS）的服务地址，由 RegionId 决定。
-func (c AliyunConfig) EcsEndpoint() string {
+func (c Config) EcsEndpoint() string {
 	return fmt.Sprintf("ecs.%s.aliyuncs.com", c.RegionId)
 }
 
 // OssEndpoint 返回对象存储（OSS）的服务地址，由 RegionId 决定。
-func (c AliyunConfig) OssEndpoint() string {
+func (c Config) OssEndpoint() string {
 	return fmt.Sprintf("oss-%s.aliyuncs.com", c.RegionId)
 }
 
 // VpcEndpoint 返回专有网络（VPC）的服务地址，由 RegionId 决定。
-func (c AliyunConfig) VpcEndpoint() string {
+func (c Config) VpcEndpoint() string {
 	return fmt.Sprintf("vpc.%s.aliyuncs.com", c.RegionId)
 }
 

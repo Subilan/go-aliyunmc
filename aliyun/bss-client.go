@@ -1,4 +1,4 @@
-package clients
+package aliyun
 
 import (
 	bss20171214 "github.com/alibabacloud-go/bssopenapi-20171214/v6/client"

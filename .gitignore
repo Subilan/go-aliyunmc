@@ -3,8 +3,9 @@ config.toml
 
 *.drawio.bkp
 go-aliyunmc*
-logs/
 upload.sh
 *.pem
 playerprofiles
 *.db
+configs/
+example_configs/

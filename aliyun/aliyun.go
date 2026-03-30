@@ -1,5 +1,6 @@
-package clients
+package aliyun
 
+// MustInitialize 初始化各个阿里云client
 func MustInitialize() {
 	var err error
 

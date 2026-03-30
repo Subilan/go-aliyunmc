@@ -3,7 +3,6 @@ package user_routes
 import (
 	"bytes"
 	"encoding/json"
-	"go-aliyunmc/config"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -18,11 +17,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// 初始化配置
-	config.G = config.TestDefault()
-
 	// 初始化数据库
-	store.MustInitialize(config.G.Store)
+	store.MustInitialize()
 	store.AutoMigrate()
 
 	// 运行测试
