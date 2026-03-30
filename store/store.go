@@ -48,5 +48,8 @@ func MustInitialize() {
 
 // AutoMigrate 自动迁移数据库表
 func AutoMigrate() {
-	DB.AutoMigrate(&models.User{})
+	DB.AutoMigrate(
+		&models.User{},
+		&models.Task{},
+	)
 }

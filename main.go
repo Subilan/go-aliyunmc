@@ -7,8 +7,10 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/env"
+	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/store"
+	"go-aliyunmc/tasks"
 	"log"
 	"net/http"
 	"os/signal"
@@ -32,6 +34,7 @@ func main() {
 	casbin.MustInitialize()
 	aliyun.MustInitialize()
 	env.MustInitialize()
+	tasks.MustInitialize()
 
 	if env.DEV {
 		store.AutoMigrate()
@@ -45,6 +48,9 @@ func main() {
 	engine.Use(sessions.Sessions("session", C.Session.GetSessionStore()))
 
 	engine.Use(cors.New(C.Cors.GinCorsConfig()))
+
+	// 注册任务路由
+	task_routes.Bind(engine)
 
 	// 注册用户路由
 	user_routes.Bind(engine)
