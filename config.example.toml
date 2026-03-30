@@ -20,38 +20,64 @@ domains = []
 
 [base.session]
 # 密钥对列表，支持密钥轮换
-# 第一个密钥对用于新session，后续密钥对用于验证旧session
 [[base.session.key_pairs]]
-# 认证密钥（必需）
+# 认证密钥
 auth_key = 'your-authentication-key-here'
-# 加密密钥（可选）
+# 加密密钥
 enc_key = 'your-encryption-key-here'
-
-# 示例：密钥轮换配置（可选）
-# [[base.session.key_pairs]]
-# auth_key = 'new-auth-key-2024'
-# enc_key = 'new-enc-key-2024'
-# 
-# [[base.session.key_pairs]]
-# auth_key = 'old-auth-key-2023'
-# enc_key = 'old-enc-key-2023'
 
 [store]
 # 数据库驱动类型
-driver = ''
+driver = 'mysql'
 # 数据库主机地址
-host = ''
+host = 'localhost'
 # 数据库端口
-port = 0
+port = 3306
 # 数据库用户名
-user = ''
+user = 'root'
 # 数据库密码
 password = ''
 # 数据库名称
-dbname = ''
+dbname = 'aliyunmc'
 # 数据库字符集
-charset = ''
+charset = 'utf8mb4'
 # SSL模式
-sslmode = ''
+sslmode = 'disable'
 # SQLite数据库文件路径
 path = ''
+
+[aliyun]
+# 实例运行的地域。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
+region_id = 'cn-hangzhou'
+# 用于访问阿里云服务的AKID，可在阿里云RAM控制台中生成
+access_key_id = 'your-access-key-id'
+# 用于访问阿里云服务的AKSecret
+access_key_secret = 'your-access-key-secret'
+
+[aliyun.ecs]
+# 实例的峰值带宽，单位为Mbps，取值范围1～100，必须为整数
+internet_max_bandwidth_out = 5
+# 实例使用的系统镜像名，决定操作系统类型
+image_id = 'centos_7_9_x64_20G_alibase_20230619.vhd'
+# 实例操作系统的主机名
+hostname = 'aliyunmc-server'
+# 实例操作系统根用户密码
+root_password = 'your-root-password'
+# 实例操作系统主用户的密码
+prod_password = 'your-prod-password'
+# 实例的中止动作，取值Stop或Terminate
+spot_interruption_behavior = 'Stop'
+# 实例安全组ID
+security_group_id = 'your-security-group-id'
+
+[aliyun.ecs.system_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB
+size = 40
+
+[aliyun.ecs.data_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB
+size = 100

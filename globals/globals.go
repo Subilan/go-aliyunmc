@@ -4,6 +4,6 @@ import "os"
 
 var DEV bool
 
-func MustLoadGlobals() {
+func MustInitialize() {
 	DEV = os.Getenv("GO_ALIYUNMC_DEV") == "1"
 }

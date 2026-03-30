@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"go-aliyunmc/aliyun"
 	"go-aliyunmc/config"
 	"go-aliyunmc/store"
 
@@ -43,6 +44,28 @@ func main() {
 			Charset:  "utf8mb4",
 			SSLMode:  "disable",
 			Path:     "",
+		},
+		Aliyun: aliyun.AliyunConfig{
+			RegionId:        "cn-hangzhou",
+			AccessKeyId:     "your-access-key-id",
+			AccessKeySecret: "your-access-key-secret",
+			Ecs: aliyun.AliyunEcsConfig{
+				InternetMaxBandwidthOut: 5,
+				ImageId:                 "centos_7_9_x64_20G_alibase_20230619.vhd",
+				SystemDisk: aliyun.EcsDiskConfig{
+					Category: "cloud_essd",
+					Size:     40,
+				},
+				DataDisk: aliyun.EcsDiskConfig{
+					Category: "cloud_essd",
+					Size:     100,
+				},
+				HostName:                 "aliyunmc-server",
+				RootPassword:             "your-root-password",
+				ProdPassword:             "your-prod-password",
+				SpotInterruptionBehavior: "Stop",
+				SecurityGroupId:          "your-security-group-id",
+			},
 		},
 	}
 
