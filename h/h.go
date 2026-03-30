@@ -31,7 +31,7 @@ func Details(reason error) gin.H {
 
 // DetailsF 用于包装格式化错误信息
 func DetailsF(format string, args ...any) gin.H {
-	return gin.H{"details": fmt.Errorf(format, args...)}
+	return gin.H{"details": fmt.Sprintf(format, args...)}
 }
 
 // Data 用于包装数据
