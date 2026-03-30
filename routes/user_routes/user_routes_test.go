@@ -19,10 +19,10 @@ import (
 
 func TestMain(m *testing.M) {
 	// 初始化配置
-	config.Global = config.TestDefault()
+	config.G = config.TestDefault()
 
 	// 初始化数据库
-	store.MustInitialize(config.Global.Store)
+	store.MustInitialize(config.G.Store)
 	store.AutoMigrate()
 
 	// 运行测试

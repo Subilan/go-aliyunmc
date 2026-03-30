@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-aliyunmc/aliyun/clients"
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/config"
 	"go-aliyunmc/globals"
@@ -21,10 +22,11 @@ import (
 )
 
 func main() {
-	config.MustBindGlobal()
-	globals.MustLoadGlobals()
-	store.MustInitialize(config.Global.Store)
+	config.MustInitialize()
+	globals.MustInitialize()
+	store.MustInitialize(config.G.Store)
 	casbin.MustInitialize()
+	clients.MustInitialize()
 
 	if globals.DEV {
 		store.AutoMigrate()
@@ -35,9 +37,9 @@ func main() {
 	engine.Use(gin.Recovery())
 
 	// 配置session中间件
-	engine.Use(sessions.Sessions("session", config.Global.Base.Session.GetSessionStore()))
+	engine.Use(sessions.Sessions("session", config.G.Base.Session.GetSessionStore()))
 
-	engine.Use(cors.New(config.Global.Base.Cors.GinCorsConfig()))
+	engine.Use(cors.New(config.G.Base.Cors.GinCorsConfig()))
 
 	// 注册用户路由
 	user_routes.Bind(engine)
@@ -49,7 +51,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	if globals.DEV || !config.Global.Base.Autotls.Enabled {
+	if globals.DEV || !config.G.Base.Autotls.Enabled {
 		run(engine, stop)
 	} else {
 		runTLS(engine, ctx, stop)
@@ -62,7 +64,7 @@ func main() {
 
 func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) {
 	go func() {
-		if err := autotls.RunWithContext(ctx, engine, config.Global.Base.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := autotls.RunWithContext(ctx, engine, config.G.Base.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
@@ -71,7 +73,7 @@ func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) 
 
 func run(engine *gin.Engine, cancel context.CancelFunc) {
 	go func() {
-		if err := engine.Run(fmt.Sprintf(":%d", config.Global.Base.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := engine.Run(fmt.Sprintf(":%d", config.G.Base.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
