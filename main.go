@@ -7,6 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/env"
+	"go-aliyunmc/logs"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/store"
@@ -14,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/gin-contrib/cors"
@@ -69,8 +71,19 @@ func main() {
 	}
 
 	<-ctx.Done()
-	log.Println("关闭中...")
+	logs.Info("清理中...")
 	// cleanup logic here
+
+	logs.Info("清除正在运行的任务")
+	var wg sync.WaitGroup
+	tasks.RangeExecutors(func(taskId uint, executor *tasks.Executor) {
+		wg.Go(func() {
+			executor.Interrupt()
+			<-executor.Done()
+		})
+	})
+	wg.Wait()
+	logs.Info("清除完毕")
 }
 
 func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) {
