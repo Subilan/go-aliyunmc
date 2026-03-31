@@ -13,12 +13,21 @@ func IsTypeExecuting(taskType models.TaskType) bool {
 	return loaded
 }
 
-func RecordExecutingType(taskType models.TaskType) {
+func SetExecutingType(taskType models.TaskType) {
 	executingTypes.Store(taskType, true)
 }
 
 func DeleteExecutingType(taskType models.TaskType) {
 	executingTypes.Delete(taskType)
+}
+
+func RangeExecutors(fn func(taskId uint, executor *Executor)) {
+	executors.Range(func(key any, value any) bool {
+		taskId := key.(uint)
+		executor := value.(*Executor)
+		fn(taskId, executor)
+		return true
+	})
 }
 
 func GetExecutor(taskId uint) (*Executor, bool) {
@@ -29,7 +38,7 @@ func GetExecutor(taskId uint) (*Executor, bool) {
 	return executor.(*Executor), true
 }
 
-func RecordExecutor(taskId uint, executor *Executor) {
+func SetExecutor(taskId uint, executor *Executor) {
 	executors.Store(taskId, executor)
 }
 

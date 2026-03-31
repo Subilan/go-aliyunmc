@@ -14,12 +14,20 @@ type Executor struct {
 	broker         *sse.Broker
 	tc             *TaskContext
 	taskDefinition *TaskDefinition
+	interrupt      chan struct{}
 }
 
 func NewExecutor(def *TaskDefinition) *Executor {
 	return &Executor{
 		taskDefinition: def,
+		interrupt:      make(chan struct{}),
 	}
+}
+
+// Interrupt 触发任务执行器的中断逻辑，monitor 将立即退出并将任务标记为失败。
+func (e *Executor) Interrupt() {
+	e.interrupt <- struct{}{}
+	close(e.interrupt)
 }
 
 // SubscribeOrFail 将 client 添加到当前任务执行器的 broker 订阅列表中，用于接收任务执行状态更新以及输出。
@@ -39,7 +47,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 			return nil, fmt.Errorf("同类任务正在执行中")
 		}
 
-		RecordExecutingType(e.taskDefinition.Type)
+		SetExecutingType(e.taskDefinition.Type)
 	}
 
 	task, err := CreateTask(e.taskDefinition.Type, by)
@@ -57,7 +65,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 
 	e.broker = sse.NewBroker()
 	e.tc = NewTaskContext(task, e.taskDefinition.Timeout)
-	RecordExecutor(task.ID, e)
+	SetExecutor(task.ID, e)
 
 	go e.broker.Run()
 	go e.monitor()
@@ -99,10 +107,15 @@ func (e *Executor) updateAndSummary() {
 	}
 }
 
+func (e *Executor) Done() <-chan struct{} {
+	return e.tc.ctx.Done()
+}
+
 func (e *Executor) monitor() {
 	defer close(e.tc.outputChan)
 	defer close(e.tc.statusChan)
 	defer e.broker.Stop()
+	defer e.tc.cancel()
 	defer DeleteExecutor(e.tc.task.ID)
 	defer DeleteExecutingType(e.tc.task.Type)
 
@@ -110,6 +123,17 @@ func (e *Executor) monitor() {
 
 	for {
 		select {
+		case <-e.interrupt:
+			tc.taskLock.Lock()
+			tc.task.Status = models.TaskStatusFailed
+			tc.task.Error = "中断"
+			now := time.Now()
+			tc.task.EndAt = &now
+			logs.Info("任务%d被中断", tc.task.ID)
+			tc.taskLock.Unlock()
+			e.updateAndSummary()
+			return
+
 		case <-e.tc.ctx.Done():
 			tc.taskLock.Lock()
 			if errors.Is(e.tc.ctx.Err(), context.DeadlineExceeded) {
