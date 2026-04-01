@@ -114,7 +114,7 @@ func cleanupExecutor(taskID uint) {
 
 func TestHandleTriggerTaskExecution_Unauthorized(t *testing.T) {
 	router := setupTaskRouter()
-	w := postTrigger(t, router, nil, "test")
+	w := postTrigger(t, router, nil, string(models.TaskTypeTest))
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected %d, got %d", http.StatusUnauthorized, w.Code)
 	}
@@ -136,7 +136,7 @@ func TestTaskRoutes_TriggerThenGetTask(t *testing.T) {
 	user := createTestUser(t, fmt.Sprintf("task_user_ok_%d", time.Now().UnixNano()))
 	cookie := loginCookie(t, router, user.ID)
 
-	triggerResp := postTrigger(t, router, cookie, "test")
+	triggerResp := postTrigger(t, router, cookie, string(models.TaskTypeTest))
 	if triggerResp.Code != http.StatusOK {
 		t.Fatalf("trigger expected %d, got %d, body=%s", http.StatusOK, triggerResp.Code, triggerResp.Body.String())
 	}

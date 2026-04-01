@@ -9,6 +9,18 @@ import (
 type TaskType string
 
 const (
+	// TaskTypeTest 是测试任务，用于验证任务执行框架。
+	TaskTypeTest TaskType = "test"
+
+	// TaskTypeDeploy 是部署任务，用于在远程服务器上初始化环境、拉取存档等操作。
+	TaskTypeDeploy TaskType = "deploy"
+
+	// TaskTypeBackup 是备份任务，用于备份服务器数据到OSS。
+	TaskTypeBackup TaskType = "backup"
+
+	// TaskTypeArchive 是归档任务，用于轮转归档服务器备份。
+	TaskTypeArchive TaskType = "archive"
+
 	// TaskTypeCreateAndDeploy 是一键创建并部署服务器任务，它在部署完成后启动服务器，服务器启动完成后正常返回。
 	TaskTypeCreateAndDeploy TaskType = "create_and_deploy"
 
