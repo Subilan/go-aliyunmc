@@ -7,6 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/store"
+	"go-aliyunmc/tasks"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -85,6 +86,87 @@ func main() {
 		},
 	}
 
+	deployTaskConfig := tasks.DeployTaskConfig{
+		Exclusive: true,
+		SSH: tasks.TaskSSHConfig{
+			ConnectTimeoutSec: 10,
+		},
+		Steps: []tasks.DeployStepConfig{
+			{
+				Name:       "创建用户",
+				ScriptPath: "scripts/deploy.create-user.tmpl.sh",
+				TimeoutSec: 300,
+			},
+			{
+				Name:       "配置SSH授权",
+				ScriptPath: "scripts/deploy.setup-ssh-authorized-keys.tmpl.sh",
+				TimeoutSec: 180,
+			},
+			{
+				Name:       "配置软件源",
+				ScriptPath: "scripts/deploy.configure-apt-sources.tmpl.sh",
+				TimeoutSec: 300,
+			},
+			{
+				Name:       "配置Zulu仓库",
+				ScriptPath: "scripts/deploy.setup-zulu-repo.tmpl.sh",
+				TimeoutSec: 600,
+			},
+			{
+				Name:       "安装系统软件",
+				ScriptPath: "scripts/deploy.install-system-packages.tmpl.sh",
+				TimeoutSec: 900,
+			},
+			{
+				Name:       "安装ossutil",
+				ScriptPath: "scripts/deploy.install-ossutil.tmpl.sh",
+				TimeoutSec: 300,
+			},
+			{
+				Name:       "挂载数据盘",
+				ScriptPath: "scripts/deploy.format-and-mount-data-disk.tmpl.sh",
+				TimeoutSec: 600,
+			},
+			{
+				Name:       "恢复归档数据",
+				ScriptPath: "scripts/deploy.restore-archive-data.tmpl.sh",
+				TimeoutSec: 900,
+			},
+		},
+		Vars: tasks.DeployTemplateVars{
+			Username:       "mc",
+			Password:       "your-user-password",
+			SSHPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
+			JavaVersion:    21,
+			Packages:       []string{"zip", "unzip"},
+			ArchiveOSSPath: "oss://your-bucket/archive",
+		},
+	}
+
+	backupTaskConfig := tasks.BackupTaskConfig{
+		TemplatePath: "scripts/backup.tmpl.sh",
+		TimeoutSec:   1800,
+		Exclusive:    true,
+		SSH: tasks.TaskSSHConfig{
+			ConnectTimeoutSec: 10,
+		},
+		Vars: tasks.BackupTemplateVars{
+			BackupOSSPath: "oss://your-bucket/backup",
+		},
+	}
+
+	archiveTaskConfig := tasks.ArchiveTaskConfig{
+		TemplatePath: "scripts/archive.tmpl.sh",
+		TimeoutSec:   1800,
+		Exclusive:    true,
+		SSH: tasks.TaskSSHConfig{
+			ConnectTimeoutSec: 10,
+		},
+		Vars: tasks.ArchiveTemplateVars{
+			OSSRoot: "oss://your-bucket",
+		},
+	}
+
 	// 写入main.toml
 	if err := writeConfigFile(configDir+"/main.toml", mainConfig); err != nil {
 		fmt.Printf("Error writing main.toml: %v\n", err)
@@ -106,6 +188,21 @@ func main() {
 	// 写入aliyun.toml
 	if err := writeConfigFile(configDir+"/aliyun.toml", aliyunConfig); err != nil {
 		fmt.Printf("Error writing aliyun.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/task-deploy.toml", deployTaskConfig); err != nil {
+		fmt.Printf("Error writing task-deploy.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/task-backup.toml", backupTaskConfig); err != nil {
+		fmt.Printf("Error writing task-backup.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/task-archive.toml", archiveTaskConfig); err != nil {
+		fmt.Printf("Error writing task-archive.toml: %v\n", err)
 		os.Exit(1)
 	}
 

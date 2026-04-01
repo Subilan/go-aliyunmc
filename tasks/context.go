@@ -10,7 +10,7 @@ type TaskContext struct {
 	ctx    context.Context
 	cancel context.CancelCauseFunc
 	// step 记录了当前任务所处的步骤序号。
-	step   uint
+	step uint
 	// outputChan 用于向 executor 传递一个任务输出。该输出将立即反馈到数据库并同步到客户端。
 	outputChan chan TaskOutput
 	// statusChan 用于向 executor 传递一个任务状态的更新。该更新将立即反馈到数据库并同步到客户端。

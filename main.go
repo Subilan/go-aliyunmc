@@ -30,6 +30,7 @@ func main() {
 	store.MustLoadConfig()
 	casbin.MustLoadConfig()
 	aliyun.MustLoadConfig()
+	tasks.MustLoadConfig()
 
 	// 初始化模块
 	store.MustInitialize()

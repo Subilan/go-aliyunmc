@@ -36,10 +36,31 @@ func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 }
 
 func MustInitialize() {
-	TaskDefinitions["test"] = &TaskDefinition{
+	TaskDefinitions[models.TaskTypeTest] = &TaskDefinition{
 		Exclusive: true,
-		Type:      "test",
+		Type:      models.TaskTypeTest,
 		Timeout:   1 * time.Hour,
 		F:         testTask,
+	}
+
+	TaskDefinitions[models.TaskTypeDeploy] = &TaskDefinition{
+		Exclusive: DeployC.Exclusive,
+		Type:      models.TaskTypeDeploy,
+		Timeout:   0, // 不设置超时，由任务内部逻辑控制
+		F:         deployTask,
+	}
+
+	TaskDefinitions[models.TaskTypeBackup] = &TaskDefinition{
+		Exclusive: BackupC.Exclusive,
+		Type:      models.TaskTypeBackup,
+		Timeout:   time.Duration(BackupC.TimeoutSec) * time.Second,
+		F:         backupTask,
+	}
+
+	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
+		Exclusive: ArchiveC.Exclusive,
+		Type:      models.TaskTypeArchive,
+		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
+		F:         archiveTask,
 	}
 }
