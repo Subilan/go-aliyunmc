@@ -6,7 +6,7 @@ import (
 )
 
 func testTask(tc *TaskContext) error {
-	for i := 0; i < 1800; i++ {
+	for i := 0; i < 30; i++ {
 		if i%10 == 0 {
 			tc.nextStep()
 		}

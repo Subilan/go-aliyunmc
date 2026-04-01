@@ -8,13 +8,9 @@ import (
 var executors sync.Map
 var executingTypes sync.Map
 
-func IsTypeExecuting(taskType models.TaskType) bool {
-	_, loaded := executingTypes.Load(taskType)
-	return loaded
-}
-
-func SetExecutingType(taskType models.TaskType) {
-	executingTypes.Store(taskType, true)
+func TrySetExecutingType(taskType models.TaskType) bool {
+	_, loaded := executingTypes.LoadOrStore(taskType, true)
+	return !loaded
 }
 
 func DeleteExecutingType(taskType models.TaskType) {
