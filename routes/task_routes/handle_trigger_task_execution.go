@@ -1,6 +1,7 @@
 package task_routes
 
 import (
+	"errors"
 	"go-aliyunmc/contextutil"
 	"go-aliyunmc/h"
 	"go-aliyunmc/store/models"
@@ -32,6 +33,9 @@ func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context
 	task, err := executor.RunTask(&userId)
 	
 	if err != nil {
+		if errors.Is(err, tasks.ErrTaskTypeExecuting) {
+			return nil, h.HttpError(http.StatusConflict, err.Error())
+		}
 		return nil, err
 	}
 

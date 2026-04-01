@@ -42,3 +42,12 @@ func ListTasks(status *models.TaskStatus, limit, offset int) ([]models.Task, err
 	result := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&tasks)
 	return tasks, result.Error
 }
+
+func GetTask(taskId uint) (*models.Task, error) {
+	var task models.Task
+	result := store.DB.First(&task, taskId)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &task, nil
+}

@@ -35,7 +35,7 @@ func HandleGetTaskOutput(c *gin.Context) {
 	client, err := sse.NewClient(c)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, h.DetailsF("无法建立SSE连接："+err.Error()))
+		c.JSON(http.StatusInternalServerError, h.DetailsF("无法建立SSE连接：%s", err.Error()))
 		return
 	}
 
@@ -45,7 +45,7 @@ func HandleGetTaskOutput(c *gin.Context) {
 	ok = executor.SubscribeOrFail(client)
 
 	if !ok {
-		c.JSON(http.StatusServiceUnavailable, h.DetailsF("SSE通道暂未准备完毕"))
+		c.JSON(http.StatusInternalServerError, h.DetailsF("无法注册输出监听器"))
 		return
 	}
 

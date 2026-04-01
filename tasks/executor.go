@@ -11,14 +11,15 @@ import (
 	"time"
 )
 
-var errTaskInterrupted = errors.New("task interrupted")
+var ErrTaskInterrupted = errors.New("任务中断")
+var ErrTaskTypeExecuting = errors.New("同类任务正在执行中")
 
 type Executor struct {
 	// broker 用于管理当前任务的 SSE 连接，并向连接中的客户端广播任务状态更新和输出。
 	broker *sse.Broker
 	// task 指向当前正在执行的任务信息。
 	//  - invariant: 只能在 monitor goroutine 中访问和修改 task，其余 goroutine 访问将导致竞态条件。
-	task           *models.Task
+	task *models.Task
 	// taskDefinition 用于存储当前执行器对应的任务定义，它在执行器的生命周期内保持不变。
 	taskDefinition *TaskDefinition
 	// stateLock 保护 interrupted 字段和 tc 字段的访问。
@@ -56,7 +57,7 @@ func (e *Executor) Interrupt() {
 		e.stateLock.Unlock()
 
 		if tc != nil {
-			tc.throw(errTaskInterrupted)
+			tc.throw(ErrTaskInterrupted)
 		}
 	})
 }
@@ -71,12 +72,14 @@ func (e *Executor) SubscribeOrFail(client *sse.Client) bool {
 	return true
 }
 
-// RunTask 创建并开始执行这个任务
+// RunTask 创建并开始执行一个任务，并将任务的触发者设置为 by（可以为 nil，表示由系统触发）。
+//   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
+//   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
 func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 	/** 初始化阶段，此阶段发生的错误被认为是 earlyExit **/
-	if e.taskDefinition.TypeExclusive {
+	if e.taskDefinition.Exclusive {
 		if !TrySetExecutingType(e.taskDefinition.Type) {
-			return nil, fmt.Errorf("同类任务正在执行中")
+			return nil, ErrTaskTypeExecuting
 		}
 		e.exclusiveType = true
 	}
@@ -106,7 +109,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 		earlyExitCleanup()
 		return nil, err
 	}
-	 
+
 	// 初始化 broker 和 TaskContext
 	e.broker = sse.NewBroker()
 	tc := NewTaskContextWithTimeout(e.taskDefinition.Timeout)
@@ -127,7 +130,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 
 	// 如果在启动任务的过程中，任务被触发过中断逻辑，则立即将任务标记为失败并退出。
 	if interrupted {
-		tc.throw(errTaskInterrupted)
+		tc.throw(ErrTaskInterrupted)
 		return task, nil
 	}
 
@@ -199,7 +202,7 @@ func (e *Executor) monitor() {
 			if errors.Is(cause, context.DeadlineExceeded) {
 				e.task.Status = models.TaskStatusFailed
 				e.task.Error = "__TIMEOUT__"
-			} else if errors.Is(cause, errTaskInterrupted) {
+			} else if errors.Is(cause, ErrTaskInterrupted) {
 				e.task.Status = models.TaskStatusFailed
 				e.task.Error = "__INTERRUPTED__"
 				logs.Info("任务%d被中断", e.task.ID)

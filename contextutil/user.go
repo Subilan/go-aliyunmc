@@ -6,9 +6,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const UserKey = "user"
+const UserIdKey = "user_id"
+
 // GetUser 从gin.Context中获取用户信息
 func GetUser(c *gin.Context) (models.User, bool) {
-	user, exists := c.Get("user")
+	user, exists := c.Get(UserKey)
 	if !exists {
 		return models.User{}, false
 	}
@@ -23,7 +26,7 @@ func GetUser(c *gin.Context) (models.User, bool) {
 
 // GetUserID 从gin.Context中获取用户ID
 func GetUserID(c *gin.Context) (uint, bool) {
-	userID, exists := c.Get("user_id")
+	userID, exists := c.Get(UserIdKey)
 	if !exists {
 		return 0, false
 	}
