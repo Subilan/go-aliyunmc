@@ -14,6 +14,7 @@ func Bind(router *gin.Engine) {
 	authorized.Use(mid.Auth())
 
 	{
+		authorized.GET("/:id", h.G(HandleGetTask))
 		authorized.GET("/:id/output", HandleGetTaskOutput)
 		authorized.POST("/trigger", h.B(HandleTriggerTaskExecution))
 	}
