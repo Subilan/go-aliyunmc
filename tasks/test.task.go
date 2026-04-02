@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func testTask(tc *TaskContext) error {
+func testTask(tc *TaskContext, _ map[string]any) error {
 	for i := 0; i < 30; i++ {
 		if i%10 == 0 {
 			tc.nextStep()

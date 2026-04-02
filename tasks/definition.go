@@ -23,7 +23,7 @@ type TaskDefinition struct {
 	F TaskFunc
 }
 
-type TaskFunc func(*TaskContext) error
+type TaskFunc func(*TaskContext, map[string]any) error
 
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
 
@@ -62,5 +62,12 @@ func MustInitialize() {
 		Type:      models.TaskTypeArchive,
 		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
 		F:         archiveTask,
+	}
+
+	TaskDefinitions[models.TaskTypeCreateInstance] = &TaskDefinition{
+		Exclusive: true,
+		Type:      models.TaskTypeCreateInstance,
+		Timeout:   10 * time.Minute,
+		F:         createInstanceTask,
 	}
 }

@@ -191,7 +191,7 @@ func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
 		Type:      taskType,
 		Exclusive: true,
 		Timeout:   10 * time.Second,
-		F: func(tc *tasks.TaskContext) error {
+		F: func(tc *tasks.TaskContext, _ map[string]any) error {
 			select {
 			case <-release:
 				return nil

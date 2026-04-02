@@ -13,6 +13,7 @@ import (
 
 type TriggerTaskExecutionRequest struct {
 	Type models.TaskType `json:"type" binding:"required"`
+	Args map[string]any  `json:"args"`
 }
 
 func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context) (any, error) {
@@ -21,7 +22,7 @@ func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context
 	if !ok {
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
 	}
-	
+
 	def := tasks.GetTaskDefinition(body.Type)
 
 	if def == nil {
@@ -30,8 +31,8 @@ func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context
 
 	executor := tasks.NewExecutor(def)
 
-	task, err := executor.RunTask(&userId)
-	
+	task, err := executor.RunTask(&userId, body.Args)
+
 	if err != nil {
 		if errors.Is(err, tasks.ErrTaskTypeExecuting) {
 			return nil, h.HttpError(http.StatusConflict, err.Error())

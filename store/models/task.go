@@ -21,8 +21,11 @@ const (
 	// TaskTypeArchive 是归档任务，用于轮转归档服务器备份。
 	TaskTypeArchive TaskType = "archive"
 
-	// TaskTypeCreateAndDeploy 是一键创建并部署服务器任务，它在部署完成后启动服务器，服务器启动完成后正常返回。
-	TaskTypeCreateAndDeploy TaskType = "create_and_deploy"
+	// TaskTypeCreateInstance 是创建实例任务，用于在阿里云上创建一个新的ECS实例。
+	TaskTypeCreateInstance TaskType = "create_instance"
+
+	// TaskTypeDeployInstance 是部署实例任务，用于在新创建的实例上部署环境、拉取存档等操作。
+	TaskTypeDeployInstance TaskType = "deploy_instance"
 
 	// TaskTypeStartServer 是启动服务器任务。当服务器启动完成后正常返回。
 	TaskTypeStartServer TaskType = "start_server"
