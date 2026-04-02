@@ -18,6 +18,30 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// tryDialRoot 尝试使用root用户通过SSH连接远程主机，以验证连接是否成功
+//   - host: 远程主机的IP地址或域名
+//   - timeout: 连接超时时间，单位为秒
+func tryDialRoot(host string, timeout time.Duration) bool {
+	cfg := &ssh.ClientConfig{
+		User: "root",
+		Auth: []ssh.AuthMethod{
+			ssh.Password(aliyun.C.Ecs.RootPassword),
+		},
+		Timeout: timeout,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // should not be used in prod but whatever...
+	}
+
+	client, err := ssh.Dial("tcp", host+":22", cfg)
+
+	if err != nil {
+		return false
+	}
+
+	client.Close()
+
+	return true
+}
+
 // renderScriptTemplate 从指定路径读取脚本模板文件，并使用提供的变量进行渲染，返回渲染后的脚本内容
 func renderScriptTemplate(templatePath string, vars any) (string, error) {
 	content, err := os.ReadFile(templatePath)

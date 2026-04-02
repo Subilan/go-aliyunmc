@@ -9,7 +9,7 @@ import (
 	"go-aliyunmc/aliyun"
 )
 
-func deployTask(tc *TaskContext) error {
+func deployTask(tc *TaskContext, args map[string]any) error {
 	// 由于这是一个分步任务，先将步骤推进到第一步，以便在日志中正确显示当前步骤信息
 	tc.nextStep()
 

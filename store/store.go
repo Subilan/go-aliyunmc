@@ -51,5 +51,6 @@ func AutoMigrate() {
 	DB.AutoMigrate(
 		&models.User{},
 		&models.Task{},
+		&models.Instance{},
 	)
 }

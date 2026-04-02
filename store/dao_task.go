@@ -1,7 +1,6 @@
-package tasks
+package store
 
 import (
-	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 
 	"gorm.io/gorm"
@@ -18,14 +17,14 @@ func CreateTask(taskType models.TaskType, by *uint) (*models.Task, error) {
 		Step:   0,
 		By:     by,
 	}
-	result := store.DB.Create(task)
+	result := DB.Create(task)
 	return task, result.Error
 }
 
 // UpdateTask 将任务数据写入到数据库。task 是要更新的任务结构体指针。
 func UpdateTask(task *models.Task) error {
-	result := store.DB.Session(&gorm.Session{
-		Logger: store.DB.Logger.LogMode(logger.Silent),
+	result := DB.Session(&gorm.Session{
+		Logger: DB.Logger.LogMode(logger.Silent),
 	}).Save(task)
 	return result.Error
 }
@@ -33,7 +32,7 @@ func UpdateTask(task *models.Task) error {
 // ListTasks 获取指定状态的任务列表。若不指定状态，则返回任意状态的任务。
 func ListTasks(status *models.TaskStatus, limit, offset int) ([]models.Task, error) {
 	var tasks []models.Task
-	query := store.DB.Model(&models.Task{})
+	query := DB.Model(&models.Task{})
 
 	if status != nil {
 		query = query.Where("status = ?", *status)
@@ -43,9 +42,10 @@ func ListTasks(status *models.TaskStatus, limit, offset int) ([]models.Task, err
 	return tasks, result.Error
 }
 
+// GetTask 根据任务ID获取任务详情。
 func GetTask(taskId uint) (*models.Task, error) {
 	var task models.Task
-	result := store.DB.First(&task, taskId)
+	result := DB.First(&task, taskId)
 	if result.Error != nil {
 		return nil, result.Error
 	}

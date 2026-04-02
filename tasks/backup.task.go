@@ -1,6 +1,6 @@
 package tasks
 
-func backupTask(tc *TaskContext) error {
+func backupTask(tc *TaskContext, _ map[string]any) error {
 	ip, err := getRemoteIPFromDBPlaceholder()
 	if err != nil {
 		return err

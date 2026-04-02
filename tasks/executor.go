@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/sse"
+	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"sync"
 	"time"
@@ -75,7 +76,7 @@ func (e *Executor) SubscribeOrFail(client *sse.Client) bool {
 // RunTask 创建并开始执行一个任务，并将任务的触发者设置为 by（可以为 nil，表示由系统触发）。
 //   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
 //   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
-func (e *Executor) RunTask(by *uint) (*models.Task, error) {
+func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) {
 	/** 初始化阶段，此阶段发生的错误被认为是 earlyExit **/
 	if e.taskDefinition.Exclusive {
 		if !TrySetExecutingType(e.taskDefinition.Type) {
@@ -92,7 +93,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 	}
 
 	// 创建任务记录
-	task, err := CreateTask(e.taskDefinition.Type, by)
+	task, err := store.CreateTask(e.taskDefinition.Type, by)
 
 	if err != nil {
 		earlyExitCleanup()
@@ -105,7 +106,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 	task.StartAt = &now
 	task.Status = models.TaskStatusRunning
 
-	if err := UpdateTask(task); err != nil {
+	if err := store.UpdateTask(task); err != nil {
 		earlyExitCleanup()
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (e *Executor) RunTask(by *uint) (*models.Task, error) {
 			}
 		}()
 
-		if err := e.taskDefinition.F(tc); err != nil {
+		if err := e.taskDefinition.F(tc, args); err != nil {
 			tc.throw(err)
 			return
 		}
@@ -160,7 +161,7 @@ type TaskSummary struct {
 
 // updateAndBroadcast 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播 event。
 func (e *Executor) updateAndBroadcast(event sse.Event) {
-	if err := UpdateTask(e.task); err != nil {
+	if err := store.UpdateTask(e.task); err != nil {
 		logs.Error("更新任务状态时出错: %v\n", err)
 	} else {
 		e.broker.Broadcast(event)
@@ -169,7 +170,7 @@ func (e *Executor) updateAndBroadcast(event sse.Event) {
 
 // updateAndSummary 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播任务结束事件。
 func (e *Executor) updateAndSummary() {
-	if err := UpdateTask(e.task); err != nil {
+	if err := store.UpdateTask(e.task); err != nil {
 		logs.Error("更新任务状态时出错: %v\n", err)
 	} else {
 		e.broker.Broadcast(sse.Event{
