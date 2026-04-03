@@ -27,7 +27,6 @@ func HandleRegister(req RegisterRequest, c *gin.Context) (any, error) {
 	// 创建用户
 	user := models.User{
 		Username:     req.Username,
-		Password:     req.Password,
 		PasswordHash: string(hashedPassword),
 		Role:         "basic",
 	}

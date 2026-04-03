@@ -38,6 +38,11 @@ func main() {
 	casbin.MustInitialize()
 	aliyun.MustInitialize()
 	env.MustInitialize()
+	if env.DEV {
+		if _, err := store.EnsureDevUser(); err != nil {
+			logs.Fatal("初始化DEV用户失败: %v", err)
+		}
+	}
 	tasks.MustInitialize()
 
 	if env.DEV {

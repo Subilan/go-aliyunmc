@@ -87,7 +87,6 @@ func TestHandleLogin(t *testing.T) {
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	testUser := models.User{
 		Username:     "loginuser",
-		Password:     "password123",
 		PasswordHash: string(hashedPassword),
 	}
 	store.DB.Create(&testUser)
@@ -138,8 +137,8 @@ func TestHandleDeleteUser(t *testing.T) {
 
 	// 先创建测试用户
 	testUser := models.User{
-		Username: "deleteuser",
-		Password: "password123",
+		Username:     "deleteuser",
+		PasswordHash: "hash",
 	}
 	store.DB.Create(&testUser)
 

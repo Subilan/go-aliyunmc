@@ -10,8 +10,6 @@ type User struct {
 	DeletedAt gorm.DeletedAt `gorm:"uniqueIndex:idx_username_deleted_at"`
 	// Username 是用户名
 	Username string `gorm:"uniqueIndex:idx_username_deleted_at" json:"username"`
-	// Password 是密码
-	Password string `gorm:"not null" json:"-"`
 	// PasswordHash 是密码哈希
 	PasswordHash string `gorm:"not null" json:"-"`
 	// Role 是用户角色

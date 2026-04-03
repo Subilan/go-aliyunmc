@@ -60,7 +60,6 @@ func createTestUser(t *testing.T, username string) models.User {
 	t.Helper()
 	user := models.User{
 		Username:     username,
-		Password:     "password",
 		PasswordHash: "hash",
 		Role:         "basic",
 	}
