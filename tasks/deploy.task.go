@@ -10,6 +10,17 @@ import (
 	"go-aliyunmc/store"
 )
 
+// deployTaskVars 表示部署任务实际所需要的模板变量，包含了DeployTemplateVars中的字段以及从aliyun.C读取的相关字段。
+type deployTaskVars struct {
+	DeployTemplateVars
+	Username        string
+	Password        string
+	RegionId        string
+	AccessKeyId     string
+	AccessKeySecret string
+	DataDiskSize    int
+}
+
 func deployTask(tc *TaskContext, args map[string]any) error {
 	// 由于这是一个分步任务，先将步骤推进到第一步，以便在日志中正确显示当前步骤信息
 	tc.nextStep()
@@ -21,14 +32,10 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 	}
 
 	// 构建扩展的模板变量，包含从aliyun.C读取的值
-	expandedVars := struct {
-		DeployTemplateVars
-		RegionId        string
-		AccessKeyId     string
-		AccessKeySecret string
-		DataDiskSize    int
-	}{
+	expandedVars := deployTaskVars{
 		DeployTemplateVars: DeployC.Vars,
+		Username:           "mc",
+		Password:           aliyun.C.Ecs.ProdPassword,
 		RegionId:           aliyun.C.RegionId,
 		AccessKeyId:        aliyun.C.AccessKeyId,
 		AccessKeySecret:    aliyun.C.AccessKeySecret,

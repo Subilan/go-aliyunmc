@@ -7,8 +7,6 @@ type TaskSSHConfig struct {
 }
 
 type DeployTemplateVars struct {
-	Username       string   `toml:"username" validate:"required" comment:"部署后在远程机器上创建的系统用户"`
-	Password       string   `toml:"password" validate:"required" comment:"部署用户密码"`
 	SSHPublicKey   string   `toml:"ssh_public_key" validate:"required" comment:"部署用户写入的公钥"`
 	JavaVersion    int      `toml:"java_version" validate:"required,min=1" comment:"Zulu Java主版本号"`
 	Packages       []string `toml:"packages" validate:"omitempty,dive,min=1" comment:"额外安装的软件包列表"`
