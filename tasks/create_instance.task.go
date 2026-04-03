@@ -30,7 +30,7 @@ func deleteInstance(id string) {
 
 	_, err := aliyun.EcsClient.DeleteInstance(deleteInstanceRequest)
 	if err != nil {
-		logs.Error("在清理过程中无法删除实例：%w", err)
+		logs.Error("在清理过程中无法删除实例：%v", err)
 	}
 }
 

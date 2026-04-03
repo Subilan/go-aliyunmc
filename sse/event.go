@@ -36,7 +36,6 @@ func NewClient(c *gin.Context) (*Client, error) {
 	// 设置SSE响应头
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 
 	ctx, cancel := context.WithCancel(c.Request.Context())
@@ -74,7 +73,7 @@ func (c *Client) SendEvent(name string, data interface{}) error {
 	return c.Send(Event{Event: name, Data: data})
 }
 
-// Close 关闭客户端连接
+// Close 结束客户端连接，handler 将返回
 func (c *Client) Close() {
 	c.cancel()
 }
@@ -96,6 +95,9 @@ func (c *Client) Listen() {
 				return
 			}
 			c.flusher.Flush()
+			if event.Event == "task_done" {
+				return
+			}
 
 		case <-c.ctx.Done():
 			return
@@ -104,7 +106,7 @@ func (c *Client) Listen() {
 }
 
 func (c *Client) writeComment(comment string) {
-	_, _ = fmt.Fprintf(c.writer, ":%s\n", comment)
+	_, _ = fmt.Fprintf(c.writer, ":%s\n\n", comment)
 }
 
 // writeEvent 写入事件到响应流
