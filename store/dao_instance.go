@@ -7,23 +7,31 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetActiveInstance 获取当前活跃的实例，即目前存在的那一个实例，如果没有则返回 nil。
+// GetActiveInstanceDefaultNil 获取当前活跃的实例，如果没有则返回 nil, nil
+func GetActiveInstanceDefaultNil() (*models.Instance, error) {
+	instance, err := GetActiveInstance()
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	return instance, err
+}
+
+// GetActiveInstance 获取当前活跃的实例，如果没有则返回错误。
 // 注意，这个函数假设系统中最多只能有一个活跃实例。如果数据库中存在多条实例记录，这个函数将返回第一条记录。
-// 如果没有活跃的实例，该函数不会返回错误。
 func GetActiveInstance() (*models.Instance, error) {
 	var instance models.Instance
 	err := DB.First(&instance).Error
 
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 
 	return &instance, nil
 }
 
+// DeleteActiveInstance 删除当前活跃的实例，如果没有则返回错误。
 func DeleteActiveInstance() error {
 	var instance models.Instance
 	err := DB.First(&instance).Error
@@ -33,4 +41,19 @@ func DeleteActiveInstance() error {
 	}
 
 	return DB.Delete(&instance).Error
+}
+
+// GetActiveInstanceIpNonEmpty 获取当前活跃实例的 IP 地址，如果没有活跃实例或 IP 地址为空，则返回错误。
+func GetActiveInstanceIpNonEmpty() (string, error) {
+	instance, err := GetActiveInstance()
+
+	if err != nil {
+		return "", err
+	}
+
+	if instance.Ip == "" {
+		return "", errors.New("IP地址未分配")
+	}
+
+	return instance.Ip, nil
 }

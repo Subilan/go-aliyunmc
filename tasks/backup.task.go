@@ -1,7 +1,9 @@
 package tasks
 
+import "go-aliyunmc/store"
+
 func backupTask(tc *TaskContext, _ map[string]any) error {
-	ip, err := getRemoteIPFromDBPlaceholder()
+	ip, err := store.GetActiveInstanceIpNonEmpty()
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,8 @@ type CreateInstanceTaskArgs struct {
 	StartWhenCreated  bool   `json:"startWhenCreated"`
 }
 
+// deleteInstance 用于清除创建实例过程中产生的资源，避免残留未使用的实例占用配额或产生费用。
+// 它会尝试删除指定ID的实例，如果删除失败会记录错误日志但不会返回错误。
 func deleteInstance(id string) {
 	deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
 		InstanceId: tea.String(id),
@@ -34,6 +36,39 @@ func deleteInstance(id string) {
 	}
 }
 
+// startInstanceWithRetry 尝试启动实例，如果启动失败会每隔5秒重试一次，直到成功或达到1分钟的超时限制。
+// 设置重试机制的原因是，实例被创建之后有一定概率（较小）长时间处于Initializing状态，该状态不支持启动操作。
+func startInstanceWithRetry(startInstanceRequest *ecs20140526.StartInstanceRequest, tc *TaskContext) error {
+	startCtx, startCancel := context.WithTimeout(tc.Context(), 1*time.Minute)
+	defer startCancel()
+	startRetryTicker := time.NewTicker(5 * time.Second)
+	defer startRetryTicker.Stop()
+
+	var startErr error
+
+	for {
+		_, startErr = aliyun.EcsClient.StartInstance(startInstanceRequest)
+		if startErr == nil {
+			break
+		}
+
+		tc.println("开启实例失败，5秒后重试")
+
+		select {
+		case <-startCtx.Done():
+			if errors.Is(startCtx.Err(), context.Canceled) {
+				tc.println("尝试开启实例过程中任务被取消")
+				return fmt.Errorf("任务被取消")
+			}
+			return fmt.Errorf("开启实例超时(60s): %w，请尝试手动开启", startErr)
+		case <-startRetryTicker.C:
+		}
+	}
+
+	return nil
+}
+
+// getDefaultVSwitchId 尝试获取指定可用区的默认交换机ID，如果没有找到则创建一个新的默认交换机并等待其就绪后返回ID。
 func getDefaultVSwitchId(tc *TaskContext, zoneId string) (string, error) {
 	tc.println("开始查询默认交换机")
 	describeVSwitchesRequest := &vpc20160428.DescribeVSwitchesRequest{
@@ -108,7 +143,7 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 	tc.nextStep()
 	tc.println("检查当前实例")
 
-	instance, err := store.GetActiveInstance()
+	instance, err := store.GetActiveInstanceDefaultNil()
 
 	if err != nil {
 		return err
@@ -211,17 +246,14 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 	}
 
 	tc.nextStep()
-	tc.println("开启实例")
+	tc.println("尝试触发实例启动")
 	startInstanceRequest := &ecs20140526.StartInstanceRequest{
 		InstanceId: &instance.InstanceId,
 	}
-
-	_, err = aliyun.EcsClient.StartInstance(startInstanceRequest)
-
-	if err != nil {
-		return fmt.Errorf("开启实例失败: %w，请尝试手动开启", err)
+	if err := startInstanceWithRetry(startInstanceRequest, tc); err != nil {
+		deleteInstance(instance.InstanceId)
+		return err
 	}
-
 	tc.println("已触发实例启动")
 	tc.nextStep()
 	tc.println("开始网络验证")
@@ -241,7 +273,7 @@ outer:
 			}
 			return fmt.Errorf("等待实例SSH可用超时")
 		case <-waitSSHTicker.C:
-			tc.println("尝试连接中")
+			tc.println("尝试连接...")
 			if tryDialRoot(instance.Ip, 5*time.Second) {
 				tc.println("连接成功")
 				break outer

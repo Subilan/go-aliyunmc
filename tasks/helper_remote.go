@@ -27,7 +27,7 @@ func tryDialRoot(host string, timeout time.Duration) bool {
 		Auth: []ssh.AuthMethod{
 			ssh.Password(aliyun.C.Ecs.RootPassword),
 		},
-		Timeout: timeout,
+		Timeout:         timeout,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // should not be used in prod but whatever...
 	}
 
@@ -160,11 +160,6 @@ func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, scri
 		wg.Wait()
 		close(scanErrCh)
 
-		// 如果上下文已超时或被取消，优先返回上下文错误
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
 		for scanErr := range scanErrCh {
 			if scanErr != nil {
 				return scanErr
@@ -183,8 +178,4 @@ func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, scri
 		wg.Wait()
 		return ctx.Err()
 	}
-}
-
-func getRemoteIPFromDBPlaceholder() (string, error) {
-	return "", fmt.Errorf("远程IP获取未实现（数据库结构未就绪）")
 }
