@@ -73,6 +73,15 @@ func (e *Executor) SubscribeOrFail(client *sse.Client) bool {
 	return true
 }
 
+// Unsubscribe 将 client 从当前任务执行器的 broker 订阅列表中移除。
+func (e *Executor) Unsubscribe(client *sse.Client) {
+	if e.broker == nil {
+		client.Close()
+		return
+	}
+	e.broker.Unregister(client)
+}
+
 // RunTask 创建并开始执行一个任务，并将任务的触发者设置为 by（可以为 nil，表示由系统触发）。
 //   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
 //   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
@@ -188,7 +197,6 @@ func (e *Executor) Done() <-chan struct{} {
 }
 
 func (e *Executor) monitor() {
-	defer e.broker.Stop()
 	defer e.cancel()
 	defer DeleteExecutor(e.task.ID)
 	if e.exclusiveType {

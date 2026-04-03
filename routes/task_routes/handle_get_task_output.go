@@ -40,7 +40,6 @@ func HandleGetTaskOutput(c *gin.Context) {
 	}
 
 	go client.Listen()
-	defer client.Close()
 
 	ok = executor.SubscribeOrFail(client)
 
@@ -48,6 +47,8 @@ func HandleGetTaskOutput(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, h.DetailsF("无法注册输出监听器"))
 		return
 	}
+
+	defer executor.Unsubscribe(client)
 
 	<-client.Done()
 }
