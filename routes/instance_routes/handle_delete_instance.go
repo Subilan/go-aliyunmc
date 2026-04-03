@@ -1,25 +1,24 @@
 package instance_routes
 
 import (
+	"errors"
 	"go-aliyunmc/aliyun"
-	"go-aliyunmc/h"
 	"go-aliyunmc/store"
-	"net/http"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
+	// 如果请求中包含 ignore_non_existent=true 或 ignore_non_existent=1，则在实例不存在时不返回错误。默认为 false。
+	ignoreNonExistent := c.Query("ignore_non_existent") == "true" || c.Query("ignore_non_existent") == "1"
+	
 	instance, err := store.GetActiveInstance()
 
 	if err != nil {
 		return nil, err
-	}
-
-	if instance == nil {
-		return nil, h.HttpError(http.StatusNotFound, "无活跃实例可删除")
 	}
 
 	deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
@@ -35,6 +34,9 @@ func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
 
 	err = store.DeleteActiveInstance()
 	if err != nil {
+		if ignoreNonExistent && errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

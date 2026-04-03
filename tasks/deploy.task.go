@@ -7,13 +7,15 @@ import (
 	"time"
 
 	"go-aliyunmc/aliyun"
+	"go-aliyunmc/store"
 )
 
 func deployTask(tc *TaskContext, args map[string]any) error {
 	// 由于这是一个分步任务，先将步骤推进到第一步，以便在日志中正确显示当前步骤信息
 	tc.nextStep()
 
-	ip, err := getRemoteIPFromDBPlaceholder()
+	ip, err := store.GetActiveInstanceIpNonEmpty()
+
 	if err != nil {
 		return err
 	}
@@ -45,13 +47,14 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		execErr := executeRemoteScript(stepCtx, ip, DeployC.SSH, script, tc.println)
 		cancel()
 		if execErr != nil {
+			// 如果stepCtx超时或被取消，返回特定的错误信息；否则返回一般的执行错误
 			if errors.Is(execErr, context.DeadlineExceeded) {
-				return fmt.Errorf("执行部署步骤%d超时(%ds)", tc.step, step.TimeoutSec)
+				tc.println(fmt.Sprintf("[deploy] 步骤%d执行超时", tc.step))
 			}
 			if errors.Is(execErr, context.Canceled) {
-				return execErr
+				tc.println(fmt.Sprintf("[deploy] 执行步骤%d时被取消", tc.step))
 			}
-			return fmt.Errorf("执行部署步骤%d失败: %w", tc.step, execErr)
+			return execErr
 		}
 
 		tc.nextStep()
