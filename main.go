@@ -8,6 +8,7 @@ import (
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/env"
 	"go-aliyunmc/logs"
+	"go-aliyunmc/routes/instance_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/store"
@@ -57,6 +58,9 @@ func main() {
 
 	// 注册用户路由
 	user_routes.Bind(engine)
+
+	// 注册实例管理路由
+	instance_routes.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

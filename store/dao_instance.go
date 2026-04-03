@@ -23,3 +23,14 @@ func GetActiveInstance() (*models.Instance, error) {
 
 	return &instance, nil
 }
+
+func DeleteActiveInstance() error {
+	var instance models.Instance
+	err := DB.First(&instance).Error
+
+	if err != nil {
+		return err
+	}
+
+	return DB.Delete(&instance).Error
+}
