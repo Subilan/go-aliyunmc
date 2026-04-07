@@ -70,3 +70,7 @@ outer:
 
 	return nil
 }
+
+func checkStartServerTask(_ map[string]any) error {
+	return checkMustHaveActiveDeployedInstance(nil)
+}

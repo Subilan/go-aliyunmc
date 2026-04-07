@@ -37,7 +37,7 @@ type TaskCheckFunc func(map[string]any) error
 
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
 
-var taskCheckMustHaveActiveInstance TaskCheckFunc = func(args map[string]any) error {
+var checkMustHaveActiveInstance TaskCheckFunc = func(_ map[string]any) error {
 	instance, err := store.GetActiveInstanceDefaultNil()
 
 	if err != nil {
@@ -51,6 +51,24 @@ var taskCheckMustHaveActiveInstance TaskCheckFunc = func(args map[string]any) er
 	return nil
 }
 
+var checkMustHaveActiveDeployedInstance TaskCheckFunc = func(_ map[string]any) error {
+	instance, err := store.GetActiveInstanceDefaultNil()
+
+	if err != nil {
+		return err
+	}
+
+	if instance == nil {
+		return h.HttpError(http.StatusNotFound, "没有可用的实例")
+	}
+
+	if !instance.IsDeployed {
+		return h.HttpError(http.StatusConflict, "实例未部署")
+	}
+
+	return nil
+}
+
 func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 	def, ok := TaskDefinitions[taskType]
 	if !ok {
@@ -59,6 +77,7 @@ func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 	return def
 }
 
+// MustInitialize 将所有任务定义注册到 TaskDefinitions 变量中。这个函数应该在程序启动时被调用一次，以确保所有任务定义都已正确注册。
 func MustInitialize() {
 	TaskDefinitions[models.TaskTypeTest] = &TaskDefinition{
 		Exclusive: true,
@@ -72,7 +91,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeDeploy,
 		Timeout:   0, // 不设置超时，由任务内部逻辑控制
 		F:         deployTask,
-		C:         taskCheckMustHaveActiveInstance,
+		C:         checkDeployTask,
 	}
 
 	TaskDefinitions[models.TaskTypeBackup] = &TaskDefinition{
@@ -80,7 +99,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeBackup,
 		Timeout:   time.Duration(BackupC.TimeoutSec) * time.Second,
 		F:         backupTask,
-		C:         taskCheckMustHaveActiveInstance,
+		C:         checkBackupTask,
 	}
 
 	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
@@ -88,7 +107,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeArchive,
 		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
 		F:         archiveTask,
-		C:         taskCheckMustHaveActiveInstance,
+		C:         checkArchiveTask,
 	}
 
 	TaskDefinitions[models.TaskTypeCreateInstance] = &TaskDefinition{
@@ -96,6 +115,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeCreateInstance,
 		Timeout:   10 * time.Minute,
 		F:         createInstanceTask,
+		C:         checkCreateInstanceTask,
 	}
 
 	TaskDefinitions[models.TaskTypeStartServer] = &TaskDefinition{
@@ -103,6 +123,6 @@ func MustInitialize() {
 		Type:      models.TaskTypeStartServer,
 		Timeout:   3 * time.Minute,
 		F:         startServerTask,
-		C:         taskCheckMustHaveActiveInstance,
+		C:         checkStartServerTask,
 	}
 }

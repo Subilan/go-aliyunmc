@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyunmc/aliyun"
+	"go-aliyunmc/h"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
+	"net/http"
 	"time"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
@@ -282,6 +284,20 @@ outer:
 	}
 
 	tc.println("实例已开启且可连接")
+
+	return nil
+}
+
+func checkCreateInstanceTask(args map[string]any) error {
+	activeInstance, err := store.GetActiveInstanceDefaultNil()
+
+	if err != nil {
+		return err
+	}
+
+	if activeInstance != nil {
+		return h.HttpError(http.StatusConflict, "实例已存在")
+	}
 
 	return nil
 }
