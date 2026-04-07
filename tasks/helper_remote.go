@@ -74,6 +74,7 @@ func renderScriptTemplate(templatePath string, vars any) (string, error) {
 //   - script: 要执行的脚本内容
 //   - startFn: 用于启动SSH会话的函数，参数为SSH会话对象，返回error
 //   - onLine: 每当有新的输出行时调用的回调函数，参数为输出内容
+//   - root: 是否使用root用户连接远程主机
 func executeRemoteWithStartFn(ctx context.Context, ip string, cfg TaskSSHConfig, startFn func(*ssh.Session) error, onLine func(string), root bool) error {
 	sshConfig := &ssh.ClientConfig{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
