@@ -51,7 +51,7 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		}
 
 		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.TimeoutSec)*time.Second)
-		execErr := executeRemoteScript(stepCtx, ip, DeployC.SSH, script, tc.println)
+		execErr := executeRemoteScript(stepCtx, ip, DeployC.SSH, script, tc.println, true)
 		cancel()
 		if execErr != nil {
 			// 如果stepCtx超时或被取消，返回特定的错误信息；否则返回一般的执行错误

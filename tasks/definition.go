@@ -97,4 +97,12 @@ func MustInitialize() {
 		Timeout:   10 * time.Minute,
 		F:         createInstanceTask,
 	}
+
+	TaskDefinitions[models.TaskTypeStartServer] = &TaskDefinition{
+		Exclusive: true,
+		Type:      models.TaskTypeStartServer,
+		Timeout:   3 * time.Minute,
+		F:         startServerTask,
+		C:         taskCheckMustHaveActiveInstance,
+	}
 }

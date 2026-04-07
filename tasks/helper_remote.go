@@ -67,18 +67,25 @@ func renderScriptTemplate(templatePath string, vars any) (string, error) {
 	return script, nil
 }
 
-// executeRemoteScript 通过SSH连接远程机器执行脚本，并实时返回输出结果
+// executeRemoteWithStartFn 通过SSH执行命令并处理输出
 //   - ctx: 上下文对象，用于控制超时和取消
 //   - ip: 远程机器的IP地址
 //   - cfg: SSH连接配置，包括连接超时时间等
 //   - script: 要执行的脚本内容
+//   - startFn: 用于启动SSH会话的函数，参数为SSH会话对象，返回error
 //   - onLine: 每当有新的输出行时调用的回调函数，参数为输出内容
-func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, script string, onLine func(string)) error {
+func executeRemoteWithStartFn(ctx context.Context, ip string, cfg TaskSSHConfig, startFn func(*ssh.Session) error, onLine func(string), root bool) error {
 	sshConfig := &ssh.ClientConfig{
-		User:            "root",
-		Auth:            []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(cfg.ConnectTimeoutSec) * time.Second,
+	}
+
+	if root {
+		sshConfig.User = "root"
+		sshConfig.Auth = []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)}
+	} else {
+		sshConfig.User = "mc"
+		sshConfig.Auth = []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.ProdPassword)}
 	}
 
 	// 建立SSH连接
@@ -104,9 +111,9 @@ func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, scri
 		return fmt.Errorf("获取SSH错误输出失败: %w", err)
 	}
 
-	session.Stdin = strings.NewReader(script)
-	if err := session.Start("bash -s"); err != nil {
-		return fmt.Errorf("启动远程脚本失败: %w", err)
+	// 调用startFn来启动会话
+	if err := startFn(session); err != nil {
+		return fmt.Errorf("启动远程命令失败: %w", err)
 	}
 
 	if onLine == nil {
@@ -167,7 +174,7 @@ func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, scri
 		}
 
 		if waitErr != nil {
-			return fmt.Errorf("远程脚本执行失败: %w", waitErr)
+			return fmt.Errorf("远程命令执行失败: %w", waitErr)
 		}
 
 		return nil
@@ -178,4 +185,19 @@ func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, scri
 		wg.Wait()
 		return ctx.Err()
 	}
+}
+
+// executeRemoteScript 通过SSH连接远程机器执行脚本内容。
+func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, script string, onLine func(string), root bool) error {
+	return executeRemoteWithStartFn(ctx, ip, cfg, func(session *ssh.Session) error {
+		session.Stdin = strings.NewReader(script)
+		return session.Start("bash -s")
+	}, onLine, root)
+}
+
+// executeRemoteScriptPath 通过SSH连接远程机器执行已存在的脚本文件。
+func executeRemoteScriptPath(ctx context.Context, ip string, cfg TaskSSHConfig, scriptPath string, onLine func(string), root bool) error {
+	return executeRemoteWithStartFn(ctx, ip, cfg, func(session *ssh.Session) error {
+		return session.Start(scriptPath)
+	}, onLine, root)
 }

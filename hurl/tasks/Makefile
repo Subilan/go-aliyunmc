@@ -17,3 +17,6 @@ create-instance-watch:
 
 deploy-instance-watch:
 	bash ./run_and_watch.sh ./deploy-instance.hurl
+	
+start-server-watch:
+	bash ./run_and_watch.sh ./start-server.hurl
