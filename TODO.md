@@ -1,1 +1,24 @@
-- 使用Redis存储session数据（不过可能不需要在当前项目中实现）
+- Redis integration (not sure where & low priority)
+- monitors
+  - server status
+    - task check
+    - snapshot GET
+    - update stream
+  - instance status
+    - task check
+    - snapshot GET
+    - update stream
+  - file sync (remote_data_cache)
+    - whitelist.json -> gamebound & played players
+    - playtime db -> display
+  - stop & archive
+  - backup
+- file logger
+- bss data
+  - balance
+  - estimated hours left
+- online data
+  - chart data support
+- archive.tmpl.sh configuration design improvement (pivot: hardcode or configurable?)
+- extra functionalities (need brainstorm)
+  - web chat (need plugin)
