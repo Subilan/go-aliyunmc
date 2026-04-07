@@ -1,7 +1,10 @@
 package tasks
 
 import (
+	"go-aliyunmc/h"
+	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
+	"net/http"
 	"time"
 )
 
@@ -21,11 +24,32 @@ type TaskDefinition struct {
 	//  - 如果 F 返回一个非 nil 的 error 或者 panic，任务将被标记为失败，并且 error 的内容将被记录为任务的失败原因。
 	//  - 如果 F 返回 nil，任务将被标记为成功。
 	F TaskFunc
+
+	// C 定义了任务的检查函数，它接受一个 map[string]any 作为参数，并返回一个 error。
+	// 检查函数用于在任务执行前验证输入参数以及环境的合法性。
+	// 检查参数可能为空。
+	C TaskCheckFunc
 }
 
 type TaskFunc func(*TaskContext, map[string]any) error
 
+type TaskCheckFunc func(map[string]any) error
+
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
+
+var taskCheckMustHaveActiveInstance TaskCheckFunc = func(args map[string]any) error {
+	instance, err := store.GetActiveInstanceDefaultNil()
+
+	if err != nil {
+		return err
+	}
+
+	if instance == nil {
+		return h.HttpError(http.StatusNotFound, "没有可用的实例")
+	}
+
+	return nil
+}
 
 func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 	def, ok := TaskDefinitions[taskType]
@@ -48,6 +72,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeDeploy,
 		Timeout:   0, // 不设置超时，由任务内部逻辑控制
 		F:         deployTask,
+		C:         taskCheckMustHaveActiveInstance,
 	}
 
 	TaskDefinitions[models.TaskTypeBackup] = &TaskDefinition{
@@ -55,6 +80,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeBackup,
 		Timeout:   time.Duration(BackupC.TimeoutSec) * time.Second,
 		F:         backupTask,
+		C:         taskCheckMustHaveActiveInstance,
 	}
 
 	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
@@ -62,6 +88,7 @@ func MustInitialize() {
 		Type:      models.TaskTypeArchive,
 		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
 		F:         archiveTask,
+		C:         taskCheckMustHaveActiveInstance,
 	}
 
 	TaskDefinitions[models.TaskTypeCreateInstance] = &TaskDefinition{
