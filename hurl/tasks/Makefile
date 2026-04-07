@@ -1,10 +1,19 @@
 # hurl/tasks/Makefile
 HURL=hurl --variables-file ../env/dev.env
+instance?=ecs.e-c1m2.large
+zone?=cn-shenzhen-f
 
-.PHONY: test-create-test-task test-sse
+# instance: ecs.u1-c1m4.xlarge
+# zone: cn-shenzhen-f
 
-test-create-test-task:
-	$(HURL) create-test-task.hurl --variable username=$(USER)
+create-instance:
+	$(HURL) ./create-instance.hurl --variable instance=$(instance) --variable zone=$(zone)
 
-test-sse:
-	$(HURL) sse.hurl --variable username=$(USER) --variable taskId=$(TASK)
+watch-hurl:
+	bash ./run_and_watch.sh $(file) $(opts)
+
+create-instance-watch:
+	bash ./run_and_watch.sh ./create-instance.hurl --variable instance=$(instance) --variable zone=$(zone)
+
+deploy-instance-watch:
+	bash ./run_and_watch.sh ./deploy-instance.hurl

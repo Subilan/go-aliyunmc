@@ -10,3 +10,4 @@ playerprofiles
 configs/
 example_configs/
 configgen
+.DS_Store
