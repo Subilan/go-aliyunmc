@@ -4,7 +4,10 @@ go 1.25.0
 
 require github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 
-require golang.org/x/time v0.4.0 // indirect
+require (
+	github.com/mcstatus-io/mcutil/v4 v4.0.1 // indirect
+	golang.org/x/time v0.4.0 // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
