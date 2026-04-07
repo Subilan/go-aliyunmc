@@ -29,6 +29,12 @@ func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context
 		return nil, h.HttpError(http.StatusNotFound, "找不到该任务类型")
 	}
 
+	if def.C != nil {
+		if err := def.C(body.Args); err != nil {
+			return nil, err
+		}
+	}
+
 	executor := tasks.NewExecutor(def)
 
 	task, err := executor.RunTask(&userId, body.Args)
