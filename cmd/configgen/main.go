@@ -108,8 +108,8 @@ func main() {
 				TimeoutSec: 120,
 			},
 			{
-				Name:       "配置Zulu仓库",
-				ScriptPath: "scripts/deploy.setup-zulu-repo.tmpl.sh",
+				Name:       "配置Java仓库",
+				ScriptPath: "scripts/deploy.setup-java-repo.tmpl.sh",
 				TimeoutSec: 120,
 			},
 			{
