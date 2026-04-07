@@ -1,5 +1,8 @@
 # go-aliyunmc
 
+> [!CAUTION]
+> 当前分支已于 2026 年 4 月弃用。
+
 [![](https://goreportcard.com/badge/github.com/Subilan/go-aliyunmc)](https://goreportcard.com/report/github.com/Subilan/go-aliyunmc)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Subilan/go-aliyunmc.svg)](https://pkg.go.dev/github.com/Subilan/go-aliyunmc)
 <!--[![Go](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml/badge.svg)](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml)-->
