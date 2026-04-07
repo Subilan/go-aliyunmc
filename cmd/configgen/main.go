@@ -6,6 +6,7 @@ import (
 
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
+	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
 
@@ -84,6 +85,12 @@ func main() {
 			SpotInterruptionBehavior: "Stop",
 			SecurityGroupId:          "your-security-group-id",
 		},
+	}
+
+	serverConfig := server.ServerConfig{
+		Port:         25565,
+		RconPort:     25575,
+		RconPassword: "your-rcon-password",
 	}
 
 	deployTaskConfig := tasks.DeployTaskConfig{
@@ -186,6 +193,11 @@ func main() {
 	// 写入aliyun.toml
 	if err := writeConfigFile(configDir+"/aliyun.toml", aliyunConfig); err != nil {
 		fmt.Printf("Error writing aliyun.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/server.toml", serverConfig); err != nil {
+		fmt.Printf("Error writing server.toml: %v\n", err)
 		os.Exit(1)
 	}
 

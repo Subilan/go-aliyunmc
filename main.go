@@ -9,8 +9,10 @@ import (
 	"go-aliyunmc/env"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/routes/instance_routes"
+	"go-aliyunmc/routes/server_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
+	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
 	"log"
@@ -31,6 +33,7 @@ func main() {
 	store.MustLoadConfig()
 	casbin.MustLoadConfig()
 	aliyun.MustLoadConfig()
+	server.MustLoadConfig()
 	tasks.MustLoadConfig()
 
 	// 初始化模块
@@ -66,6 +69,9 @@ func main() {
 
 	// 注册实例管理路由
 	instance_routes.Bind(engine)
+
+	// 注册服务器管理路由
+	server_routes.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
