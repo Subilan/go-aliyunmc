@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
 	"go-aliyunmc/aliyun"
+	"go-aliyunmc/h"
 	"go-aliyunmc/store"
 )
 
@@ -67,6 +69,31 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		tc.nextStep()
 	}
 
+	err = store.SetActiveDeployed()
+
+	if err != nil {
+		tc.println("[deploy] 警告：无法更新实例的部署状态，请联系管理员以进行进一步操作")
+		tc.println(err.Error())
+	}
+
 	tc.println("[deploy] 部署任务完成")
+	return nil
+}
+
+func checkDeployTask(args map[string]any) error {
+	if err := checkMustHaveActiveInstance(args); err != nil {
+		return err
+	}
+
+	activeInstance, err := store.GetActiveInstance()
+
+	if err != nil {
+		return err
+	}
+
+	if activeInstance.IsDeployed {
+		return h.HttpError(http.StatusBadRequest, "当前实例已部署完成，无需重复部署")
+	}
+
 	return nil
 }

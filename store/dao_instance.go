@@ -57,3 +57,15 @@ func GetActiveInstanceIpNonEmpty() (string, error) {
 
 	return instance.Ip, nil
 }
+
+// SetActiveDeployed 将当前活跃实例的 IsDeployed 字段设置为 true，表示该实例已部署完成。如果没有活跃实例，则返回错误。
+func SetActiveDeployed() error {
+	instance, err := GetActiveInstance()
+
+	if err != nil {
+		return err
+	}
+
+	instance.IsDeployed = true
+	return DB.Save(instance).Error
+}

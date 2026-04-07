@@ -20,3 +20,7 @@ func archiveTask(tc *TaskContext, _ map[string]any) error {
 
 	return nil
 }
+
+func checkArchiveTask(args map[string]any) error {
+	return checkMustHaveActiveDeployedInstance(args)
+}
