@@ -2,8 +2,7 @@
 
 [![](https://goreportcard.com/badge/github.com/Subilan/go-aliyunmc)](https://goreportcard.com/report/github.com/Subilan/go-aliyunmc)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Subilan/go-aliyunmc.svg)](https://pkg.go.dev/github.com/Subilan/go-aliyunmc)
-[![Go](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml/badge.svg)](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml)
-
+<!--[![Go](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml/badge.svg)](https://github.com/Subilan/go-aliyunmc/actions/workflows/go.yml)-->
 go-aliyunmc 是一个基于阿里云 ECS 的 Minecraft 服务器低成本解决方案，提供相比面板更高的自主性和透明性、相比独立服务器更低廉的成本投入。
 
 go-aliyunmc 是 [Seatide](https://seatidemc.github.io) 服务器的运行基石，是该服务器自 2021 年起运行模式的第三次迭代（第一、二版分别于 2021 年使用 Python 语言、2024 年使用 Go 语言构建）。
