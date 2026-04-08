@@ -18,6 +18,15 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// scriptExecParams 定义执行远程脚本内容的参数。
+type scriptExecParams struct {
+	Ctx    context.Context
+	IP     string
+	Cfg    TaskSSHConfig
+	OnLine func(string)
+	Root   bool
+}
+
 // tryDialRoot 尝试使用root用户通过SSH连接远程主机，以验证连接是否成功
 //   - host: 远程主机的IP地址或域名
 //   - timeout: 连接超时时间，单位为秒
@@ -67,14 +76,7 @@ func renderScriptTemplate(templatePath string, vars any) (string, error) {
 	return script, nil
 }
 
-// executeRemoteWithStartFn 通过SSH执行命令并处理输出
-//   - ctx: 上下文对象，用于控制超时和取消
-//   - ip: 远程机器的IP地址
-//   - cfg: SSH连接配置，包括连接超时时间等
-//   - script: 要执行的脚本内容
-//   - startFn: 用于启动SSH会话的函数，参数为SSH会话对象，返回error
-//   - onLine: 每当有新的输出行时调用的回调函数，参数为输出内容
-//   - root: 是否使用root用户连接远程主机
+// executeRemoteWithStartFn 开始一次SSH会话并处理输出
 func executeRemoteWithStartFn(ctx context.Context, ip string, cfg TaskSSHConfig, startFn func(*ssh.Session) error, onLine func(string), root bool) error {
 	sshConfig := &ssh.ClientConfig{
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
@@ -188,17 +190,17 @@ func executeRemoteWithStartFn(ctx context.Context, ip string, cfg TaskSSHConfig,
 	}
 }
 
-// executeRemoteScript 通过SSH连接远程机器执行脚本内容。
-func executeRemoteScript(ctx context.Context, ip string, cfg TaskSSHConfig, script string, onLine func(string), root bool) error {
-	return executeRemoteWithStartFn(ctx, ip, cfg, func(session *ssh.Session) error {
+// executeRemoteScript 通过SSH连接远程机器执行本地脚本内容。script 是本地脚本的路径。
+func executeRemoteScript(script string, p scriptExecParams) error {
+	return executeRemoteWithStartFn(p.Ctx, p.IP, p.Cfg, func(session *ssh.Session) error {
 		session.Stdin = strings.NewReader(script)
 		return session.Start("bash -s")
-	}, onLine, root)
+	}, p.OnLine, p.Root)
 }
 
-// executeRemoteScriptPath 通过SSH连接远程机器执行已存在的脚本文件。
-func executeRemoteScriptPath(ctx context.Context, ip string, cfg TaskSSHConfig, scriptPath string, onLine func(string), root bool) error {
-	return executeRemoteWithStartFn(ctx, ip, cfg, func(session *ssh.Session) error {
-		return session.Start(scriptPath)
-	}, onLine, root)
+// executeRemoteCommand 通过SSH连接远程机器执行指令。cmd 是要执行的指令字符串。
+func executeRemoteCommand(cmd string, p scriptExecParams) error {
+	return executeRemoteWithStartFn(p.Ctx, p.IP, p.Cfg, func(session *ssh.Session) error {
+		return session.Start(cmd)
+	}, p.OnLine, p.Root)
 }
