@@ -78,7 +78,7 @@ func (c *Client) Close() {
 	c.cancel()
 }
 
-// Listen 监听事件并发送给客户端
+// Listen 开始监听事件并将其写入响应流，直到连接关闭或接收到 "task_done" 事件
 func (c *Client) Listen() {
 	defer c.Close()
 	ticker := time.NewTicker(5 * time.Second)

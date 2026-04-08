@@ -15,6 +15,10 @@ import (
 // DB 是全局GORM连接池
 var DB *gorm.DB
 
+func Silent() *gorm.DB {
+	return DB.Session(&gorm.Session{Logger: logger.Default.LogMode(logger.Silent)})
+}
+
 // MustInitialize 初始化GORM连接池
 func MustInitialize() {
 	var err error
