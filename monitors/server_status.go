@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"go-aliyunmc/env"
-	"go-aliyunmc/logs"
 	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 
@@ -59,9 +57,6 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	ip, err := store.GetActiveInstanceIpNonEmpty()
 
 	if err != nil {
-		if env.DEV {
-			logs.Dev("[monitor/server] 获取活跃实例IP失败: %v", err)
-		}
 		m.st.StoreError(missingTargetError, m.hub)
 		return
 	}

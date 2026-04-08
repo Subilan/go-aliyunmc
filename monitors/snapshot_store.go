@@ -1,6 +1,7 @@
 package monitors
 
 import (
+	"errors"
 	"fmt"
 	"go-aliyunmc/logs"
 	"sync"
@@ -42,13 +43,16 @@ func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]]) {
 // StoreError 将错误存储到 store 中
 func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]]) {
 	s.mu.Lock()
+	changed := s.Error == nil || !errors.Is(s.Error, err)
 	s.Error = err
 	s.UpdatedAt = time.Now()
 	snapshot := s.snapshot
 	s.mu.Unlock()
 
-	logs.Info(fmt.Sprintf("[snapshotStore] 推送错误：%s", err.Error()))
-	hub.Broadcast(snapshot)
+	if changed {
+		logs.Info(fmt.Sprintf("[snapshotStore] 推送错误：%s", err.Error()))
+		hub.Broadcast(snapshot)
+	}
 }
 
 // Snapshot 返回 snapshot 的副本。
