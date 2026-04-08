@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-aliyunmc/h"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/store"
+	"net/http"
 	"time"
 
 	"github.com/mcstatus-io/mcutil/v4/status"
@@ -78,5 +81,19 @@ outer:
 }
 
 func checkStartServerTask(_ map[string]any) error {
-	return checkMustHaveActiveDeployedInstance(nil)
+	if err := checkMustHaveActiveDeployedRunningInstance(nil); err != nil {
+		return err
+	}
+
+	status := monitors.SnapshotServerStatus()
+
+	if status.Error != nil {
+		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
+	}
+
+	if status.Value.Online {
+		return h.HttpError(http.StatusConflict, "服务器已在线")
+	}
+
+	return nil
 }

@@ -28,5 +28,5 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkBackupTask(args map[string]any) error {
-	return checkMustHaveActiveDeployedInstance(args)
+	return checkMustHaveActiveDeployedRunningInstance(args)
 }

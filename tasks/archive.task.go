@@ -1,6 +1,8 @@
 package tasks
 
-import "go-aliyunmc/store"
+import (
+	"go-aliyunmc/store"
+)
 
 func archiveTask(tc *TaskContext, _ map[string]any) error {
 	ip, err := store.GetActiveInstanceIpNonEmpty()
@@ -28,5 +30,5 @@ func archiveTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkArchiveTask(args map[string]any) error {
-	return checkMustHaveActiveDeployedInstance(args)
+	return checkMustHaveActiveDeployedRunningInstance(args)
 }

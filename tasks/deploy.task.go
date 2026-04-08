@@ -98,7 +98,7 @@ func checkDeployTask(args map[string]any) error {
 	}
 
 	if activeInstance.IsDeployed {
-		return h.HttpError(http.StatusBadRequest, "当前实例已部署完成，无需重复部署")
+		return h.HttpError(http.StatusConflict, "当前实例已部署完成，无需重复部署")
 	}
 
 	return nil
