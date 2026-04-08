@@ -21,9 +21,9 @@ type ServerStatusMonitor struct {
 	hub      *hub[snapshot[ServerStatusState]]
 }
 
-func newServerStatusMonitor(cfg ServerStatusMonitorConfig) *ServerStatusMonitor {
+func newServerStatusMonitor() *ServerStatusMonitor {
 	return &ServerStatusMonitor{
-		interval: time.Duration(cfg.PollIntervalSec) * time.Second,
+		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
 		hub:      newHub[snapshot[ServerStatusState]](),
 		st:       &snapshotStore[ServerStatusState]{},
 	}

@@ -1,16 +1,17 @@
 - Redis integration (not sure where & low priority)
 - monitors
-  - server status
-    - task check
-    - snapshot GET
-    - update stream
-  - instance status
-    - task check
-    - snapshot GET
-    - update stream
-  - file sync (remote_data_cache)
+  - [x] server status
+    - [x] task check
+    - [x] snapshot GET
+    - [x] update stream
+  - [x] instance status
+    - [x] task check
+    - [x] snapshot GET
+    - [x] update stream
+  - [x] file sync (remote_data_cache)
     - whitelist.json -> gamebound & played players
     - playtime db -> display
+  - (low priority) monitor cleanup when program exits
   - stop & archive
   - backup
 - file logger
