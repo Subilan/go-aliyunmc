@@ -6,6 +6,7 @@ import (
 
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
@@ -91,6 +92,14 @@ func main() {
 		Port:         25565,
 		RconPort:     25575,
 		RconPassword: "your-rcon-password",
+	}
+
+	monitorServerConfig := monitors.ServerStatusMonitorConfig{
+		PollIntervalSec: 5,
+	}
+
+	monitorInstanceConfig := monitors.InstanceStatusMonitorConfig{
+		PollIntervalSec: 5,
 	}
 
 	deployTaskConfig := tasks.DeployTaskConfig{
@@ -198,6 +207,16 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/server.toml", serverConfig); err != nil {
 		fmt.Printf("Error writing server.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-server.toml", monitorServerConfig); err != nil {
+		fmt.Printf("Error writing monitor-server.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-instance.toml", monitorInstanceConfig); err != nil {
+		fmt.Printf("Error writing monitor-instance.toml: %v\n", err)
 		os.Exit(1)
 	}
 

@@ -22,8 +22,7 @@ func GetActiveInstanceDefaultNil() (*models.Instance, error) {
 // 注意，这个函数假设系统中最多只能有一个活跃实例。如果数据库中存在多条实例记录，这个函数将返回第一条记录。
 func GetActiveInstance() (*models.Instance, error) {
 	var instance models.Instance
-	err := DB.First(&instance).Error
-
+	err := Silent().First(&instance).Error
 	if err != nil {
 		return nil, err
 	}
@@ -33,14 +32,12 @@ func GetActiveInstance() (*models.Instance, error) {
 
 // DeleteActiveInstance 删除当前活跃的实例，如果没有则返回错误。
 func DeleteActiveInstance() error {
-	var instance models.Instance
-	err := DB.First(&instance).Error
-
+	instance, err := GetActiveInstance()
 	if err != nil {
 		return err
 	}
 
-	return DB.Delete(&instance).Error
+	return DB.Delete(instance).Error
 }
 
 // GetActiveInstanceIpNonEmpty 获取当前活跃实例的 IP 地址，如果没有活跃实例或 IP 地址为空，则返回错误。
