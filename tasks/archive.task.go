@@ -13,7 +13,13 @@ func archiveTask(tc *TaskContext, _ map[string]any) error {
 		return err
 	}
 
-	err = executeRemoteScript(tc.Context(), ip, ArchiveC.SSH, script, tc.println, true)
+	err = executeRemoteScript(script, scriptExecParams{
+		Ctx:    tc.Context(),
+		IP:     ip,
+		Cfg:    ArchiveC.SSH,
+		OnLine: tc.println,
+		Root:   true,
+	})
 	if err != nil {
 		return err
 	}

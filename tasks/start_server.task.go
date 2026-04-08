@@ -20,10 +20,16 @@ func startServerTask(tc *TaskContext, _ map[string]any) error {
 
 	ctx, cancel := context.WithTimeout(tc.Context(), 5*time.Second)
 	defer cancel()
-	err = executeRemoteScriptPath(ctx, ip, TaskSSHConfig{ConnectTimeoutSec: 5}, fmt.Sprintf(
+	err = executeRemoteCommand(fmt.Sprintf(
 		"cd /home/%s/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || exit 1",
 		"mc",
-	), tc.println, false)
+	), scriptExecParams{
+		Ctx:    ctx,
+		IP:     ip,
+		Cfg:    TaskSSHConfig{ConnectTimeoutSec: 5},
+		OnLine: tc.println,
+		Root:   false,
+	})
 
 	if err != nil {
 		return fmt.Errorf("启动脚本执行失败: %w", err)
