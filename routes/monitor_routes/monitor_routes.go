@@ -21,7 +21,7 @@ func Bind(router *gin.Engine) {
 	}
 }
 
-func bindMonitorRoutes[T any](group *gin.RouterGroup, name string, getMonitor func() monitors.SnapshotMonitor[T], snapshotEvent string, updateEvent string) {
+func bindMonitorRoutes[T any](group *gin.RouterGroup, name string, getMonitor func() monitors.StateMonitor[T], snapshotEvent string, updateEvent string) {
 	group.GET("/snapshot/"+name, h.G(func(c *gin.Context) (any, error) {
 		monitor := getMonitor()
 		if monitor == nil {
@@ -32,7 +32,7 @@ func bindMonitorRoutes[T any](group *gin.RouterGroup, name string, getMonitor fu
 	group.GET("/watch/"+name, handleMonitorWatch(getMonitor, snapshotEvent, updateEvent))
 }
 
-func handleMonitorWatch[T any](getMonitor func() monitors.SnapshotMonitor[T], snapshotEvent string, updateEvent string) gin.HandlerFunc {
+func handleMonitorWatch[T any](getMonitor func() monitors.StateMonitor[T], snapshotEvent string, updateEvent string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		monitor := getMonitor()
 		if monitor == nil {

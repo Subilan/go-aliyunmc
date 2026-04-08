@@ -35,7 +35,7 @@ func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]]) {
 	s.mu.Unlock()
 
 	if changed {
-		logs.Info(fmt.Sprintf("[snapshotStore] 推送值的更新 %v", value))
+		logs.Info(fmt.Sprintf("[snapshotStore] 更新值：%v", value))
 		hub.Broadcast(snapshot)
 	}
 }
@@ -50,7 +50,7 @@ func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]]) {
 	s.mu.Unlock()
 
 	if changed {
-		logs.Info(fmt.Sprintf("[snapshotStore] 推送错误：%s", err.Error()))
+		logs.Info(fmt.Sprintf("[snapshotStore] 更新错误：%s", err.Error()))
 		hub.Broadcast(snapshot)
 	}
 }

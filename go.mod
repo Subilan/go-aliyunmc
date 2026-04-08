@@ -5,7 +5,9 @@ go 1.25.0
 require github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 
 require (
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/mcstatus-io/mcutil/v4 v4.0.1 // indirect
+	github.com/pkg/sftp v1.13.10 // indirect
 	golang.org/x/time v0.4.0 // indirect
 )
 

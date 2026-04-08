@@ -101,6 +101,17 @@ func main() {
 	monitorInstanceConfig := monitors.InstanceStatusMonitorConfig{
 		PollIntervalSec: 5,
 	}
+	
+	monitorFileSyncConfig := monitors.FileSyncMonitorConfig{
+		LocalCacheRoot: "remote_data_cache",
+		Files: []monitors.FileConfig{
+			{
+				RemotePath:      "/path/to/remote/file1.log",
+				LocalPath:       "logs/file1.log",
+				PollIntervalSec: 10,
+			},
+		},
+	}
 
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Exclusive: true,
@@ -232,6 +243,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/task-archive.toml", archiveTaskConfig); err != nil {
 		fmt.Printf("Error writing task-archive.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-file-sync.toml", monitorFileSyncConfig); err != nil {
+		fmt.Printf("Error writing monitor-file-sync.toml: %v\n", err)
 		os.Exit(1)
 	}
 

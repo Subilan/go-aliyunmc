@@ -11,3 +11,4 @@ configs/
 example_configs/
 configgen
 .DS_Store
+remote_data_cache/
