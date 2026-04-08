@@ -26,16 +26,16 @@ func MustInitialize(ctx context.Context) {
 	})
 }
 
-// ServerSnapshot 返回当前 server status snapshot 的副本。
-func ServerSnapshot() snapshot[ServerStatusState] {
+// SnapshotServerStatus 返回当前 server status snapshot 的副本。
+func SnapshotServerStatus() snapshot[ServerStatusState] {
 	if serverMonitor == nil {
 		return snapshot[ServerStatusState]{}
 	}
 	return serverMonitor.Snapshot()
 }
 
-// InstanceSnapshot 返回当前 instance status snapshot 的副本。
-func InstanceSnapshot() snapshot[string] {
+// SnapshotInstanceStatus 返回当前 instance status snapshot 的副本。
+func SnapshotInstanceStatus() snapshot[string] {
 	if instanceMonitor == nil {
 		return snapshot[string]{}
 	}

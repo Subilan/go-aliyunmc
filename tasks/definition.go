@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"go-aliyunmc/h"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -66,6 +67,24 @@ var checkMustHaveActiveDeployedInstance TaskCheckFunc = func(_ map[string]any) e
 		return h.HttpError(http.StatusConflict, "实例未部署")
 	}
 
+	return nil
+}
+
+var checkMustHaveActiveDeployedRunningInstance TaskCheckFunc = func(_ map[string]any) error {
+	if err := checkMustHaveActiveDeployedInstance(nil); err != nil {
+		return err
+	}
+
+	status := monitors.SnapshotInstanceStatus()
+	
+	if status.Error != nil {
+		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的实例状态")
+	}
+
+	if status.Value != "Running" {
+		return h.HttpError(http.StatusServiceUnavailable, "实例未运行")
+	}
+	
 	return nil
 }
 
