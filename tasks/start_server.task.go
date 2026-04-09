@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/h"
 	"go-aliyunmc/monitors"
+	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 	"net/http"
 	"time"
@@ -23,16 +24,10 @@ func startServerTask(tc *TaskContext, _ map[string]any) error {
 
 	ctx, cancel := context.WithTimeout(tc.Context(), 5*time.Second)
 	defer cancel()
-	err = executeRemoteCommand(fmt.Sprintf(
+	err = remote_util.ExecuteRemoteCommand(fmt.Sprintf(
 		"cd /home/%s/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || exit 1",
 		"mc",
-	), scriptExecParams{
-		Ctx:    ctx,
-		IP:     ip,
-		Cfg:    TaskSSHConfig{ConnectTimeoutSec: 5},
-		OnLine: tc.println,
-		Root:   false,
-	})
+	), ip, ctx, tc.println, false)
 
 	if err != nil {
 		return fmt.Errorf("启动脚本执行失败: %w", err)

@@ -21,12 +21,22 @@ type FileSyncMonitorConfig struct {
 	Files          []FileConfig `toml:"files" validate:"required,min=1" comment:"文件同步配置列表"`
 }
 
+type AutoArchiveIdleMonitorConfig struct {
+	Enabled                 bool `toml:"enabled" comment:"是否启用空服自动归档回收监控"`
+	IdleCountdownSec        int  `toml:"idle_countdown_sec" validate:"required,min=1" comment:"空服触发回收的倒计时（秒）"`
+	StopWaitTimeoutSec      int  `toml:"stop_wait_timeout_sec" validate:"required,min=1" comment:"发送stop后等待离线的最长时间（秒）"`
+	OfflineCheckIntervalSec int  `toml:"offline_check_interval_sec" validate:"required,min=1" comment:"等待离线时的状态检查间隔（秒）"`
+	DeleteIgnoreNonExistent bool `toml:"delete_ignore_non_existent" comment:"删除active instance时是否忽略不存在错误"`
+}
+
 var ServerStatusC ServerStatusMonitorConfig
 var InstanceStatusC InstanceStatusMonitorConfig
 var FileSyncC FileSyncMonitorConfig
+var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
 
 func MustLoadConfig() {
 	utils.MustBindConfig(&ServerStatusC, "monitor-server")
 	utils.MustBindConfig(&InstanceStatusC, "monitor-instance")
 	utils.MustBindConfig(&FileSyncC, "monitor-file-sync")
+	utils.MustBindConfig(&AutoArchiveIdleC, "monitor-auto-archive-idle")
 }

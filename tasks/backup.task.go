@@ -1,6 +1,9 @@
 package tasks
 
-import "go-aliyunmc/store"
+import (
+	"go-aliyunmc/remote_util"
+	"go-aliyunmc/store"
+)
 
 func backupTask(tc *TaskContext, _ map[string]any) error {
 	ip, err := store.GetActiveInstanceIpNonEmpty()
@@ -8,18 +11,12 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 		return err
 	}
 
-	script, err := renderScriptTemplate(BackupC.TemplatePath, BackupC.Vars)
+	script, err := remote_util.RenderScriptTemplate(BackupC.TemplatePath, BackupC.Vars)
 	if err != nil {
 		return err
 	}
 
-	err = executeRemoteScript(script, scriptExecParams{
-		Ctx:    tc.Context(),
-		IP:     ip,
-		Cfg:    BackupC.SSH,
-		OnLine: tc.println,
-		Root:   true,
-	})
+	err = remote_util.ExecuteScriptRemote(script, ip, tc.Context(), tc.println, true)
 	if err != nil {
 		return err
 	}

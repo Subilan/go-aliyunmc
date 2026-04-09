@@ -83,3 +83,15 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 
 	m.st.Store(next, m.hub)
 }
+
+// SnapshotIsServerOnline 返回当前服务器是否在线。只有在成功获取服务器状态且服务器在线时才返回 true。
+func SnapshotIsServerOnline() bool {
+	snapshot := SnapshotServerStatus()
+	return snapshot.Error == nil && snapshot.Value.Online
+}
+
+// SnapshotIsServerOffline 返回当前服务器是否离线。只有在成功获取服务器状态且服务器离线时才返回 true。
+func SnapshotIsServerOffline() bool {
+	snapshot := SnapshotServerStatus()
+	return snapshot.Error == nil && !snapshot.Value.Online
+}

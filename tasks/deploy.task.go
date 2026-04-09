@@ -9,6 +9,7 @@ import (
 
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/h"
+	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 )
 
@@ -47,19 +48,13 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 	for _, step := range DeployC.Steps {
 		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d: %s", tc.step, len(DeployC.Steps), step.Name))
 
-		script, renderErr := renderScriptTemplate(step.ScriptPath, expandedVars)
+		script, renderErr := remote_util.RenderScriptTemplate(step.ScriptPath, expandedVars)
 		if renderErr != nil {
 			return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
 		}
 
 		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.TimeoutSec)*time.Second)
-		execErr := executeRemoteScript(script, scriptExecParams{
-			Ctx:    stepCtx,
-			IP:     ip,
-			Cfg:    DeployC.SSH,
-			OnLine: tc.println,
-			Root:   true,
-		})
+		execErr := remote_util.ExecuteScriptRemote(script, ip, stepCtx, tc.println, true)
 		cancel()
 		if execErr != nil {
 			// 如果stepCtx超时或被取消，返回特定的错误信息；否则返回一般的执行错误

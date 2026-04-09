@@ -101,7 +101,7 @@ func main() {
 	monitorInstanceConfig := monitors.InstanceStatusMonitorConfig{
 		PollIntervalSec: 5,
 	}
-	
+
 	monitorFileSyncConfig := monitors.FileSyncMonitorConfig{
 		LocalCacheRoot: "remote_data_cache",
 		Files: []monitors.FileConfig{
@@ -113,11 +113,16 @@ func main() {
 		},
 	}
 
+	monitorAutoArchiveIdleConfig := monitors.AutoArchiveIdleMonitorConfig{
+		Enabled:                 false,
+		IdleCountdownSec:        1200,
+		StopWaitTimeoutSec:      60,
+		OfflineCheckIntervalSec: 3,
+		DeleteIgnoreNonExistent: true,
+	}
+
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Exclusive: true,
-		SSH: tasks.TaskSSHConfig{
-			ConnectTimeoutSec: 10,
-		},
 		Steps: []tasks.DeployStepConfig{
 			{
 				Name:       "创建用户",
@@ -172,9 +177,6 @@ func main() {
 		TemplatePath: "scripts/backup.tmpl.sh",
 		TimeoutSec:   1800,
 		Exclusive:    true,
-		SSH: tasks.TaskSSHConfig{
-			ConnectTimeoutSec: 10,
-		},
 		Vars: tasks.BackupTemplateVars{
 			BackupOSSPath: "oss://your-bucket/backup",
 		},
@@ -184,9 +186,6 @@ func main() {
 		TemplatePath: "scripts/archive.tmpl.sh",
 		TimeoutSec:   1800,
 		Exclusive:    true,
-		SSH: tasks.TaskSSHConfig{
-			ConnectTimeoutSec: 10,
-		},
 		Vars: tasks.ArchiveTemplateVars{
 			OSSRoot: "oss://your-bucket",
 		},
@@ -248,6 +247,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/monitor-file-sync.toml", monitorFileSyncConfig); err != nil {
 		fmt.Printf("Error writing monitor-file-sync.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-auto-archive-idle.toml", monitorAutoArchiveIdleConfig); err != nil {
+		fmt.Printf("Error writing monitor-auto-archive-idle.toml: %v\n", err)
 		os.Exit(1)
 	}
 

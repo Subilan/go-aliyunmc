@@ -101,3 +101,54 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 
 	m.st.StoreError(emptyValueError, m.hub)
 }
+
+
+// SnapshotInstanceStatus 返回当前 instance status 副本。
+func SnapshotInstanceStatus() snapshot[string] {
+	if instanceMonitor == nil {
+		return snapshot[string]{}
+	}
+	return instanceMonitor.Snapshot()
+}
+
+// SnapshotIsInstanceRunning 快速检查实例是否处于 Running 状态。该函数不会等待 instance status monitor 首次获取结果，因此请避免在系统启动时调用。
+func SnapshotIsInstanceRunning() bool {
+	snapshot := SnapshotInstanceStatus()
+	return snapshot.Error == nil && snapshot.Value == "Running"
+}
+
+// StableSnapshotIsInstanceRunning 在 instance monitor 尚未产出首个快照时等待至多 timeout。
+// 一旦有快照（无论值是 Running 还是其他状态），行为与 SnapshotIsInstanceRunning 保持一致。
+func StableSnapshotIsInstanceRunning(timeout time.Duration) bool {
+	if instanceMonitor == nil {
+		return SnapshotIsInstanceRunning()
+	}
+
+	current := SnapshotInstanceStatus()
+	if !current.UpdatedAt.IsZero() {
+		return current.Error == nil && current.Value == "Running"
+	}
+
+	if timeout <= 0 {
+		return SnapshotIsInstanceRunning()
+	}
+
+	ch, unsubscribe := SubscribeInstanceSnapshot()
+	defer unsubscribe()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+
+	for {
+		current = SnapshotInstanceStatus()
+		if !current.UpdatedAt.IsZero() {
+			return current.Error == nil && current.Value == "Running"
+		}
+
+		select {
+		case <-timer.C:
+			return SnapshotIsInstanceRunning()
+		case <-ch:
+		}
+	}
+}
