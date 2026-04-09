@@ -76,7 +76,6 @@ var checkMustHaveActiveDeployedRunningInstance TaskCheckFunc = func(_ map[string
 	}
 
 	status := monitors.SnapshotInstanceStatus()
-	
 	if status.Error != nil {
 		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的实例状态")
 	}
@@ -84,7 +83,7 @@ var checkMustHaveActiveDeployedRunningInstance TaskCheckFunc = func(_ map[string
 	if status.Value != "Running" {
 		return h.HttpError(http.StatusServiceUnavailable, "实例未运行")
 	}
-	
+
 	return nil
 }
 

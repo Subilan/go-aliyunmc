@@ -2,10 +2,6 @@ package tasks
 
 import "go-aliyunmc/utils"
 
-type TaskSSHConfig struct {
-	ConnectTimeoutSec int `toml:"connect_timeout_sec" validate:"required,min=1" comment:"SSH连接超时（秒）"`
-}
-
 type DeployTemplateVars struct {
 	SSHPublicKey   string   `toml:"ssh_public_key" validate:"required" comment:"部署用户写入的公钥"`
 	JavaVersion    int      `toml:"java_version" validate:"required,min=1" comment:"Zulu Java主版本号"`
@@ -21,7 +17,6 @@ type DeployStepConfig struct {
 
 type DeployTaskConfig struct {
 	Exclusive bool               `toml:"exclusive" comment:"是否同类互斥执行"`
-	SSH       TaskSSHConfig      `toml:"ssh" validate:"required" comment:"远程执行连接配置"`
 	Steps     []DeployStepConfig `toml:"steps" validate:"required,min=1,dive" comment:"按顺序执行的部署步骤列表"`
 	Vars      DeployTemplateVars `toml:"vars" validate:"required" comment:"部署脚本模板变量"`
 }
@@ -34,7 +29,6 @@ type BackupTaskConfig struct {
 	TemplatePath string             `toml:"template_path" validate:"required" comment:"备份脚本模板路径"`
 	TimeoutSec   int                `toml:"timeout_sec" validate:"required,min=1" comment:"任务超时时间（秒）"`
 	Exclusive    bool               `toml:"exclusive" comment:"是否同类互斥执行"`
-	SSH          TaskSSHConfig      `toml:"ssh" validate:"required" comment:"远程执行连接配置"`
 	Vars         BackupTemplateVars `toml:"vars" validate:"required" comment:"备份脚本模板变量"`
 }
 
@@ -46,7 +40,6 @@ type ArchiveTaskConfig struct {
 	TemplatePath string              `toml:"template_path" validate:"required" comment:"归档脚本模板路径"`
 	TimeoutSec   int                 `toml:"timeout_sec" validate:"required,min=1" comment:"任务超时时间（秒）"`
 	Exclusive    bool                `toml:"exclusive" comment:"是否同类互斥执行"`
-	SSH          TaskSSHConfig       `toml:"ssh" validate:"required" comment:"远程执行连接配置"`
 	Vars         ArchiveTemplateVars `toml:"vars" validate:"required" comment:"归档脚本模板变量"`
 }
 

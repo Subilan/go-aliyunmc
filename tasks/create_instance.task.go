@@ -7,6 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/h"
 	"go-aliyunmc/logs"
+	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -276,7 +277,7 @@ outer:
 			return fmt.Errorf("等待实例SSH可用超时")
 		case <-waitSSHTicker.C:
 			tc.println("尝试连接...")
-			if tryDialRoot(instance.Ip, 5*time.Second) {
+			if remote_util.TryDialRoot(instance.Ip, 5*time.Second) {
 				tc.println("连接成功")
 				break outer
 			}
