@@ -12,8 +12,10 @@
     - whitelist.json -> gamebound & played players
     - playtime db -> display
   - (low priority) monitor cleanup when program exits
-  - stop & archive
+  - stop & archive (URGENT, need test)
   - backup
+- backup (URGENT, need test)
+- archive (URGENT, need test)
 - file logger
 - bss data
   - balance
