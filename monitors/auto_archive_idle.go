@@ -119,12 +119,20 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 
 		hasActive, err := m.hasActiveInstance()
+
 		if err != nil {
 			logs.Error("[monitor/auto-archive-idle] check active instance failed: %v", err)
 			return
 		}
+
 		if !hasActive {
 			cancelCountdown("active_instance_missing")
+			return
+		}
+
+		if s.Error != nil {
+			logs.Error("[monitor/auto-archive-idle] 服务器状态无效，因为发生了错误：" + s.Error.Error())
+			cancelCountdown("snapshot_error")
 			return
 		}
 
@@ -133,7 +141,8 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			return
 		}
 
-		if s.Value.Online && s.Value.PlayerCount == 0 {
+		// 如果服务器不在线或者玩家数为0，并且存在活跃实例，则启动倒计时
+		if !s.Value.Online || s.Value.PlayerCount == 0 {
 			startCountdown()
 		}
 	}
@@ -193,13 +202,16 @@ func (m *AutoArchiveIdleMonitor) hasActiveInstance() (bool, error) {
 // executeArchivePipeline 执行服务器离线、数据归档和实例记录删除的流程。
 func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) error {
 	instance, err := store.GetActiveInstanceDefaultNil()
+
 	if err != nil {
 		return err
 	}
+
 	if instance == nil {
 		logs.Info("[monitor/auto-archive-idle] skip pipeline: active instance not found")
 		return nil
 	}
+
 	if instance.Ip == "" {
 		return fmt.Errorf("active instance ip is empty")
 	}
@@ -220,11 +232,13 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 	if err := m.runArchiveTask(ctx); err != nil {
 		return err
 	}
+
 	logs.Info("[monitor/auto-archive-idle] archive_done")
 
 	if err := m.deleteActiveInstance(); err != nil {
 		return err
 	}
+
 	logs.Info("[monitor/auto-archive-idle] delete_done")
 	return nil
 }
