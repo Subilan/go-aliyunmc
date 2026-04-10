@@ -24,10 +24,7 @@ var autoArchiveFlowRunning atomic.Bool
 type archiveTaskRuntimeConfig struct {
 	TemplatePath string `toml:"template_path" validate:"required"`
 	TimeoutSec   int    `toml:"timeout_sec" validate:"required,min=1"`
-	SSH          struct {
-		ConnectTimeoutSec int `toml:"connect_timeout_sec" validate:"required,min=1"`
-	} `toml:"ssh" validate:"required"`
-	Vars struct {
+	Vars         struct {
 		OSSRoot string `toml:"oss_root" validate:"required"`
 	} `toml:"vars" validate:"required"`
 }
@@ -39,11 +36,13 @@ type AutoArchiveIdleMonitor struct {
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
 	archiveCfg            archiveTaskRuntimeConfig
+	logger                *logs.PrefixedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	archiveCfg := archiveTaskRuntimeConfig{}
 	utils.MustBindConfig(&archiveCfg, "task-archive")
+	logger := logs.NewPrefixedLogger("[monitor/auto-archive-idle] ")
 
 	return &AutoArchiveIdleMonitor{
 		enabled:               AutoArchiveIdleC.Enabled,
@@ -52,6 +51,7 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 		offlineCheckInterval:  time.Duration(AutoArchiveIdleC.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: AutoArchiveIdleC.DeleteIgnoreNonExistent,
 		archiveCfg:            archiveCfg,
+		logger:                logger,
 	}
 }
 
@@ -63,7 +63,7 @@ func IsAutoArchiveFlowRunning() bool {
 // run 是AutoArchiveIdleMonitor的主循环，监听服务器状态快照更新并根据配置自动执行归档回收流程。
 func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	if !m.enabled {
-		logs.Info("[monitor/auto-archive-idle] disabled")
+		m.logger.Info("disabled")
 		return
 	}
 
@@ -92,7 +92,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 		countdownTimer = nil
 		countdownC = nil
-		logs.Info("[monitor/auto-archive-idle] countdown_canceled reason=%s", reason)
+		m.logger.Info("倒计时取消，原因：%s", reason)
 	}
 
 	startCountdown := func() {
@@ -101,7 +101,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 		hasActive, err := m.hasActiveInstance()
 		if err != nil {
-			logs.Error("[monitor/auto-archive-idle] check active instance failed: %v", err)
+			m.logger.Error("check active instance failed: %v", err)
 			return
 		}
 		if !hasActive {
@@ -109,7 +109,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 		countdownTimer = time.NewTimer(m.idleCountdown)
 		countdownC = countdownTimer.C
-		logs.Info("[monitor/auto-archive-idle] countdown_started duration_sec=%d", int(m.idleCountdown.Seconds()))
+		m.logger.Info("倒计时开始：%d", int(m.idleCountdown.Seconds()))
 	}
 
 	// 根据当前快照状态决定是否取消倒计时或者开启倒计时
@@ -121,7 +121,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		hasActive, err := m.hasActiveInstance()
 
 		if err != nil {
-			logs.Error("[monitor/auto-archive-idle] check active instance failed: %v", err)
+			m.logger.Error("check active instance failed: %v", err)
 			return
 		}
 
@@ -131,7 +131,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 
 		if s.Error != nil {
-			logs.Error("[monitor/auto-archive-idle] 服务器状态无效，因为发生了错误：" + s.Error.Error())
+			m.logger.Error("服务器状态无效，因为发生了错误：" + s.Error.Error())
 			cancelCountdown("snapshot_error")
 			return
 		}
@@ -169,7 +169,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			}
 			running = true
 			autoArchiveFlowRunning.Store(true)
-			logs.Info("[monitor/auto-archive-idle] countdown_expired")
+			m.logger.Info("倒计时结束，开始执行归档流程")
 			go func() {
 				defer autoArchiveFlowRunning.Store(false)
 				err := m.executeArchivePipeline(ctx)
@@ -181,9 +181,9 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		case err := <-doneCh:
 			running = false
 			if err != nil {
-				logs.Error("[monitor/auto-archive-idle] pipeline_failed: %v", err)
+				m.logger.Error("归档流程失败：%v", err)
 			} else {
-				logs.Info("[monitor/auto-archive-idle] pipeline_done")
+				m.logger.Info("归档流程完成")
 			}
 			handleSnapshot(current)
 		}
@@ -208,7 +208,7 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 	}
 
 	if instance == nil {
-		logs.Info("[monitor/auto-archive-idle] skip pipeline: active instance not found")
+		m.logger.Info("skip pipeline: active instance not found")
 		return nil
 	}
 
@@ -217,29 +217,29 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 	}
 
 	if SnapshotIsServerOnline() {
-		logs.Info("[monitor/auto-archive-idle] stop_sent")
+		m.logger.Info("stop_sent")
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
 		}
 		if err := m.waitServerOffline(ctx); err != nil {
 			return err
 		}
-		logs.Info("[monitor/auto-archive-idle] offline_confirmed")
+		m.logger.Info("offline_confirmed")
 	} else {
-		logs.Info("[monitor/auto-archive-idle] skip stop: already offline or status unavailable")
+		m.logger.Info("skip stop: already offline or status unavailable")
 	}
 
 	if err := m.runArchiveTask(ctx); err != nil {
 		return err
 	}
 
-	logs.Info("[monitor/auto-archive-idle] archive_done")
+	m.logger.Info("archive_done")
 
 	if err := m.deleteActiveInstance(); err != nil {
 		return err
 	}
 
-	logs.Info("[monitor/auto-archive-idle] delete_done")
+	m.logger.Info("delete_done")
 	return nil
 }
 
@@ -290,11 +290,12 @@ func (m *AutoArchiveIdleMonitor) runArchiveTask(ctx context.Context) error {
 	}
 
 	script, err := remote_util.RenderScriptTemplate(m.archiveCfg.TemplatePath, m.archiveCfg.Vars)
+
 	if err != nil {
 		return err
 	}
 
-	logs.Info("[monitor/auto-archive-idle] archive_started")
+	m.logger.Info("archive_started")
 	archiveCtx, cancel := context.WithTimeout(ctx, time.Duration(m.archiveCfg.TimeoutSec)*time.Second)
 	defer cancel()
 

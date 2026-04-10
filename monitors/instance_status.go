@@ -19,6 +19,7 @@ type InstanceStatusMonitor struct {
 	interval time.Duration
 	st       *snapshotStore[string]
 	hub      *hub[snapshot[string]]
+	logger   *logs.PrefixedLogger
 }
 
 func newInstanceStatusMonitor() *InstanceStatusMonitor {
@@ -26,6 +27,7 @@ func newInstanceStatusMonitor() *InstanceStatusMonitor {
 		interval: time.Duration(InstanceStatusC.PollIntervalSec) * time.Second,
 		hub:      newHub[snapshot[string]](),
 		st:       &snapshotStore[string]{},
+		logger:   logs.NewPrefixedLogger("[monitor/instance] "),
 	}
 }
 
@@ -56,17 +58,17 @@ func (m *InstanceStatusMonitor) run(ctx context.Context) {
 func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	instance, err := store.GetActiveInstanceDefaultNil()
 	if err != nil {
-		m.st.StoreError(err, m.hub)
+		m.st.StoreError(err, m.hub, m.logger)
 		return
 	}
 
 	if instance == nil {
-		m.st.StoreError(missingTargetError, m.hub)
+		m.st.StoreError(missingTargetError, m.hub, m.logger)
 		return
 	}
 
 	if aliyun.EcsClient == nil {
-		m.st.StoreError(fmt.Errorf("EcsClient is nil"), m.hub)
+		m.st.StoreError(fmt.Errorf("EcsClient is nil"), m.hub, m.logger)
 		return
 	}
 
@@ -77,31 +79,30 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 
 	if err != nil {
 		if env.DEV {
-			logs.Warn("[monitor/instance] DescribeInstanceStatus失败: %v", err)
+			m.logger.Warn("DescribeInstanceStatus失败: %v", err)
 		}
-		m.st.StoreError(err, m.hub)
+		m.st.StoreError(err, m.hub, m.logger)
 		return
 	}
 
 	if resp == nil || resp.Body == nil || resp.Body.InstanceStatuses == nil {
 		if env.DEV {
-			logs.Warn("[monitor/instance] ECS返回空状态")
+			m.logger.Warn("ECS返回空状态")
 		}
-		m.st.StoreError(emptyValueError, m.hub)
+		m.st.StoreError(emptyValueError, m.hub, m.logger)
 		return
 	}
 
 	instanceStatuses := resp.Body.InstanceStatuses.InstanceStatus
 	for _, statusItem := range instanceStatuses {
 		if statusItem != nil && statusItem.GetInstanceId() != nil && *statusItem.GetInstanceId() == instance.InstanceId && statusItem.GetStatus() != nil {
-			m.st.Store(*statusItem.GetStatus(), m.hub)
+			m.st.Store(*statusItem.GetStatus(), m.hub, m.logger)
 			return
 		}
 	}
 
-	m.st.StoreError(emptyValueError, m.hub)
+	m.st.StoreError(emptyValueError, m.hub, m.logger)
 }
-
 
 // SnapshotInstanceStatus 返回当前 instance status 副本。
 func SnapshotInstanceStatus() snapshot[string] {

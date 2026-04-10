@@ -79,12 +79,14 @@ func downloadRemoteFile(ctx context.Context, ip string, remotePath string, local
 type FileSyncPoller struct {
 	stopChans map[string]chan struct{}
 	mu        sync.Mutex
+	logger    *logs.PrefixedLogger
 }
 
 // newFileSyncPoller 创建一个新的 FileSyncPoller 实例
 func newFileSyncPoller() *FileSyncPoller {
 	return &FileSyncPoller{
 		stopChans: make(map[string]chan struct{}),
+		logger:    logs.NewPrefixedLogger("[monitor/file-sync] "),
 	}
 }
 
@@ -92,7 +94,7 @@ func newFileSyncPoller() *FileSyncPoller {
 func (p *FileSyncPoller) run(ctx context.Context) {
 	// 确保本地缓存目录存在
 	if err := p.ensureCacheDir(); err != nil {
-		logs.Dev("检查缓存目录失败: %v", err)
+		p.logger.Error("检查缓存目录失败: %v", err)
 	}
 
 	// 为每个文件创建独立的轮询 goroutine
@@ -137,22 +139,25 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 
 // syncFile 执行单次文件同步
 func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
-	logs.Info("开始同步文件 %s", fileConfig.RemotePath)
+	if autoArchiveFlowRunning.Load() {
+		p.logger.Info("自动回收流程正在执行，跳过文件同步")
+		return
+	}
 	// 获取实例
 	instance, err := store.GetActiveInstance()
 
 	if err != nil {
-		logs.Info("无法获取实例，跳过")
+		p.logger.Info("无法获取实例，跳过")
 		return
 	}
 
 	if !instance.IsDeployed {
-		logs.Info("实例未部署，跳过")
+		p.logger.Info("实例未部署，跳过")
 		return
 	}
 
 	if !StableSnapshotIsInstanceRunning(syncFileTimeout) {
-		logs.Info("实例未运行，跳过")
+		p.logger.Info("实例未运行，跳过")
 		return
 	}
 
@@ -163,27 +168,29 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 
 	// 创建文件地址所在的目录（如果不存在）
 	if err := os.MkdirAll(filepath.Dir(localFullPath), 0755); err != nil {
-		logs.Error("无法创建本地目录: %v", err)
+		p.logger.Error("无法创建本地目录: %v", err)
 		return
 	}
 
 	syncCtx, cancel := context.WithTimeout(ctx, syncFileTimeout)
 	defer cancel()
 
+	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
+	
 	if err := downloadRemoteFile(syncCtx, ip, fileConfig.RemotePath, localFullPath); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			logs.Error("文件同步超时(%s)", syncFileTimeout)
+			p.logger.Error("文件同步超时(%s)", syncFileTimeout)
 			return
 		}
 		if errors.Is(err, context.Canceled) {
-			logs.Error("文件同步取消")
+			p.logger.Error("文件同步取消")
 			return
 		}
-		logs.Error("文件同步失败: %v", err)
+		p.logger.Error("文件同步失败: %v", err)
 		return
 	}
 
-	logs.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
+	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
 }
 
 // ensureCacheDir 确保本地缓存目录存在

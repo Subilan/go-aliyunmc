@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go-aliyunmc/logs"
 	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 
@@ -19,6 +20,7 @@ type ServerStatusMonitor struct {
 	interval time.Duration
 	st       *snapshotStore[ServerStatusState]
 	hub      *hub[snapshot[ServerStatusState]]
+	logger   *logs.PrefixedLogger
 }
 
 func newServerStatusMonitor() *ServerStatusMonitor {
@@ -26,6 +28,7 @@ func newServerStatusMonitor() *ServerStatusMonitor {
 		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
 		hub:      newHub[snapshot[ServerStatusState]](),
 		st:       &snapshotStore[ServerStatusState]{},
+		logger:   logs.NewPrefixedLogger("[monitor/server] "),
 	}
 }
 
@@ -57,7 +60,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	ip, err := store.GetActiveInstanceIpNonEmpty()
 
 	if err != nil {
-		m.st.StoreError(missingTargetError, m.hub)
+		m.st.StoreError(missingTargetError, m.hub, m.logger)
 		return
 	}
 
@@ -70,7 +73,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	if err != nil {
 		next.Online = false
 		next.PlayerCount = 0
-		m.st.Store(next, m.hub)
+		m.st.Store(next, m.hub, m.logger)
 		return
 	}
 
@@ -81,7 +84,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 		}
 	}
 
-	m.st.Store(next, m.hub)
+	m.st.Store(next, m.hub, m.logger)
 }
 
 // SnapshotIsServerOnline 返回当前服务器是否在线。只有在成功获取服务器状态且服务器在线时才返回 true。
