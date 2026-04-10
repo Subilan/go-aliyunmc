@@ -6,6 +6,12 @@ zone?=cn-shenzhen-f
 # instance: ecs.u1-c1m4.xlarge
 # zone: cn-shenzhen-f
 
+backup:
+	bash ./run_and_watch.sh ./backup.hurl
+
+archive:
+	bash ./run_and_watch.sh ./archive.hurl
+
 create-instance:
 	$(HURL) ./create-instance.hurl --variable instance=$(instance) --variable zone=$(zone)
 
