@@ -24,7 +24,7 @@ type snapshot[T any] struct {
 }
 
 // Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
-func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]]) {
+func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
 	changed := s.Value != value
 	s.Value = value
@@ -34,13 +34,15 @@ func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]]) {
 	s.mu.Unlock()
 
 	if changed {
-		logs.Info("[snapshotStore] 更新值：%v", value)
+		if logger != nil {
+			logger.Info("[snapshotStore] 更新值：%v", value)
+		}
 		hub.Broadcast(snapshot)
 	}
 }
 
-// StoreError 将错误存储到 store 中
-func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]]) {
+// StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
+func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
 	changed := s.Error == nil || !errors.Is(s.Error, err)
 	s.Error = err
@@ -49,7 +51,9 @@ func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]]) {
 	s.mu.Unlock()
 
 	if changed {
-		logs.Info("[snapshotStore] 更新错误：%s", err.Error())
+		if logger != nil {
+			logger.Info("[snapshotStore] 更新错误：%s", err.Error())
+		}
 		hub.Broadcast(snapshot)
 	}
 }
