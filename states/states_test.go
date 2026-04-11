@@ -83,14 +83,27 @@ func TestStableSnapshotWaitsForFirstUpdate(t *testing.T) {
 		store.Store("ready", nil)
 	}()
 
-	snapshot, ok := StableSnapshot[string](key, 500*time.Millisecond)
-	if !ok {
-		t.Fatalf("expected stable snapshot to exist")
+	snapshot, err := StableSnapshot[string](key, 500*time.Millisecond)
+	if err != nil {
+		t.Fatalf("expected stable snapshot success, got error: %v", err)
 	}
 	if snapshot.UpdatedAt.IsZero() {
 		t.Fatalf("expected updated snapshot time")
 	}
 	if snapshot.Value != "ready" {
 		t.Fatalf("expected ready, got %s", snapshot.Value)
+	}
+}
+
+func TestStableSnapshotTimeoutReturnsError(t *testing.T) {
+	key := "test_stable_snapshot_timeout"
+	DeleteRecordedHubbedStore(key)
+	t.Cleanup(func() { DeleteRecordedHubbedStore(key) })
+
+	_ = NewRecordedHubbedStore[string](key)
+
+	_, err := StableSnapshot[string](key, 40*time.Millisecond)
+	if err == nil {
+		t.Fatalf("expected timeout error")
 	}
 }

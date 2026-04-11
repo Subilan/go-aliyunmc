@@ -1,6 +1,9 @@
 package states
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Snapshot 获取指定 key 的当前状态快照。如果 key 不存在，返回 false。
 func Snapshot[T comparable](key string) (State[T], bool) {
@@ -11,21 +14,23 @@ func Snapshot[T comparable](key string) (State[T], bool) {
 	return store.Snapshot(), true
 }
 
-// StableSnapshot 获取指定 key 的当前状态快照，并且会阻塞到有快照更新或者超时。如果 key 不存在，返回 false。
-func StableSnapshot[T comparable](key string, timeout time.Duration) (State[T], bool) {
+// StableSnapshot 获取指定 key 的当前状态快照。
+//  - 如果已有数据则直接返回；若暂无数据则等待到有数据后返回。
+//  - 若在获取到数据前超时，返回 error。
+func StableSnapshot[T comparable](key string, timeout time.Duration) (State[T], error) {
 	store, ok := GetRecordedHubbedStore[T](key)
 
 	if !ok {
-		return State[T]{}, false
+		return State[T]{}, fmt.Errorf("state store not found: %s", key)
 	}
 
 	current := store.Snapshot()
 	if !current.UpdatedAt.IsZero() {
-		return current, true
+		return current, nil
 	}
 
 	if timeout <= 0 {
-		return current, true
+		return State[T]{}, fmt.Errorf("wait stable snapshot timeout: %s", timeout)
 	}
 
 	ch, unsubscribe := store.Subscribe()
@@ -37,12 +42,12 @@ func StableSnapshot[T comparable](key string, timeout time.Duration) (State[T], 
 	for {
 		current = store.Snapshot()
 		if !current.UpdatedAt.IsZero() {
-			return current, true
+			return current, nil
 		}
 
 		select {
 		case <-timer.C:
-			return store.Snapshot(), true
+			return State[T]{}, fmt.Errorf("wait stable snapshot timeout: %s", timeout)
 		case <-ch:
 		}
 	}
@@ -61,9 +66,13 @@ func SnapshotIsInstanceRunning() bool {
 	return ok && snapshot.Error == nil && snapshot.Value == "Running"
 }
 
+func StableSnapshotInstanceStatus(timeout time.Duration) (State[string], error) {
+	return StableSnapshot[string](HSKeyInstanceStatus, timeout)
+}
+
 func StableSnapshotIsInstanceRunning(timeout time.Duration) bool {
-	snapshot, ok := StableSnapshot[string](HSKeyInstanceStatus, timeout)
-	return ok && snapshot.Error == nil && snapshot.Value == "Running"
+	snapshot, err := StableSnapshot[string](HSKeyInstanceStatus, timeout)
+	return err == nil && snapshot.Error == nil && snapshot.Value == "Running"
 }
 
 func SnapshotIsServerOnline() bool {
