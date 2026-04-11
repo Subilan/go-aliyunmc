@@ -7,7 +7,7 @@ WATCH_PATH="${1:-}"
 
 if [[ -z "$WATCH_PATH" ]]; then
   echo "用法: $0 <watch-path>"
-  echo "示例: $0 /monitor/watch/server-status"
+  echo "示例: $0 /state/watch/server-status"
   exit 1
 fi
 
