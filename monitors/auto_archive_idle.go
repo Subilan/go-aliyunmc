@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-aliyunmc/aliyun"
+	"go-aliyunmc/global_states"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/server"
@@ -83,6 +84,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 		countdownTimer = nil
 		countdownC = nil
+		global_states.ResetApproxIdleCountdown()
 		m.logger.Info("倒计时取消，原因：%s", reason)
 	}
 
@@ -95,6 +97,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 		countdownTimer = time.NewTimer(m.idleCountdown)
 		countdownC = countdownTimer.C
+		global_states.BeginApproxIdleCountdown(int64(m.idleCountdown.Seconds()))
 		m.logger.Info("倒计时开始：%d", int(m.idleCountdown.Seconds()))
 	}
 
@@ -150,7 +153,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			running = true
 
 			m.logger.Info("倒计时结束，开始执行归档流程")
-			if states.IsArchiving() {
+			if global_states.IsArchiving() {
 				m.logger.Info("检测到已有归档流程在进行，将继承此次运行结果")
 				go func() {
 					executor, _ := tasks.GetExclusiveExecutor(models.TaskTypeArchive)
@@ -172,9 +175,9 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 					}
 				}()
 			} else {
-				states.SetArchiving(true)
+				global_states.SetArchiving(true)
 				go func() {
-					defer states.SetArchiving(false)
+					defer global_states.SetArchiving(false)
 					err := m.executeArchivePipeline(ctx)
 					select {
 					case doneCh <- err:
