@@ -23,23 +23,12 @@ func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
 	}
 
-	def := tasks.GetTaskDefinition(body.Type)
-
-	if def == nil {
-		return nil, h.HttpError(http.StatusNotFound, "找不到该任务类型")
-	}
-
-	if def.C != nil {
-		if err := def.C(body.Args); err != nil {
-			return nil, err
-		}
-	}
-
-	executor := tasks.NewExecutor(def)
-
-	task, err := executor.RunTask(&userId, body.Args)
+	_, task, err := tasks.TriggerTask(body.Type, &userId, body.Args)
 
 	if err != nil {
+		if errors.Is(err, tasks.ErrTaskTypeNotFound) {
+			return nil, h.HttpError(http.StatusNotFound, err.Error())
+		}
 		if errors.Is(err, tasks.ErrTaskTypeExecuting) {
 			return nil, h.HttpError(http.StatusConflict, err.Error())
 		}

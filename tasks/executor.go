@@ -158,6 +158,21 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	return task, nil
 }
 
+// RunTaskAndWait 启动任务并阻塞等待任务完成。
+// 返回值中的 error 表示任务最终执行结果或者启动错误。
+func (e *Executor) RunTaskAndWait(by *uint, args map[string]any) (*models.Task, error) {
+	task, err := e.RunTask(by, args)
+	if err != nil {
+		return nil, err
+	}
+
+	if waitErr := <-e.Wait(); waitErr != nil {
+		return task, waitErr
+	}
+
+	return task, nil
+}
+
 type TaskSummary struct {
 	Success bool   `json:"success"`
 	Error   string `json:"error"`

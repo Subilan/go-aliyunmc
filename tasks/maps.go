@@ -28,6 +28,19 @@ func DeleteExclusiveExecutor(taskType models.TaskType) {
 	runningExclusiveExecutors.Delete(taskType)
 }
 
+func IsExclusiveTaskRunning(taskType models.TaskType) bool {
+	_, running := GetExclusiveExecutor(taskType)
+	return running
+}
+
+func IsArchiveTaskRunning() bool {
+	return IsExclusiveTaskRunning(models.TaskTypeArchive)
+}
+
+func IsBackupTaskRunning() bool {
+	return IsExclusiveTaskRunning(models.TaskTypeBackup)
+}
+
 // RangeExecutors 使用 fn 遍历当前所有正在执行的任务执行器。
 func RangeExecutors(fn func(taskId uint, executor *Executor)) {
 	runningExecutors.Range(func(key any, value any) bool {

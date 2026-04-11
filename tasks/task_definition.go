@@ -1,11 +1,7 @@
 package tasks
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/states"
-	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
-	"net/http"
 	"time"
 )
 
@@ -34,58 +30,7 @@ type TaskDefinition struct {
 
 type TaskFunc func(*TaskContext, map[string]any) error
 
-type TaskCheckFunc func(map[string]any) error
-
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
-
-var checkMustHaveActiveInstance TaskCheckFunc = func(_ map[string]any) error {
-	instance, err := store.GetActiveInstanceDefaultNil()
-
-	if err != nil {
-		return err
-	}
-
-	if instance == nil {
-		return h.HttpError(http.StatusNotFound, "没有可用的实例")
-	}
-
-	return nil
-}
-
-var checkMustHaveActiveDeployedInstance TaskCheckFunc = func(_ map[string]any) error {
-	instance, err := store.GetActiveInstanceDefaultNil()
-
-	if err != nil {
-		return err
-	}
-
-	if instance == nil {
-		return h.HttpError(http.StatusNotFound, "没有可用的实例")
-	}
-
-	if !instance.IsDeployed {
-		return h.HttpError(http.StatusConflict, "实例未部署")
-	}
-
-	return nil
-}
-
-var checkMustHaveActiveDeployedRunningInstance TaskCheckFunc = func(_ map[string]any) error {
-	if err := checkMustHaveActiveDeployedInstance(nil); err != nil {
-		return err
-	}
-
-	status, ok := states.SnapshotInstanceStatus()
-	if !ok || status.Error != nil {
-		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的实例状态")
-	}
-
-	if status.Value != "Running" {
-		return h.HttpError(http.StatusServiceUnavailable, "实例未运行")
-	}
-
-	return nil
-}
 
 func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 	def, ok := TaskDefinitions[taskType]

@@ -1,8 +1,11 @@
 package tasks
 
 import (
+	"go-aliyunmc/h"
 	"go-aliyunmc/remote_util"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
+	"net/http"
 )
 
 func backupTask(tc *TaskContext, _ map[string]any) error {
@@ -25,5 +28,9 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkBackupTask(args map[string]any) error {
+	if states.IsArchiveTaskRunning() {
+		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，不允许触发backup任务")
+	}
+	
 	return checkMustHaveActiveDeployedRunningInstance(args)
 }
