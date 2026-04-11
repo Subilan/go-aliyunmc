@@ -88,24 +88,16 @@ func (e *Executor) Unsubscribe(client *sse.Client) {
 func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) {
 	/** 初始化阶段，此阶段发生的错误被认为是 earlyExit **/
 	if e.taskDefinition.Exclusive {
-		if !TrySetExecutingType(e.taskDefinition.Type) {
+		if _, ok := GetExclusiveExecutor(e.taskDefinition.Type); ok {
 			return nil, ErrTaskTypeExecuting
 		}
 		e.exclusiveType = true
-	}
-
-	earlyExitCleanup := func() {
-		if e.exclusiveType {
-			DeleteExecutingType(e.taskDefinition.Type)
-			e.exclusiveType = false
-		}
 	}
 
 	// 创建任务记录
 	task, err := store.CreateTask(e.taskDefinition.Type, by)
 
 	if err != nil {
-		earlyExitCleanup()
 		return nil, err
 	}
 
@@ -116,7 +108,6 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	task.Status = models.TaskStatusRunning
 
 	if err := store.UpdateTask(task); err != nil {
-		earlyExitCleanup()
 		return nil, err
 	}
 
@@ -133,6 +124,10 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	// 将当前的执行器注册到全局执行器映射中，
 	// 以便其他 goroutine 可以通过任务 ID 获取到它。
 	SetExecutor(task.ID, e)
+
+	if e.exclusiveType {
+		SetExclusiveExecutor(task.Type, e)
+	}
 
 	// 启动 broker 和 monitor goroutine。
 	go e.broker.Run()
@@ -200,7 +195,7 @@ func (e *Executor) monitor() {
 	defer e.cancel()
 	defer DeleteExecutor(e.task.ID)
 	if e.exclusiveType {
-		defer DeleteExecutingType(e.task.Type)
+		defer DeleteExclusiveExecutor(e.task.Type)
 	}
 
 	for {

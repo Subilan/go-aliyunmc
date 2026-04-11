@@ -5,20 +5,32 @@ import (
 	"sync"
 )
 
-var executors sync.Map
-var executingTypes sync.Map
+var runningExecutors sync.Map
+var runningExclusiveExecutors sync.Map
 
-func TrySetExecutingType(taskType models.TaskType) bool {
-	_, loaded := executingTypes.LoadOrStore(taskType, true)
-	return !loaded
+// SetExclusiveExecutor 将正在执行的独占任务执行器与任务类型关联起来，供后续查询和管理。
+func SetExclusiveExecutor(taskType models.TaskType, executor *Executor) {
+	runningExclusiveExecutors.Store(taskType, executor)
 }
 
-func DeleteExecutingType(taskType models.TaskType) {
-	executingTypes.Delete(taskType)
+// GetExclusiveExecutor 获取当前正在执行的独占任务执行器，如果不存在则返回 nil 和 false。
+// 只有类型互斥任务才能使用这个函数查询正在执行的任务执行器。
+func GetExclusiveExecutor(taskType models.TaskType) (*Executor, bool) {
+	executor, loaded := runningExclusiveExecutors.Load(taskType)
+	if !loaded {
+		return nil, loaded
+	}
+	return executor.(*Executor), true
 }
 
+// DeleteExclusiveExecutor 从正在执行的独占任务执行器表中删除指定任务类型的执行器。
+func DeleteExclusiveExecutor(taskType models.TaskType) {
+	runningExclusiveExecutors.Delete(taskType)
+}
+
+// RangeExecutors 使用 fn 遍历当前所有正在执行的任务执行器。
 func RangeExecutors(fn func(taskId uint, executor *Executor)) {
-	executors.Range(func(key any, value any) bool {
+	runningExecutors.Range(func(key any, value any) bool {
 		taskId := key.(uint)
 		executor := value.(*Executor)
 		fn(taskId, executor)
@@ -27,7 +39,7 @@ func RangeExecutors(fn func(taskId uint, executor *Executor)) {
 }
 
 func GetExecutor(taskId uint) (*Executor, bool) {
-	executor, loaded := executors.Load(taskId)
+	executor, loaded := runningExecutors.Load(taskId)
 	if !loaded {
 		return nil, loaded
 	}
@@ -35,9 +47,9 @@ func GetExecutor(taskId uint) (*Executor, bool) {
 }
 
 func SetExecutor(taskId uint, executor *Executor) {
-	executors.Store(taskId, executor)
+	runningExecutors.Store(taskId, executor)
 }
 
 func DeleteExecutor(taskId uint) {
-	executors.Delete(taskId)
+	runningExecutors.Delete(taskId)
 }
