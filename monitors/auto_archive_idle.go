@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"go-aliyunmc/aliyun"
@@ -13,14 +12,14 @@ import (
 	"go-aliyunmc/server"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
+	"go-aliyunmc/tasks"
 	"go-aliyunmc/utils"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 	"gorm.io/gorm"
 )
-
-var autoArchiveFlowRunning atomic.Bool
 
 type archiveTaskRuntimeConfig struct {
 	TemplatePath string `toml:"template_path" validate:"required"`
@@ -54,11 +53,6 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 		archiveCfg:            archiveCfg,
 		logger:                logger,
 	}
-}
-
-// IsAutoArchiveFlowRunning 返回空服自动回收流程是否正在执行中。
-func IsAutoArchiveFlowRunning() bool {
-	return autoArchiveFlowRunning.Load()
 }
 
 // run 是AutoArchiveIdleMonitor的主循环，监听服务器状态快照更新并根据配置自动执行归档回收流程。
@@ -154,16 +148,40 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 				continue
 			}
 			running = true
-			autoArchiveFlowRunning.Store(true)
+
 			m.logger.Info("倒计时结束，开始执行归档流程")
-			go func() {
-				defer autoArchiveFlowRunning.Store(false)
-				err := m.executeArchivePipeline(ctx)
-				select {
-				case doneCh <- err:
-				default:
-				}
-			}()
+			if states.IsArchiveTaskRunning() {
+				m.logger.Info("检测到已有归档流程在进行，将继承此次运行结果")
+				go func() {
+					executor, _ := tasks.GetExclusiveExecutor(models.TaskTypeArchive)
+
+					select {
+					case err, ok := <-executor.Wait():
+						if !ok {
+							err = nil
+						}
+						select {
+						case doneCh <- err:
+						default:
+						}
+					case <-ctx.Done():
+						select {
+						case doneCh <- ctx.Err():
+						default:
+						}
+					}
+				}()
+			} else {
+				states.SetArchiveTaskRunning(true)
+				go func() {
+					defer states.SetArchiveTaskRunning(false)
+					err := m.executeArchivePipeline(ctx)
+					select {
+					case doneCh <- err:
+					default:
+					}
+				}()
+			}
 		case err := <-doneCh:
 			running = false
 			if err != nil {
@@ -225,7 +243,7 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 	waitCtx, cancel := context.WithTimeout(ctx, m.stopWaitTimeout)
 	defer cancel()
 
-	updates, unsubscribe := states.SubscribeServerSnapshot()
+	updates, unsubscribe := states.SubscribeServerStatus()
 	defer unsubscribe()
 
 	ticker := time.NewTicker(m.offlineCheckInterval)

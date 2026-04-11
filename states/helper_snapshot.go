@@ -4,9 +4,6 @@ import "time"
 
 // Snapshot 获取指定 key 的当前状态快照。如果 key 不存在，返回 false。
 func Snapshot[T comparable](key string) (State[T], bool) {
-	hubbedStoresMu.RLock()
-	defer hubbedStoresMu.RUnlock()
-
 	store, ok := GetRecordedHubbedStore[T](key)
 	if !ok {
 		return State[T]{}, false
@@ -16,9 +13,7 @@ func Snapshot[T comparable](key string) (State[T], bool) {
 
 // StableSnapshot 获取指定 key 的当前状态快照，并且会阻塞到有快照更新或者超时。如果 key 不存在，返回 false。
 func StableSnapshot[T comparable](key string, timeout time.Duration) (State[T], bool) {
-	hubbedStoresMu.RLock()
 	store, ok := GetRecordedHubbedStore[T](key)
-	hubbedStoresMu.RUnlock()
 
 	if !ok {
 		return State[T]{}, false

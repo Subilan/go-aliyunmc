@@ -2,13 +2,16 @@ package tasks
 
 import (
 	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
 	"go-aliyunmc/remote_util"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"net/http"
 )
 
 func archiveTask(tc *TaskContext, _ map[string]any) error {
+	states.SetArchiveTaskRunning(true)
+	defer states.SetArchiveTaskRunning(false)
+	
 	ip, err := store.GetActiveInstanceIpNonEmpty()
 	if err != nil {
 		return err
@@ -28,8 +31,8 @@ func archiveTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkArchiveTask(args map[string]any) error {
-	if monitors.IsAutoArchiveFlowRunning() {
-		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，暂不允许触发archive任务")
+	if states.IsArchiveTaskRunning() {
+		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，不允许触发archive任务")
 	}
 	return checkMustHaveActiveDeployedRunningInstance(args)
 }

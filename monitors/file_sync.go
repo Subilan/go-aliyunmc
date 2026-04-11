@@ -140,7 +140,7 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 
 // syncFile 执行单次文件同步
 func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
-	if autoArchiveFlowRunning.Load() {
+	if states.IsArchiveTaskRunning() {
 		p.logger.Info("自动回收流程正在执行，跳过文件同步")
 		return
 	}

@@ -10,7 +10,7 @@ func SubscribeInstanceStatus() (<-chan State[string], func()) {
 	return store.Subscribe()
 }
 
-func SubscribeServerSnapshot() (<-chan State[ServerStatusState], func()) {
+func SubscribeServerStatus() (<-chan State[ServerStatusState], func()) {
 	store, ok := GetRecordedHubbedStore[ServerStatusState](HSKeyServerStatus)
 	if !ok {
 		ch := make(chan State[ServerStatusState])
