@@ -191,6 +191,29 @@ func (e *Executor) Done() <-chan struct{} {
 	return e.ctx.Done()
 }
 
+// Wait 返回一个只读错误通道。任务结束时会向通道发送最终错误（成功时为 nil）并关闭通道。
+func (e *Executor) Wait() <-chan error {
+	ch := make(chan error, 1)
+	go func() {
+		<-e.Done()
+		ch <- e.finalError()
+		close(ch)
+	}()
+	return ch
+}
+
+func (e *Executor) finalError() error {
+	if e.task == nil {
+		return nil
+	}
+
+	if e.task.Status != models.TaskStatusFailed {
+		return nil
+	}
+
+	return fmt.Errorf("%s", e.task.Error)
+}
+
 func (e *Executor) monitor() {
 	defer e.cancel()
 	defer DeleteExecutor(e.task.ID)
