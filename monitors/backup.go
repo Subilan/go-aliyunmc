@@ -39,6 +39,8 @@ func (m *BackupMonitor) run(ctx context.Context) {
 	ticker := time.NewTicker(m.interval)
 	defer ticker.Stop()
 
+	m.triggerOnce()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -50,19 +52,19 @@ func (m *BackupMonitor) run(ctx context.Context) {
 }
 
 func (m *BackupMonitor) triggerOnce() {
-	m.logger.Info("执行backup任务")
+	m.logger.Info("开始执行备份")
 	task, err := tasks.TriggerTaskSync(models.TaskTypeBackup, nil, nil)
 	if err != nil {
 		if errors.Is(err, tasks.ErrTaskTypeExecuting) {
-			m.logger.Info("backup任务已在执行，跳过本次触发")
+			m.logger.Info("跳过备份，因为已有备份任务在执行")
 			return
 		}
 		if errors.Is(err, tasks.ErrTaskTypeNotFound) {
 			m.logger.Error("backup task definition not found")
 			return
 		}
-		m.logger.Info("backup校验未通过或执行失败，跳过触发: %v", err)
+		m.logger.Info("跳过备份，因为不符合执行条件或出错：%v", err)
 		return
 	}
-	m.logger.Info("backup任务完成，task_id=%d", task.ID)
+	m.logger.Info("备份完成，task_id=%d", task.ID)
 }
