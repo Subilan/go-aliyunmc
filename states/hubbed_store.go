@@ -24,6 +24,10 @@ func NewHubbedStore[T comparable]() *HubbedStore[T] {
 
 // NewRecordedHubbedStore 创建一个新的 HubbedStore，并将其注册到全局 hubbedStores 中以便后续读取。
 func NewRecordedHubbedStore[T comparable](key string) *HubbedStore[T] {
+	if store, ok := GetRecordedHubbedStore[T](key); ok {
+		return store
+	}
+	
 	store := NewHubbedStore[T]()
 	hubbedStoresMu.Lock()
 	defer hubbedStoresMu.Unlock()
