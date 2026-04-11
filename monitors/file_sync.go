@@ -109,16 +109,6 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	}
 }
 
-// stop 停止所有文件同步轮询 goroutine
-func (p *FileSyncPoller) stop() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	for _, stopCh := range p.stopChans {
-		close(stopCh)
-	}
-}
-
 // pollFile 为单个文件执行定时轮询
 func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, stopCh chan struct{}) {
 	ticker := time.NewTicker(time.Duration(fileConfig.PollIntervalSec) * time.Second)
@@ -140,7 +130,7 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 
 // syncFile 执行单次文件同步
 func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
-	if states.IsArchiveTaskRunning() {
+	if states.IsArchiving() {
 		p.logger.Info("自动回收流程正在执行，跳过文件同步")
 		return
 	}

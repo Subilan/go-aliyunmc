@@ -28,9 +28,9 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkBackupTask(args map[string]any) error {
-	if states.IsArchiveTaskRunning() {
+	if states.IsArchiving() {
 		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，不允许触发backup任务")
 	}
-	
+
 	return checkMustHaveActiveDeployedRunningInstance(args)
 }
