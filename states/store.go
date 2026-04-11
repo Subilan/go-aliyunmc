@@ -26,7 +26,10 @@ type State[T any] struct {
 // Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
 func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
-	changed := s.Value != value
+	// 认为值发生更新的条件：
+	// 1. 新值与旧值不同；或者
+	// 2. 之前存在错误，现在没有错误了（不论值是否改变）
+	changed := s.Value != value || s.Error != nil
 	s.Value = value
 	s.UpdatedAt = time.Now()
 	s.Error = nil
@@ -44,6 +47,9 @@ func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *logs.Prefixed
 // StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
 func (s *StateStore[T]) StoreError(err error, hub *Hub[State[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
+	// 认为错误发生更新的条件：
+	// 1. 之前没有错误，现在有了错误；或者
+	// 2. 之前有错误，现在的错误与之前的错误不同了
 	changed := s.Error == nil || !errors.Is(s.Error, err)
 	s.Error = err
 	s.UpdatedAt = time.Now()
