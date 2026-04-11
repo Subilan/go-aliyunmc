@@ -1,4 +1,4 @@
-package monitors
+package states
 
 import (
 	"errors"
@@ -7,16 +7,16 @@ import (
 	"time"
 )
 
-type snapshotStore[T comparable] struct {
-	snapshot[T]
+type StateStore[T comparable] struct {
+	State[T]
 	mu sync.RWMutex
 }
 
-type snapshot[T any] struct {
-	// Value 是 snapshot 的实际值。
+type State[T any] struct {
+	// Value 是最近一次成功获取到的实际值。
 	Value T
 
-	// UpdatedAt 是 snapshot 的更新时间。
+	// UpdatedAt 是最近一次更新的时间。
 	UpdatedAt time.Time
 
 	// Error 表示在获取 Value 过程中发生的错误。如果 Error 不为 nil，则 Value 可能不可靠。
@@ -24,43 +24,43 @@ type snapshot[T any] struct {
 }
 
 // Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
-func (s *snapshotStore[T]) Store(value T, hub *hub[snapshot[T]], logger *logs.PrefixedLogger) {
+func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
 	changed := s.Value != value
 	s.Value = value
 	s.UpdatedAt = time.Now()
 	s.Error = nil
-	snapshot := s.snapshot
+	snapshot := s.State
 	s.mu.Unlock()
 
 	if changed {
 		if logger != nil {
-			logger.Info("[snapshotStore] 更新值：%v", value)
+			logger.Info("[stateStore] 更新值：%v", value)
 		}
 		hub.Broadcast(snapshot)
 	}
 }
 
 // StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
-func (s *snapshotStore[T]) StoreError(err error, hub *hub[snapshot[T]], logger *logs.PrefixedLogger) {
+func (s *StateStore[T]) StoreError(err error, hub *Hub[State[T]], logger *logs.PrefixedLogger) {
 	s.mu.Lock()
 	changed := s.Error == nil || !errors.Is(s.Error, err)
 	s.Error = err
 	s.UpdatedAt = time.Now()
-	snapshot := s.snapshot
+	snapshot := s.State
 	s.mu.Unlock()
 
 	if changed {
 		if logger != nil {
-			logger.Info("[snapshotStore] 更新错误：%s", err.Error())
+			logger.Info("[stateStore] 更新错误：%s", err.Error())
 		}
 		hub.Broadcast(snapshot)
 	}
 }
 
-// Snapshot 返回 snapshot 的副本。
-func (s *snapshotStore[T]) Snapshot() snapshot[T] {
+// Snapshot 返回 state 当前的副本。
+func (s *StateStore[T]) Snapshot() State[T] {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.snapshot
+	return s.State
 }

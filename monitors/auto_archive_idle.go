@@ -11,6 +11,7 @@ import (
 	"go-aliyunmc/logs"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/server"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"go-aliyunmc/utils"
 
@@ -67,10 +68,6 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		return
 	}
 
-	updates, unsubscribe := SubscribeServerSnapshot()
-	defer unsubscribe()
-
-	current := SnapshotServerStatus()
 	var (
 		countdownTimer *time.Timer
 		countdownC     <-chan time.Time
@@ -99,12 +96,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		if countdownTimer != nil || running {
 			return
 		}
-		hasActive, err := m.hasActiveInstance()
-		if err != nil {
-			m.logger.Error("check active instance failed: %v", err)
-			return
-		}
-		if !hasActive {
+		if !store.HasActiveInstance() {
 			return
 		}
 		countdownTimer = time.NewTimer(m.idleCountdown)
@@ -113,41 +105,35 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	}
 
 	// 根据当前快照状态决定是否取消倒计时或者开启倒计时
-	handleSnapshot := func(s snapshot[ServerStatusState]) {
+	handleSnapshot := func(s states.State[states.ServerStatusState]) {
 		if s.Error != nil {
 			return
 		}
 
-		hasActive, err := m.hasActiveInstance()
-
-		if err != nil {
-			m.logger.Error("check active instance failed: %v", err)
-			return
-		}
-
-		if !hasActive {
+		if !store.HasActiveInstance() {
 			cancelCountdown("active_instance_missing")
 			return
 		}
 
-		if s.Error != nil {
-			m.logger.Error("服务器状态无效，因为发生了错误：" + s.Error.Error())
-			cancelCountdown("snapshot_error")
-			return
-		}
-
 		if s.Value.PlayerCount > 0 {
+			// 服务器一定在线
 			cancelCountdown("players_back")
 			return
 		}
 
-		// 如果服务器不在线或者玩家数为0，并且存在活跃实例，则启动倒计时
-		if !s.Value.Online || s.Value.PlayerCount == 0 {
-			startCountdown()
-		}
+		// 此时，要么服务器不在线，要么服务器在线但没有玩家。
+		startCountdown()
 	}
 
-	handleSnapshot(current)
+	updates, unsubscribe := serverMonitor.Subscribe()
+	defer unsubscribe()
+
+	current, ok := states.SnapshotServerStatus()
+	if ok {
+		handleSnapshot(current)
+	} else {
+		m.logger.Info("无法获取服务器状态快照，直接进入监听循环")
+	}
 
 	for {
 		select {
@@ -190,15 +176,6 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	}
 }
 
-// hasActiveInstance 检查是否存在活跃实例。
-func (m *AutoArchiveIdleMonitor) hasActiveInstance() (bool, error) {
-	instance, err := store.GetActiveInstanceDefaultNil()
-	if err != nil {
-		return false, err
-	}
-	return instance != nil, nil
-}
-
 // executeArchivePipeline 执行服务器离线、数据归档和实例记录删除的流程。
 func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) error {
 	instance, err := store.GetActiveInstanceDefaultNil()
@@ -216,7 +193,7 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 		return fmt.Errorf("active instance ip is empty")
 	}
 
-	if SnapshotIsServerOnline() {
+	if states.SnapshotIsServerOnline() {
 		m.logger.Info("stop_sent")
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
@@ -248,13 +225,13 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 	waitCtx, cancel := context.WithTimeout(ctx, m.stopWaitTimeout)
 	defer cancel()
 
-	updates, unsubscribe := SubscribeServerSnapshot()
+	updates, unsubscribe := states.SubscribeServerSnapshot()
 	defer unsubscribe()
 
 	ticker := time.NewTicker(m.offlineCheckInterval)
 	defer ticker.Stop()
 
-	if SnapshotIsServerOffline() {
+	if states.SnapshotIsServerOffline() {
 		return nil
 	}
 
@@ -269,7 +246,7 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 				return nil
 			}
 		case <-ticker.C:
-			if SnapshotIsServerOffline() {
+			if states.SnapshotIsServerOffline() {
 				return nil
 			}
 		}

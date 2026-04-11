@@ -12,10 +12,11 @@
     - whitelist.json -> gamebound & played players
     - playtime db -> display
   - (low priority) monitor cleanup when program exits
-  - stop & archive (URGENT, need test)
+  - [x] stop & archive
   - backup
-- backup (URGENT, need test)
-- archive (URGENT, need test)
+- [x] backup
+- [x] archive
+- [ ] inherit running archive task result in auto archive idle monitor
 - file logger
 - bss data
   - balance

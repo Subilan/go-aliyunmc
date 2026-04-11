@@ -2,7 +2,7 @@ package tasks
 
 import (
 	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 )
 
 type TaskDefinition struct {
-	// Timeout 定义了任务的超时时间。当任务执行时间超过该值时，任务将被自动标记为失败。
+	// Timeout 定义了任务的超时时间。当任务执行时间超过该值时，任务将被自动标记为失败。0 表示无超时时间。
 	Timeout time.Duration
 
 	// Type 定义了任务的类型，它是一个字符串，用于唯一标识一种任务。Type 与任务函数 F 一一对应，可以理解为任务函数的标识符。
@@ -19,14 +19,14 @@ type TaskDefinition struct {
 	// Exclusive 定义了任务是否属于独占类型。如果 Exclusive 为 true，则在该任务执行期间，同类型的其他任务将无法执行。
 	Exclusive bool
 
-	// F 定义了任务的执行函数，它接受一个 TaskContext 作为参数，并返回一个 error。任务函数包含了任务的具体执行逻辑。
+	// F 是任务的执行函数，它接受一个 TaskContext 作为参数，并返回一个 error。任务函数包含了任务的具体执行逻辑。
 	//  - F 会在一个独立的 goroutine 中被调用，TaskContext 用于在任务执行过程中记录任务的状态、输出以及处理任务的中断等逻辑。
 	//  - F 返回表示任务结束，其成功与否取决于返回值 error 是否为 nil。
 	//  - 如果 F 返回一个非 nil 的 error 或者 panic，任务将被标记为失败，并且 error 的内容将被记录为任务的失败原因。
 	//  - 如果 F 返回 nil，任务将被标记为成功。
 	F TaskFunc
 
-	// C 定义了任务的检查函数，它接受一个 map[string]any 作为参数，并返回一个 error。
+	// C 是任务的检查函数，它接受一个 map[string]any 作为参数，并返回一个 error。
 	// 检查函数用于在任务执行前验证输入参数以及环境的合法性。
 	// 检查参数可能为空。
 	C TaskCheckFunc
@@ -75,8 +75,8 @@ var checkMustHaveActiveDeployedRunningInstance TaskCheckFunc = func(_ map[string
 		return err
 	}
 
-	status := monitors.SnapshotInstanceStatus()
-	if status.Error != nil {
+	status, ok := states.SnapshotInstanceStatus()
+	if !ok || status.Error != nil {
 		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的实例状态")
 	}
 
