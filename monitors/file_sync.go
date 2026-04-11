@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/logs"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"io"
 	"os"
@@ -156,7 +157,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		return
 	}
 
-	if !StableSnapshotIsInstanceRunning(syncFileTimeout) {
+	if !states.StableSnapshotIsInstanceRunning(syncFileTimeout) {
 		p.logger.Info("实例未运行，跳过")
 		return
 	}
@@ -176,7 +177,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 	defer cancel()
 
 	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
-	
+
 	if err := downloadRemoteFile(syncCtx, ip, fileConfig.RemotePath, localFullPath); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("文件同步超时(%s)", syncFileTimeout)

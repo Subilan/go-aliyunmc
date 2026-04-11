@@ -1,17 +1,17 @@
-package monitors
+package states
 
 import "sync"
 
-type hub[T any] struct {
+type Hub[T any] struct {
 	mu       sync.RWMutex
 	channels map[chan T]struct{}
 }
 
-func newHub[T any]() *hub[T] {
-	return &hub[T]{channels: make(map[chan T]struct{})}
+func NewHub[T any]() *Hub[T] {
+	return &Hub[T]{channels: make(map[chan T]struct{})}
 }
 
-func (h *hub[T]) Subscribe() (<-chan T, func()) {
+func (h *Hub[T]) Subscribe() (<-chan T, func()) {
 	ch := make(chan T, 1)
 
 	h.mu.Lock()
@@ -30,7 +30,7 @@ func (h *hub[T]) Subscribe() (<-chan T, func()) {
 	return ch, unsubscribe
 }
 
-func (h *hub[T]) Broadcast(value T) {
+func (h *Hub[T]) Broadcast(value T) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 

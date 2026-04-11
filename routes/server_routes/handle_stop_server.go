@@ -2,8 +2,8 @@ package server_routes
 
 import (
 	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
 	"go-aliyunmc/server"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"net/http"
 
@@ -17,9 +17,9 @@ func HandleStopServer(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
-	status := monitors.SnapshotServerStatus()
+	status, ok := states.SnapshotServerStatus()
 	
-	if status.Error != nil {
+	if !ok || status.Error != nil {
 		return nil, h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
 	}
 	

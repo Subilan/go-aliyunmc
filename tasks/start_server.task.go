@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
 	"go-aliyunmc/remote_util"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"net/http"
 	"time"
@@ -80,9 +80,9 @@ func checkStartServerTask(_ map[string]any) error {
 		return err
 	}
 
-	status := monitors.SnapshotServerStatus()
+	status, ok := states.SnapshotServerStatus()
 
-	if status.Error != nil {
+	if !ok || status.Error != nil {
 		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
 	}
 
