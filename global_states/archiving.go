@@ -1,4 +1,4 @@
-package states
+package global_states
 
 import "sync/atomic"
 

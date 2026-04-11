@@ -65,6 +65,7 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	}
 
 	resp, err := aliyun.EcsClient.DescribeInstanceStatusWithContext(ctx, &ecs20140526.DescribeInstanceStatusRequest{
+		RegionId: tea.String(aliyun.C.RegionId),
 		InstanceId: []*string{tea.String(instance.InstanceId)},
 	}, &dara.RuntimeOptions{})
 

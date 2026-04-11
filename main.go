@@ -10,8 +10,9 @@ import (
 	"go-aliyunmc/logs"
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/routes/instance_routes"
-	"go-aliyunmc/routes/state_routes"
+	"go-aliyunmc/routes/monitor_routes"
 	"go-aliyunmc/routes/server_routes"
+	"go-aliyunmc/routes/state_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/server"
@@ -69,6 +70,9 @@ func main() {
 
 	// 注册状态路由
 	state_routes.Bind(engine)
+
+	// 注册监控路由
+	monitor_routes.Bind(engine)
 
 	// 注册用户路由
 	user_routes.Bind(engine)

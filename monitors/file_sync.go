@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyunmc/aliyun"
+	"go-aliyunmc/global_states"
 	"go-aliyunmc/logs"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
@@ -130,7 +131,7 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 
 // syncFile 执行单次文件同步
 func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
-	if states.IsArchiving() {
+	if global_states.IsArchiving() {
 		p.logger.Info("自动回收流程正在执行，跳过文件同步")
 		return
 	}
