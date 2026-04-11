@@ -23,6 +23,7 @@ type DeployTaskConfig struct {
 
 type BackupTemplateVars struct {
 	BackupOSSPath string `toml:"backup_oss_path" validate:"required" comment:"备份上传目标OSS目录"`
+	MaxKeepCount  int    `toml:"max_keep_count" validate:"required,min=1" comment:"备份保留数量上限，超过后删除最旧的备份"`
 }
 
 type BackupTaskConfig struct {

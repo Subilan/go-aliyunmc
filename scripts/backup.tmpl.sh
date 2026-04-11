@@ -11,7 +11,7 @@ BACKUP_ITEMS=(
 )
 
 TMP_DIR="/home/mc/mc_backup"
-MAX_BACKUPS=5
+MAX_BACKUPS={{ .MaxKeepCount }}
 
 OSS_BACKUP_DIR="{{ .BackupOSSPath }}"
 
