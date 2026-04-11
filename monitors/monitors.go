@@ -14,6 +14,7 @@ var (
 	instanceMonitor *InstanceStatusMonitor
 	fileSyncPoller  *FileSyncPoller
 	autoArchiveIdle *AutoArchiveIdleMonitor
+	backupMonitor   *BackupMonitor
 	initializeOnce  sync.Once
 )
 
@@ -24,10 +25,12 @@ func MustInitialize(ctx context.Context) {
 		instanceMonitor = newInstanceStatusMonitor()
 		fileSyncPoller = newFileSyncPoller()
 		autoArchiveIdle = newAutoArchiveIdleMonitor()
+		backupMonitor = newBackupMonitor()
 
 		go serverMonitor.run(ctx)
 		go instanceMonitor.run(ctx)
 		go fileSyncPoller.run(ctx)
 		go autoArchiveIdle.run(ctx)
+		go backupMonitor.run(ctx)
 	})
 }

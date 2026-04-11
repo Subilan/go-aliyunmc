@@ -29,14 +29,21 @@ type AutoArchiveIdleMonitorConfig struct {
 	DeleteIgnoreNonExistent bool `toml:"delete_ignore_non_existent" comment:"删除active instance时是否忽略不存在错误"`
 }
 
+type BackupMonitorConfig struct {
+	Enabled         bool `toml:"enabled" comment:"是否启用自动备份监控"`
+	PollIntervalSec int  `toml:"poll_interval_sec" validate:"required,min=1" comment:"自动触发备份任务的轮询间隔（秒）"`
+}
+
 var ServerStatusC ServerStatusMonitorConfig
 var InstanceStatusC InstanceStatusMonitorConfig
 var FileSyncC FileSyncMonitorConfig
 var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
+var BackupC BackupMonitorConfig
 
 func MustLoadConfig() {
 	utils.MustBindConfig(&ServerStatusC, "monitor-server")
 	utils.MustBindConfig(&InstanceStatusC, "monitor-instance")
 	utils.MustBindConfig(&FileSyncC, "monitor-file-sync")
 	utils.MustBindConfig(&AutoArchiveIdleC, "monitor-auto-archive-idle")
+	utils.MustBindConfig(&BackupC, "monitor-backup")
 }

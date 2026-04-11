@@ -121,6 +121,11 @@ func main() {
 		DeleteIgnoreNonExistent: true,
 	}
 
+	monitorBackupConfig := monitors.BackupMonitorConfig{
+		Enabled:         false,
+		PollIntervalSec: 600,
+	}
+
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Exclusive: true,
 		Steps: []tasks.DeployStepConfig{
@@ -252,6 +257,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/monitor-auto-archive-idle.toml", monitorAutoArchiveIdleConfig); err != nil {
 		fmt.Printf("Error writing monitor-auto-archive-idle.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-backup.toml", monitorBackupConfig); err != nil {
+		fmt.Printf("Error writing monitor-backup.toml: %v\n", err)
 		os.Exit(1)
 	}
 

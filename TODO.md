@@ -14,9 +14,10 @@
   - (low priority) monitor cleanup when program exits
   - [x] stop & archive
   - backup
+- [ ] monitor metrics
 - [x] backup
 - [x] archive
-- [ ] inherit running archive task result in auto archive idle monitor
+- [x] inherit running archive task result in auto archive idle monitor
 - file logger
 - bss data
   - balance
