@@ -9,9 +9,9 @@ import (
 )
 
 func archiveTask(tc *TaskContext, _ map[string]any) error {
-	states.SetArchiveTaskRunning(true)
-	defer states.SetArchiveTaskRunning(false)
-	
+	states.SetArchiving(true)
+	defer states.SetArchiving(false)
+
 	ip, err := store.GetActiveInstanceIpNonEmpty()
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func archiveTask(tc *TaskContext, _ map[string]any) error {
 }
 
 func checkArchiveTask(args map[string]any) error {
-	if states.IsArchiveTaskRunning() {
+	if states.IsArchiving() {
 		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，不允许触发archive任务")
 	}
 	return checkMustHaveActiveDeployedRunningInstance(args)
