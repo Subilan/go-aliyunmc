@@ -16,15 +16,23 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const testDBPath = "user_routes_test.db"
+
 func TestMain(m *testing.M) {
-	// 初始化数据库
+	store.C = store.Config{
+		Driver: "sqlite",
+		DBName: "user_routes_test",
+		Path:   testDBPath,
+	}
+
+	_ = os.Remove(testDBPath)
 	store.MustInitialize()
 	store.AutoMigrate()
 
-	// 运行测试
-	m.Run()
+	code := m.Run()
 
-	os.Exit(0)
+	_ = os.Remove(testDBPath)
+	os.Exit(code)
 }
 
 func setupTestRouter() *gin.Engine {
@@ -37,6 +45,36 @@ func setupTestRouter() *gin.Engine {
 	// 注册用户路由
 	Bind(router)
 	return router
+}
+
+func loginAndGetSessionCookie(t *testing.T, router *gin.Engine, username, password string) *http.Cookie {
+	t.Helper()
+
+	loginReq := LoginRequest{
+		Username: username,
+		Password: password,
+		Remember: true,
+	}
+
+	reqBody, _ := json.Marshal(loginReq)
+	req, _ := http.NewRequest("POST", "/user/login", bytes.NewBuffer(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("login failed, status=%d, body=%s", w.Code, w.Body.String())
+	}
+
+	for _, c := range w.Result().Cookies() {
+		if c.Name == "session" {
+			return c
+		}
+	}
+
+	t.Fatal("session cookie not found")
+	return nil
 }
 
 func TestHandleRegister(t *testing.T) {
@@ -75,8 +113,8 @@ func TestHandleRegister(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("Expected status code %d for duplicate registration, got %d", http.StatusInternalServerError, w.Code)
+	if w.Code != http.StatusConflict {
+		t.Errorf("Expected status code %d for duplicate registration, got %d", http.StatusConflict, w.Code)
 	}
 }
 
@@ -127,23 +165,26 @@ func TestHandleLogin(t *testing.T) {
 	w = httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	if w.Code != http.StatusInternalServerError {
-		t.Errorf("Expected status code %d for wrong password, got %d", http.StatusInternalServerError, w.Code)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("Expected status code %d for wrong password, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
 
 func TestHandleDeleteUser(t *testing.T) {
 	router := setupTestRouter()
 
-	// 先创建测试用户
+	// 先创建测试用户并登录拿到session
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
 	testUser := models.User{
 		Username:     "deleteuser",
-		PasswordHash: "hash",
+		PasswordHash: string(hashedPassword),
 	}
 	store.DB.Create(&testUser)
+	cookie := loginAndGetSessionCookie(t, router, "deleteuser", "password123")
 
 	req, _ := http.NewRequest("DELETE", "/user", nil)
 	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
