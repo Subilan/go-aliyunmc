@@ -4,4 +4,4 @@
 
 旧版本代码可查看v0.1分支
 
-文档：https://seatidemc.github.io/go-aliyunmc
+文档：https://seatidemc.github.io/go-aliyunmc-docs
