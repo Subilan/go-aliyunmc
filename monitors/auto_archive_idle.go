@@ -214,7 +214,7 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 		return fmt.Errorf("active instance ip is empty")
 	}
 
-	if states.SnapshotIsServerOnline() {
+	if online, ok := states.SnapshotIsServerOnline(); ok && online {
 		m.logger.Info("stop_sent")
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
@@ -252,7 +252,7 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 	ticker := time.NewTicker(m.offlineCheckInterval)
 	defer ticker.Stop()
 
-	if states.SnapshotIsServerOffline() {
+	if offline, ok := states.SnapshotIsServerOffline(); ok && offline {
 		return nil
 	}
 
@@ -267,7 +267,7 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 				return nil
 			}
 		case <-ticker.C:
-			if states.SnapshotIsServerOffline() {
+			if offline, ok := states.SnapshotIsServerOffline(); ok && offline {
 				return nil
 			}
 		}

@@ -126,6 +126,17 @@ func main() {
 		PollIntervalSec: 600,
 	}
 
+	monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
+		PollIntervalSec: 600,
+		MemChoices:      []int{8, 16},
+		CpuCoreCountChoices: []int{4, 8},
+		CacheFile: "ecs_candidates.json",
+		Filters: monitors.InstanceChargeFilters{
+			MaxTradePrice: 0.6,
+			InstanceTypeExclusion: "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$",
+		},
+	}
+
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Exclusive: true,
 		Steps: []tasks.DeployStepConfig{
@@ -262,6 +273,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/monitor-backup.toml", monitorBackupConfig); err != nil {
 		fmt.Printf("Error writing monitor-backup.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-best-ecs-candidate.toml", monitorBestEcsCandidateConfig); err != nil {
+		fmt.Printf("Error writing monitor-best-ecs-candidate.toml: %v\n", err)
 		os.Exit(1)
 	}
 

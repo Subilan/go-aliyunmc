@@ -74,3 +74,28 @@ func Q[T any](h QueryHandler[T]) gin.HandlerFunc {
 		return h(query, c)
 	})
 }
+
+// V 将一个简单的返回一个值的函数包装为始终返回 200 的 gin.HandlerFunc
+func V[T any](value func() T) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, Data(value()))
+	}
+}
+
+// VE 将一个返回一个值和一个错误的函数包装为 gin.HandlerFunc
+func VE[T any](value func() (T, error)) gin.HandlerFunc {
+	return G(func(ctx *gin.Context) (any, error) {
+		return value()
+	})
+}
+
+// VB 将一个返回一个值和一个布尔值的函数包装为 gin.HandlerFunc，如果布尔值为 false，则返回 404
+func VB[T any](value func() (T, bool)) gin.HandlerFunc {
+	return G(func(ctx *gin.Context) (any, error) {
+		v, ok := value()
+		if !ok {
+			return nil, HttpError(http.StatusNotFound, "暂时无法获取该数据")
+		}
+		return v, nil
+	})
+}

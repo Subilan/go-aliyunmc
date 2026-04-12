@@ -13,3 +13,4 @@ configgen
 .DS_Store
 remote_data_cache/
 logs/
+ecs_candidates.json

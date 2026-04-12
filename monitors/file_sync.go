@@ -148,8 +148,8 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		return
 	}
 
-	if !states.StableSnapshotIsInstanceRunning(syncFileTimeout) {
-		p.logger.Info("实例未运行，跳过")
+	if running, err := states.StableSnapshotIsInstanceRunning(syncFileTimeout); err != nil || !running {
+		p.logger.Info("实例未运行或无法获取状态，跳过")
 		return
 	}
 

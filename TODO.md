@@ -13,17 +13,18 @@
     - playtime db -> display
   - (low priority) monitor cleanup when program exits
   - [x] stop & archive
-  - backup
+  - [x] backup
+  - [x] best candidate
 - [ ] monitor metrics
 - [x] backup
 - [x] archive
+- [ ] more template vars for backup and archive scripts
 - [x] inherit running archive task result in auto archive idle monitor
 - [x] file logger
 - bss data
-  - balance
+  - [x] balance
   - estimated hours left
 - online data
   - chart data support
-- archive.tmpl.sh configuration design improvement (pivot: hardcode or configurable?)
 - extra functionalities (need brainstorm)
   - web chat (need plugin)

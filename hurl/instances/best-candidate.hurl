@@ -1,0 +1,1 @@
+GET {{baseURL}}/instance/best-candidate
