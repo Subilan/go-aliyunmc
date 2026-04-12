@@ -14,14 +14,14 @@ import (
 type BackupMonitor struct {
 	enabled  bool
 	interval time.Duration
-	logger   *log_util.PrefixedLogger
+	logger   *log_util.NamedLogger
 }
 
 func newBackupMonitor() *BackupMonitor {
 	return &BackupMonitor{
 		enabled:  BackupC.Enabled,
 		interval: time.Duration(BackupC.PollIntervalSec) * time.Second,
-		logger:   log_util.NewPrefixedLogger("[monitor/backup] "),
+		logger:   log_util.NewNamedLogger("[monitor/backup] ", "backup-monitor"),
 	}
 }
 

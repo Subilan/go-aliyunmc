@@ -37,13 +37,13 @@ type AutoArchiveIdleMonitor struct {
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
 	archiveCfg            archiveTaskRuntimeConfig
-	logger                *log_util.PrefixedLogger
+	logger                *log_util.NamedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	archiveCfg := archiveTaskRuntimeConfig{}
 	utils.MustBindConfig(&archiveCfg, "task-archive")
-	logger := log_util.NewPrefixedLogger("[monitor/auto-archive-idle] ")
+	logger := log_util.NewNamedLogger("[monitor/auto-archive-idle] ", "auto-archive-idle-monitor")
 
 	return &AutoArchiveIdleMonitor{
 		enabled:               AutoArchiveIdleC.Enabled,

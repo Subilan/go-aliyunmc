@@ -27,7 +27,7 @@ func NewRecordedHubbedStore[T comparable](key string) *HubbedStore[T] {
 	if store, ok := GetRecordedHubbedStore[T](key); ok {
 		return store
 	}
-	
+
 	store := NewHubbedStore[T]()
 	hubbedStoresMu.Lock()
 	defer hubbedStoresMu.Unlock()
@@ -53,12 +53,12 @@ func DeleteRecordedHubbedStore(key string) {
 }
 
 // Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) Store(value T, logger *log_util.PrefixedLogger) {
+func (s *HubbedStore[T]) Store(value T, logger *log_util.NamedLogger) {
 	s.st.Store(value, s.hub, logger)
 }
 
 // StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) StoreError(err error, logger *log_util.PrefixedLogger) {
+func (s *HubbedStore[T]) StoreError(err error, logger *log_util.NamedLogger) {
 	s.st.StoreError(err, s.hub, logger)
 }
 

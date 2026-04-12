@@ -19,14 +19,14 @@ import (
 type InstanceStatusMonitor struct {
 	store    *states.HubbedStore[string]
 	interval time.Duration
-	logger   *log_util.PrefixedLogger
+	logger   *log_util.NamedLogger
 }
 
 func newInstanceStatusMonitor() *InstanceStatusMonitor {
 	monitor := &InstanceStatusMonitor{
 		interval: time.Duration(InstanceStatusC.PollIntervalSec) * time.Second,
 		store:    states.NewRecordedHubbedStore[string](states.HSKeyInstanceStatus),
-		logger:   log_util.NewPrefixedLogger("[monitor/instance] "),
+		logger:   log_util.NewNamedLogger("[monitor/instance] ", "instance-status-monitor"),
 	}
 	return monitor
 }
@@ -65,7 +65,7 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	}
 
 	resp, err := aliyun.EcsClient.DescribeInstanceStatusWithContext(ctx, &ecs20140526.DescribeInstanceStatusRequest{
-		RegionId: tea.String(aliyun.C.RegionId),
+		RegionId:   tea.String(aliyun.C.RegionId),
 		InstanceId: []*string{tea.String(instance.InstanceId)},
 	}, &dara.RuntimeOptions{})
 

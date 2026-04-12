@@ -18,7 +18,7 @@
 - [x] backup
 - [x] archive
 - [x] inherit running archive task result in auto archive idle monitor
-- file logger
+- [x] file logger
 - bss data
   - balance
   - estimated hours left
