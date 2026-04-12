@@ -64,6 +64,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 
 	next := states.ServerStatusState{}
 
+	// 认为离线，不记录错误
 	if err != nil {
 		next.Online = false
 		next.PlayerCount = 0

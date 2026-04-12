@@ -15,8 +15,8 @@ func Snapshot[T comparable](key string) (State[T], bool) {
 }
 
 // StableSnapshot 获取指定 key 的当前状态快照。
-//  - 如果已有数据则直接返回；若暂无数据则等待到有数据后返回。
-//  - 若在获取到数据前超时，返回 error。
+//   - 如果已有数据则直接返回；若暂无数据则等待到有数据后返回。
+//   - 若在获取到数据前超时，返回 error。
 func StableSnapshot[T comparable](key string, timeout time.Duration) (State[T], error) {
 	store, ok := GetRecordedHubbedStore[T](key)
 
@@ -61,26 +61,34 @@ func SnapshotServerStatus() (State[ServerStatusState], bool) {
 	return Snapshot[ServerStatusState](HSKeyServerStatus)
 }
 
-func SnapshotIsInstanceRunning() bool {
+func SnapshotIsInstanceRunning() (bool, bool) {
 	snapshot, ok := SnapshotInstanceStatus()
-	return ok && snapshot.Error == nil && snapshot.Value == "Running"
+	return snapshot.Value == "Running", ok && snapshot.IsValid()
 }
 
 func StableSnapshotInstanceStatus(timeout time.Duration) (State[string], error) {
 	return StableSnapshot[string](HSKeyInstanceStatus, timeout)
 }
 
-func StableSnapshotIsInstanceRunning(timeout time.Duration) bool {
+func StableSnapshotIsInstanceRunning(timeout time.Duration) (bool, error) {
 	snapshot, err := StableSnapshot[string](HSKeyInstanceStatus, timeout)
-	return err == nil && snapshot.Error == nil && snapshot.Value == "Running"
+	if err != nil {
+		return false, err
+	}
+	return snapshot.IsValid() && snapshot.Value == "Running", nil
 }
 
-func SnapshotIsServerOnline() bool {
+func SnapshotIsServerOnline() (bool, bool) {
 	snapshot, ok := SnapshotServerStatus()
-	return ok && snapshot.Error == nil && snapshot.Value.Online
+	return snapshot.Value.Online, ok && snapshot.IsValid()
 }
 
-func SnapshotIsServerOffline() bool {
+func SnapshotIsServerOffline() (bool, bool) {
 	snapshot, ok := SnapshotServerStatus()
-	return ok && snapshot.Error == nil && !snapshot.Value.Online
+	return !snapshot.Value.Online, ok && snapshot.IsValid()
+}
+
+func SnapshotBestEcsCandidate() (EcsCandidate, bool) {
+	snapshot, ok := Snapshot[EcsCandidate](HSKeyBestEcsCandidate)
+	return snapshot.Value, ok && snapshot.IsValid()
 }

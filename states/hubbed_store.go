@@ -52,14 +52,14 @@ func DeleteRecordedHubbedStore(key string) {
 	delete(hubbedStores, key)
 }
 
-// Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) Store(value T, logger *log_util.NamedLogger) {
-	s.st.Store(value, s.hub, logger)
+// Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。返回值表示是否发生了变化。
+func (s *HubbedStore[T]) Store(value T, logger *log_util.NamedLogger) bool {
+	return s.st.Store(value, s.hub, logger)
 }
 
 // StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) StoreError(err error, logger *log_util.NamedLogger) {
-	s.st.StoreError(err, s.hub, logger)
+func (s *HubbedStore[T]) StoreError(err error, logger *log_util.NamedLogger) bool {
+	return s.st.StoreError(err, s.hub, logger)
 }
 
 // Snapshot 返回当前状态的副本。
