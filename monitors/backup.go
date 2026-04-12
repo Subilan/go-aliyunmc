@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
 )
@@ -14,14 +14,14 @@ import (
 type BackupMonitor struct {
 	enabled  bool
 	interval time.Duration
-	logger   *logs.PrefixedLogger
+	logger   *log_util.PrefixedLogger
 }
 
 func newBackupMonitor() *BackupMonitor {
 	return &BackupMonitor{
 		enabled:  BackupC.Enabled,
 		interval: time.Duration(BackupC.PollIntervalSec) * time.Second,
-		logger:   logs.NewPrefixedLogger("[monitor/backup] "),
+		logger:   log_util.NewPrefixedLogger("[monitor/backup] "),
 	}
 }
 
