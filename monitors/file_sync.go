@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/global_states"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"io"
@@ -81,14 +81,14 @@ func downloadRemoteFile(ctx context.Context, ip string, remotePath string, local
 type FileSyncPoller struct {
 	stopChans map[string]chan struct{}
 	mu        sync.Mutex
-	logger    *logs.PrefixedLogger
+	logger    *log_util.PrefixedLogger
 }
 
 // newFileSyncPoller 创建一个新的 FileSyncPoller 实例
 func newFileSyncPoller() *FileSyncPoller {
 	return &FileSyncPoller{
 		stopChans: make(map[string]chan struct{}),
-		logger:    logs.NewPrefixedLogger("[monitor/file-sync] "),
+		logger:    log_util.NewPrefixedLogger("[monitor/file-sync] "),
 	}
 }
 

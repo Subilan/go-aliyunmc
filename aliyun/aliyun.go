@@ -1,7 +1,7 @@
 package aliyun
 
 import (
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 
 	"github.com/aliyun/credentials-go/credentials"
 )
@@ -35,7 +35,7 @@ func MustGetAKCredential() credentials.Credential {
 	cr, err := credentials.NewCredential(crConfig)
 
 	if err != nil {
-		logs.Fatal("无法创建凭证数据")
+		log_util.Fatal("无法创建凭证数据")
 	}
 
 	return cr

@@ -7,7 +7,7 @@ import (
 
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/env"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 
@@ -19,14 +19,14 @@ import (
 type InstanceStatusMonitor struct {
 	store    *states.HubbedStore[string]
 	interval time.Duration
-	logger   *logs.PrefixedLogger
+	logger   *log_util.PrefixedLogger
 }
 
 func newInstanceStatusMonitor() *InstanceStatusMonitor {
 	monitor := &InstanceStatusMonitor{
 		interval: time.Duration(InstanceStatusC.PollIntervalSec) * time.Second,
 		store:    states.NewRecordedHubbedStore[string](states.HSKeyInstanceStatus),
-		logger:   logs.NewPrefixedLogger("[monitor/instance] "),
+		logger:   log_util.NewPrefixedLogger("[monitor/instance] "),
 	}
 	return monitor
 }

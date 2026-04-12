@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/server"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
@@ -15,14 +15,14 @@ import (
 type ServerStatusMonitor struct {
 	interval time.Duration
 	store    *states.HubbedStore[states.ServerStatusState]
-	logger   *logs.PrefixedLogger
+	logger   *log_util.PrefixedLogger
 }
 
 func newServerStatusMonitor() *ServerStatusMonitor {
 	return &ServerStatusMonitor{
 		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
 		store:    states.NewRecordedHubbedStore[states.ServerStatusState](states.HSKeyServerStatus),
-		logger:   logs.NewPrefixedLogger("[monitor/server] "),
+		logger:   log_util.NewPrefixedLogger("[monitor/server] "),
 	}
 }
 

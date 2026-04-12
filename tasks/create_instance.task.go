@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/h"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
@@ -35,7 +35,7 @@ func deleteInstance(id string) {
 
 	_, err := aliyun.EcsClient.DeleteInstance(deleteInstanceRequest)
 	if err != nil {
-		logs.Error("在清理过程中无法删除实例：%v", err)
+		log_util.Error("在清理过程中无法删除实例：%v", err)
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/env"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/routes/instance_routes"
 	"go-aliyunmc/routes/monitor_routes"
@@ -47,7 +47,7 @@ func main() {
 	env.MustInitialize()
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
-			logs.Fatal("初始化DEV用户失败: %v", err)
+			log_util.Fatal("初始化DEV用户失败: %v", err)
 		}
 	}
 	tasks.MustInitialize()
@@ -99,10 +99,10 @@ func main() {
 	}
 
 	<-ctx.Done()
-	logs.Info("清理中...")
+	log_util.Info("清理中...")
 	// cleanup logic here
 
-	logs.Info("清除正在运行的任务")
+	log_util.Info("清除正在运行的任务")
 	var wg sync.WaitGroup
 	tasks.RangeExecutors(func(taskId uint, executor *tasks.Executor) {
 		wg.Go(func() {
@@ -111,7 +111,7 @@ func main() {
 		})
 	})
 	wg.Wait()
-	logs.Info("清除完毕")
+	log_util.Info("清除完毕")
 }
 
 func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) {

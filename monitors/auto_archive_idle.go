@@ -8,7 +8,7 @@ import (
 
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/global_states"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/server"
 	"go-aliyunmc/states"
@@ -37,13 +37,13 @@ type AutoArchiveIdleMonitor struct {
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
 	archiveCfg            archiveTaskRuntimeConfig
-	logger                *logs.PrefixedLogger
+	logger                *log_util.PrefixedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	archiveCfg := archiveTaskRuntimeConfig{}
 	utils.MustBindConfig(&archiveCfg, "task-archive")
-	logger := logs.NewPrefixedLogger("[monitor/auto-archive-idle] ")
+	logger := log_util.NewPrefixedLogger("[monitor/auto-archive-idle] ")
 
 	return &AutoArchiveIdleMonitor{
 		enabled:               AutoArchiveIdleC.Enabled,

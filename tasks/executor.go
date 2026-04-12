@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"go-aliyunmc/sse"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
@@ -181,7 +181,7 @@ type TaskSummary struct {
 // updateAndBroadcast 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播 event。
 func (e *Executor) updateAndBroadcast(event sse.Event) {
 	if err := store.UpdateTask(e.task); err != nil {
-		logs.Error("更新任务状态时出错: %v\n", err)
+		log_util.Error("更新任务状态时出错: %v\n", err)
 	} else {
 		e.broker.Broadcast(event)
 	}
@@ -190,7 +190,7 @@ func (e *Executor) updateAndBroadcast(event sse.Event) {
 // updateAndSummary 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播任务结束事件。
 func (e *Executor) updateAndSummary() {
 	if err := store.UpdateTask(e.task); err != nil {
-		logs.Error("更新任务状态时出错: %v\n", err)
+		log_util.Error("更新任务状态时出错: %v\n", err)
 	} else {
 		e.broker.Broadcast(sse.Event{
 			Event: "task_done",
@@ -247,7 +247,7 @@ func (e *Executor) monitor() {
 			} else if errors.Is(cause, ErrTaskInterrupted) {
 				e.task.Status = models.TaskStatusFailed
 				e.task.Error = "__INTERRUPTED__"
-				logs.Info("任务%d被中断", e.task.ID)
+				log_util.Info("任务%d被中断", e.task.ID)
 			} else if errors.Is(cause, context.Canceled) {
 				e.task.Status = models.TaskStatusSuccess
 			} else {

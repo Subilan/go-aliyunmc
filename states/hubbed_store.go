@@ -1,7 +1,7 @@
 package states
 
 import (
-	"go-aliyunmc/logs"
+	"go-aliyunmc/log_util"
 	"sync"
 )
 
@@ -53,12 +53,12 @@ func DeleteRecordedHubbedStore(key string) {
 }
 
 // Store 将新的 snapshot 存储到 store 中，并在 snapshot 发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) Store(value T, logger *logs.PrefixedLogger) {
+func (s *HubbedStore[T]) Store(value T, logger *log_util.PrefixedLogger) {
 	s.st.Store(value, s.hub, logger)
 }
 
 // StoreError 将错误存储到 store 中，并在错误发生变化时通过 hub 广播更新。
-func (s *HubbedStore[T]) StoreError(err error, logger *logs.PrefixedLogger) {
+func (s *HubbedStore[T]) StoreError(err error, logger *log_util.PrefixedLogger) {
 	s.st.StoreError(err, s.hub, logger)
 }
 
