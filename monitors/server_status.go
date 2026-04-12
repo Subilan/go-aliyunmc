@@ -15,14 +15,14 @@ import (
 type ServerStatusMonitor struct {
 	interval time.Duration
 	store    *states.HubbedStore[states.ServerStatusState]
-	logger   *log_util.PrefixedLogger
+	logger   *log_util.NamedLogger
 }
 
 func newServerStatusMonitor() *ServerStatusMonitor {
 	return &ServerStatusMonitor{
 		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
 		store:    states.NewRecordedHubbedStore[states.ServerStatusState](states.HSKeyServerStatus),
-		logger:   log_util.NewPrefixedLogger("[monitor/server] "),
+		logger:   log_util.NewNamedLogger("[monitor/server] ", "server-status-monitor"),
 	}
 }
 

@@ -81,14 +81,14 @@ func downloadRemoteFile(ctx context.Context, ip string, remotePath string, local
 type FileSyncPoller struct {
 	stopChans map[string]chan struct{}
 	mu        sync.Mutex
-	logger    *log_util.PrefixedLogger
+	logger    *log_util.NamedLogger
 }
 
 // newFileSyncPoller 创建一个新的 FileSyncPoller 实例
 func newFileSyncPoller() *FileSyncPoller {
 	return &FileSyncPoller{
 		stopChans: make(map[string]chan struct{}),
-		logger:    log_util.NewPrefixedLogger("[monitor/file-sync] "),
+		logger:    log_util.NewNamedLogger("[monitor/file-sync] ", "file-sync-monitor"),
 	}
 }
 
