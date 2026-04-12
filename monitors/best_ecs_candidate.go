@@ -108,6 +108,8 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 	memChoices := BestEcsCandidateC.MemChoices
 	cpuCoreCountChoices := BestEcsCandidateC.CpuCoreCountChoices
 
+	typeExRegex, regexErr := regexp.Compile(BestEcsCandidateC.Filters.InstanceTypeExclusion)
+
 	var result = make([]states.EcsCandidate, 0, 10)
 
 	for _, mem := range memChoices {
@@ -178,8 +180,7 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 						}
 
 						if filters.InstanceTypeExclusion != "" {
-							typeExRegex, err := regexp.Compile(filters.InstanceTypeExclusion)
-							if err == nil {
+							if regexErr == nil {
 								if typeExRegex.MatchString(*resource.Value) {
 									if env.DEV {
 										m.logger.Dev("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
@@ -187,7 +188,7 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 									continue
 								}
 							} else {
-								m.logger.Warn("ignored invalid instance type exclusion regular expression: %s", err.Error())
+								m.logger.Warn("ignored invalid instance type exclusion regular expression: %s", regexErr.Error())
 							}
 						}
 
