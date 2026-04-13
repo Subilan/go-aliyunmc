@@ -21,7 +21,7 @@ func Auth() gin.HandlerFunc {
 				return
 			}
 
-			c.Set("user", *user)
+			c.Set("user", user)
 			c.Set("user_id", user.ID)
 			c.Next()
 			return
@@ -45,7 +45,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		// 将用户信息存储到context中
-		c.Set("user", user)
+		c.Set("user", &user)
 		c.Set("user_id", userID)
 
 		c.Next()

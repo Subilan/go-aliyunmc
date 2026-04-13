@@ -8,6 +8,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
+type TaskOutput struct {
+	Step   uint   `json:"step"`
+	Output string `json:"output"`
+}
+
 var validate = validator.New()
 
 // ShouldBindArgs 尝试将args绑定到结构体指针out上，并调用validator对结构体结果进行验证。

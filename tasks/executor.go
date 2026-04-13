@@ -40,6 +40,7 @@ type Executor struct {
 	exclusiveType bool
 }
 
+// NewExecutor 创建一个新的 Executor 实例，并为其分配一个 context.Backgound() 上下文。传入的 def 不得为 nil。
 func NewExecutor(def *TaskDefinition) *Executor {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Executor{

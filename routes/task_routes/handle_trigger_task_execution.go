@@ -17,13 +17,13 @@ type TriggerTaskExecutionRequest struct {
 }
 
 func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context) (any, error) {
-	userId, ok := contextutil.GetUserID(c)
+	user, ok := contextutil.GetUser(c)
 
 	if !ok {
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
 	}
 
-	_, task, err := tasks.TriggerTask(body.Type, &userId, body.Args)
+	_, task, err := tasks.TriggerTask(body.Type, user, body.Args)
 
 	if err != nil {
 		if errors.Is(err, tasks.ErrTaskTypeNotFound) {
