@@ -3,6 +3,7 @@ package mid
 import (
 	"go-aliyunmc/casbin"
 	"go-aliyunmc/contextutil"
+	"go-aliyunmc/h"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,7 @@ func Casbin() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user, exists := contextutil.GetUser(c)
 		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
+			c.JSON(http.StatusUnauthorized, h.DetailsF("未登录"))
 			c.Abort()
 			return
 		}
@@ -23,13 +24,13 @@ func Casbin() gin.HandlerFunc {
 
 		allowed, err := casbin.En.Enforce(sub, obj, act)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "权限检查失败"})
+			c.JSON(http.StatusInternalServerError, h.DetailsF("权限检查失败"))
 			c.Abort()
 			return
 		}
 
 		if !allowed {
-			c.JSON(http.StatusForbidden, gin.H{"error": "权限不足"})
+			c.JSON(http.StatusForbidden, h.DetailsF("权限不足"))
 			c.Abort()
 			return
 		}

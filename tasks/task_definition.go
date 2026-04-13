@@ -24,8 +24,11 @@ type TaskDefinition struct {
 
 	// C 是任务的检查函数，它接受一个 map[string]any 作为参数，并返回一个 error。
 	// 检查函数用于在任务执行前验证输入参数以及环境的合法性。
-	// 检查参数可能为空。
 	C TaskCheckFunc
+
+	// E 是任务的权限检查函数，它接受 role 和 map[string]any 作为参数，并返回一个 error。
+	// 权限检查函数用于在任务执行前验证执行者是否具有足够的权限来执行带有相应参数的该任务。
+	E TaskEnforcerFunc
 }
 
 type TaskFunc func(*TaskContext, map[string]any) error
@@ -79,6 +82,7 @@ func MustInitialize() {
 		Timeout:   10 * time.Minute,
 		F:         createInstanceTask,
 		C:         checkCreateInstanceTask,
+		E:         enforceCreateInstanceTask,
 	}
 
 	TaskDefinitions[models.TaskTypeStartServer] = &TaskDefinition{

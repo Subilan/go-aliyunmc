@@ -10,15 +10,15 @@ const UserKey = "user"
 const UserIdKey = "user_id"
 
 // GetUser 从gin.Context中获取用户信息
-func GetUser(c *gin.Context) (models.User, bool) {
+func GetUser(c *gin.Context) (*models.User, bool) {
 	user, exists := c.Get(UserKey)
 	if !exists {
-		return models.User{}, false
+		return &models.User{}, false
 	}
 
-	userModel, ok := user.(models.User)
+	userModel, ok := user.(*models.User)
 	if !ok {
-		return models.User{}, false
+		return &models.User{}, false
 	}
 
 	return userModel, true

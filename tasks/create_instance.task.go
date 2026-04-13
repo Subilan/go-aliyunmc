@@ -8,6 +8,7 @@ import (
 	"go-aliyunmc/h"
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/remote_util"
+	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -18,12 +19,18 @@ import (
 	vpc20160428 "github.com/alibabacloud-go/vpc-20160428/v6/client"
 )
 
+// CreateInstanceTaskArgs 是创建实例任务的参数结构体。
 type CreateInstanceTaskArgs struct {
-	InstanceType      string `json:"instanceType" validate:"required"`
-	ZoneId            string `json:"zoneId" validate:"required"`
-	VSwitchId         string `json:"vSwitchId"`
-	UseDefaultVSwitch bool   `json:"useDefaultVSwitch"`
-	StartWhenCreated  bool   `json:"startWhenCreated"`
+	// InstanceType 是实例的规格
+	InstanceType string `json:"instanceType"`
+	// ZoneId 是实例的可用区ID
+	ZoneId string `json:"zoneId"`
+	// VSwitchId 是实例的交换机ID，如果 UseDefaultVSwitch 为true则可以不填
+	VSwitchId string `json:"vSwitchId"`
+	// UseDefaultVSwitch 指定是否使用默认交换机，如果为true则会自动查询或创建指定可用区的默认交换机
+	UseDefaultVSwitch bool `json:"useDefaultVSwitch"`
+	// StartWhenCreated 指定实例创建成功后是否立即尝试启动，如果为true则会在创建并分配IP后触发启动操作并等待实例SSH可用
+	StartWhenCreated bool `json:"startWhenCreated"`
 }
 
 // deleteInstance 用于清除创建实例过程中产生的资源，避免残留未使用的实例占用配额或产生费用。
@@ -141,6 +148,15 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 
 	if err := ShouldBindArgs(args, &params); err != nil {
 		return err
+	}
+
+	if params.InstanceType == "" || params.ZoneId == "" {
+		candidate, ok := states.SnapshotBestEcsCandidate()
+		if !ok {
+			return fmt.Errorf("未提供实例类型且无法获取最佳实例")
+		}
+		params.InstanceType = candidate.InstanceType
+		params.ZoneId = candidate.ZoneId
 	}
 
 	tc.nextStep()
@@ -301,4 +317,19 @@ func checkCreateInstanceTask(args map[string]any) error {
 	}
 
 	return nil
+}
+
+func enforceCreateInstanceTask(role string, args map[string]any) error {
+	return enforceRuleIfArgsMatch(
+		role,
+		"create-custom-instance",
+		args,
+		func(param CreateInstanceTaskArgs) bool {
+			return param.ZoneId != "" || 
+			param.InstanceType != "" || 
+			param.StartWhenCreated == false || 
+			param.VSwitchId != "" || 
+			param.UseDefaultVSwitch == false
+		},
+	)
 }
