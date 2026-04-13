@@ -15,8 +15,9 @@
   - [x] stop & archive
   - [x] backup
   - [x] best candidate
-- [ ] aliyun stop instance detection
+  - [ ] aliyun stop instance detection
 - [ ] monitor metrics
+- [ ] streamline archive task 
 - [x] backup
 - [x] archive
 - [ ] more template vars for backup and archive scripts
