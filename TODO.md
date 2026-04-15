@@ -15,7 +15,7 @@
   - [x] stop & archive
   - [x] backup
   - [x] best candidate
-  - [ ] aliyun stop instance detection
+  - [x] aliyun stop instance detection
 - [ ] monitor metrics
 - [ ] streamline archive task 
 - [x] backup
