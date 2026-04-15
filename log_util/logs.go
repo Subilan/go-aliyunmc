@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	DevLevel   = "[DEV] "
+	DebugLevel = "[DEBUG] "
 	InfoLevel  = "[INFO] "
 	WarnLevel  = "[WARN] "
 	ErrorLevel = "[ERROR] "
@@ -29,7 +29,7 @@ var defaultLogsDir = resolveDefaultLogsDir()
 
 var mainFileOut = &appendFileWriter{dir: defaultLogsDir, filename: defaultMainLogName}
 
-var d = newDoubleLogger(os.Stdout, mainFileOut, DevLevel, colorBlue)
+var d = newDoubleLogger(os.Stdout, mainFileOut, DebugLevel, colorBlue)
 var i = newDoubleLogger(os.Stdout, mainFileOut, InfoLevel, colorGreen)
 var w = newDoubleLogger(os.Stdout, mainFileOut, WarnLevel, colorYellow)
 var e = newDoubleLogger(os.Stdout, mainFileOut, ErrorLevel, colorRed)
@@ -47,8 +47,8 @@ func writef(l logPrinter, msg string, args ...any) {
 	l.Printf(msg, args...)
 }
 
-// Dev 输出调试日志
-func Dev(msg string, args ...any) {
+// Debug 输出调试日志
+func Debug(msg string, args ...any) {
 	writef(d, msg, args...)
 }
 

@@ -44,7 +44,7 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 
 	// 在DEV模式下输出登录信息
 	if env.DEV {
-		log_util.Dev("用户登录: ID=%d, 用户名=%s, 角色=%s, 记住我=%v",
+		log_util.Debug("用户登录: ID=%d, 用户名=%s, 角色=%s, 记住我=%v",
 			user.ID, user.Username, user.Role, req.Remember)
 	}
 	return nil, nil
