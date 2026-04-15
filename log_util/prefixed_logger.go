@@ -16,8 +16,8 @@ type NamedLogger struct {
 }
 
 // NewNamedLogger 创建一个新的 NamedLogger 实例
-//  - prefix: 日志前缀，通常用于标识日志来源或模块
-//  - name: 用于生成日志文件名称的基础名称，经过清洗后会用作日志文件的前缀
+//   - prefix: 日志前缀，通常用于标识日志来源或模块
+//   - name: 用于生成日志文件名称的基础名称，经过清洗后会用作日志文件的前缀
 func NewNamedLogger(prefix string, name string) *NamedLogger {
 	base := sanitizeBaseName(name)
 	fileOut := &rotatingFileWriter{
@@ -28,7 +28,7 @@ func NewNamedLogger(prefix string, name string) *NamedLogger {
 
 	return &NamedLogger{
 		prefix: prefix,
-		d:      newDoubleLogger(os.Stdout, fileOut, DevLevel, colorBlue),
+		d:      newDoubleLogger(os.Stdout, fileOut, DebugLevel, colorBlue),
 		i:      newDoubleLogger(os.Stdout, fileOut, InfoLevel, colorGreen),
 		w:      newDoubleLogger(os.Stdout, fileOut, WarnLevel, colorYellow),
 		e:      newDoubleLogger(os.Stdout, fileOut, ErrorLevel, colorRed),
@@ -36,7 +36,7 @@ func NewNamedLogger(prefix string, name string) *NamedLogger {
 	}
 }
 
-func (l *NamedLogger) Dev(msg string, args ...any) {
+func (l *NamedLogger) Debug(msg string, args ...any) {
 	writef(l.d, l.prefix+msg, args...)
 }
 

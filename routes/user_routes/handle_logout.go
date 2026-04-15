@@ -25,7 +25,7 @@ func HandleLogout(c *gin.Context) (any, error) {
 	// 在DEV模式下输出登出信息
 	if env.DEV {
 		user, _ := contextutil.GetUser(c)
-		log_util.Dev("用户登出: ID=%d, 用户名=%s", user.ID, user.Username)
+		log_util.Debug("用户登出: ID=%d, 用户名=%s", user.ID, user.Username)
 	}
 
 	return nil, nil

@@ -183,7 +183,7 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 							if regexErr == nil {
 								if typeExRegex.MatchString(*resource.Value) {
 									if env.DEV {
-										m.logger.Dev("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
+										m.logger.Debug("filtered instance type %s using regex %s", *resource.Value, filters.InstanceTypeExclusion)
 									}
 									continue
 								}
