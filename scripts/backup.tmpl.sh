@@ -3,11 +3,11 @@
 set -euo pipefail
 
 # ===== 配置项 =====
-BASE_DIR="/home/mc/server/archive"
+BASE_DIR="{{ .BaseDir }}"
 BACKUP_ITEMS=(
-    "world"
-    "world_nether"
-    "world_the_end"
+{{- range .TargetDirs }}
+    "{{ . }}"
+{{- end}}
 )
 
 TMP_DIR="/home/mc/mc_backup"

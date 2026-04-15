@@ -22,8 +22,10 @@ type DeployTaskConfig struct {
 }
 
 type BackupTemplateVars struct {
-	BackupOSSPath string `toml:"backup_oss_path" validate:"required" comment:"备份上传目标OSS目录"`
-	MaxKeepCount  int    `toml:"max_keep_count" validate:"required,min=1" comment:"备份保留数量上限，超过后删除最旧的备份"`
+	BackupOSSPath string   `toml:"backup_oss_path" validate:"required" comment:"备份上传目标OSS目录"`
+	MaxKeepCount  int      `toml:"max_keep_count" validate:"required,min=1" comment:"备份保留数量上限，超过后删除最旧的备份"`
+	BaseDir       string   `toml:"base_dir" validate:"required" comment:"需要备份的目录的公共父目录"`
+	TargetDirs    []string `toml:"target_dirs" validate:"required,min=1,dive,min=1" comment:"需要备份的目录列表（相对于BaseDir）"`
 }
 
 type BackupTaskConfig struct {
@@ -34,7 +36,9 @@ type BackupTaskConfig struct {
 }
 
 type ArchiveTemplateVars struct {
-	OSSRoot string `toml:"oss_root" validate:"required" comment:"归档轮转根路径"`
+	OSSRoot          string `toml:"oss_root" validate:"required,min=1" comment:"归档轮转根路径"`
+	ArchiveName      string `toml:"archive_name" validate:"required,min=1" comment:"归档文件名称"`
+	RemoteArchiveDir string `toml:"remote_archive_dir" validate:"required,min=1" comment:"位于远程服务器上的归档目录的绝对路径"`
 }
 
 type ArchiveTaskConfig struct {

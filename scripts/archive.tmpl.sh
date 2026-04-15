@@ -3,12 +3,12 @@
 set -euo pipefail
 
 # ===== 配置项 =====
-LOCAL_ARCHIVE_DIR="/home/mc/server/archive"
+LOCAL_ARCHIVE_DIR="{{ .RemoteArchiveDir }}"
 OSS_BUCKET="{{ .OSSRoot }}"
 
-ARCHIVE="archive"
-ARCHIVE_NEW="archive-new"
-ARCHIVE_OLD="archive-old"
+ARCHIVE="{{ .ArchiveName }}"
+ARCHIVE_NEW="{{ .ArchiveName }}-new"
+ARCHIVE_OLD="{{ .ArchiveName }}-old"
 J=20
 P=4
 

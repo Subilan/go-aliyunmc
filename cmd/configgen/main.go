@@ -127,12 +127,12 @@ func main() {
 	}
 
 	monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
-		PollIntervalSec: 600,
-		MemChoices:      []int{8, 16},
+		PollIntervalSec:     600,
+		MemChoices:          []int{8, 16},
 		CpuCoreCountChoices: []int{4, 8},
-		CacheFile: "ecs_candidates.json",
+		CacheFile:           "ecs_candidates.json",
 		Filters: monitors.InstanceChargeFilters{
-			MaxTradePrice: 0.6,
+			MaxTradePrice:         0.6,
 			InstanceTypeExclusion: "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$",
 		},
 	}
@@ -195,6 +195,9 @@ func main() {
 		Exclusive:    true,
 		Vars: tasks.BackupTemplateVars{
 			BackupOSSPath: "oss://your-bucket/backup",
+			MaxKeepCount:  5,
+			BaseDir:       "/home/mc/server/archive",
+			TargetDirs:    []string{"world", "world_nether", "world_the_end"},
 		},
 	}
 
@@ -203,7 +206,9 @@ func main() {
 		TimeoutSec:   1800,
 		Exclusive:    true,
 		Vars: tasks.ArchiveTemplateVars{
-			OSSRoot: "oss://your-bucket",
+			OSSRoot:          "oss://your-bucket",
+			ArchiveName:      "archive",
+			RemoteArchiveDir: "/home/mc/server/archive",
 		},
 	}
 
