@@ -49,6 +49,7 @@ func (m *InstanceStatusMonitor) run(ctx context.Context) {
 
 func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	instance, err := store.GetActiveInstanceDefaultNil()
+	
 	if err != nil {
 		m.store.StoreError(err, m.logger)
 		return
@@ -80,6 +81,17 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	if resp == nil || resp.Body == nil || resp.Body.InstanceStatuses == nil {
 		if env.DEV {
 			m.logger.Warn("ECS返回空状态")
+		}
+		m.store.StoreError(emptyValueError, m.logger)
+		return
+	}
+
+	if len(resp.Body.InstanceStatuses.InstanceStatus) == 0 {
+		m.logger.Warn("未查询到实例，这表示实例已经被外部删除")
+		m.logger.Warn("删除数据库实例")
+		err := store.DeleteActiveInstance()
+		if err != nil {
+			m.logger.Error("删除数据库实例失败: %v", err)
 		}
 		m.store.StoreError(emptyValueError, m.logger)
 		return
