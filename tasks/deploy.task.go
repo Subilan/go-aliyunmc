@@ -24,6 +24,23 @@ type deployTaskVars struct {
 	DataDiskSize    int
 }
 
+type deployStep struct {
+	scriptPath string
+	timeoutSec int
+}
+
+// deploySteps 定义了部署任务的各个步骤，包括每个步骤对应的脚本模板路径和执行超时时间（秒）
+var deploySteps = []deployStep{
+	{scriptPath: "scripts/deploy.create-user.tmpl.sh", timeoutSec: 30},
+	{scriptPath: "scripts/deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
+	{scriptPath: "scripts/deploy.configure-apt-sources.tmpl.sh", timeoutSec: 120},
+	{scriptPath: "scripts/deploy.setup-java-repo.tmpl.sh", timeoutSec: 120},
+	{scriptPath: "scripts/deploy.install-system-packages.tmpl.sh", timeoutSec: 180},
+	{scriptPath: "scripts/deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
+	{scriptPath: "scripts/deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
+	{scriptPath: "scripts/deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
+}
+
 func deployTask(tc *TaskContext, args map[string]any) error {
 	// 由于这是一个分步任务，先将步骤推进到第一步，以便在日志中正确显示当前步骤信息
 	tc.nextStep()
@@ -45,15 +62,15 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		DataDiskSize:       aliyun.C.Ecs.DataDisk.Size,
 	}
 
-	for _, step := range DeployC.Steps {
-		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d: %s", tc.step, len(DeployC.Steps), step.Name))
+	for _, step := range deploySteps {
+		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d", tc.step, len(deploySteps)))
 
-		script, renderErr := remote_util.RenderScriptTemplate(step.ScriptPath, expandedVars)
+		script, renderErr := remote_util.RenderScriptTemplate(step.scriptPath, expandedVars)
 		if renderErr != nil {
 			return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
 		}
 
-		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.TimeoutSec)*time.Second)
+		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.timeoutSec)*time.Second)
 		execErr := remote_util.ExecuteScriptRemote(script, ip, stepCtx, tc.println, true)
 		cancel()
 		if execErr != nil {

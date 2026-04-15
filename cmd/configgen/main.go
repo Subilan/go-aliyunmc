@@ -139,48 +139,6 @@ func main() {
 
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Exclusive: true,
-		Steps: []tasks.DeployStepConfig{
-			{
-				Name:       "创建用户",
-				ScriptPath: "scripts/deploy.create-user.tmpl.sh",
-				TimeoutSec: 30,
-			},
-			{
-				Name:       "配置SSH授权",
-				ScriptPath: "scripts/deploy.setup-ssh-authorized-keys.tmpl.sh",
-				TimeoutSec: 30,
-			},
-			{
-				Name:       "配置软件源",
-				ScriptPath: "scripts/deploy.configure-apt-sources.tmpl.sh",
-				TimeoutSec: 120,
-			},
-			{
-				Name:       "配置Java仓库",
-				ScriptPath: "scripts/deploy.setup-java-repo.tmpl.sh",
-				TimeoutSec: 120,
-			},
-			{
-				Name:       "安装系统软件",
-				ScriptPath: "scripts/deploy.install-system-packages.tmpl.sh",
-				TimeoutSec: 180,
-			},
-			{
-				Name:       "安装ossutil",
-				ScriptPath: "scripts/deploy.install-ossutil.tmpl.sh",
-				TimeoutSec: 60,
-			},
-			{
-				Name:       "挂载数据盘",
-				ScriptPath: "scripts/deploy.format-and-mount-data-disk.tmpl.sh",
-				TimeoutSec: 60,
-			},
-			{
-				Name:       "恢复归档数据",
-				ScriptPath: "scripts/deploy.restore-archive-data.tmpl.sh",
-				TimeoutSec: 420,
-			},
-		},
 		Vars: tasks.DeployTemplateVars{
 			SSHPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
 			JavaVersion:    21,
