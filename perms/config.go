@@ -1,4 +1,4 @@
-package casbin
+package perms
 
 import "go-aliyunmc/utils"
 
