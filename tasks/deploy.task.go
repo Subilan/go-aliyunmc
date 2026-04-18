@@ -24,21 +24,26 @@ type deployTaskVars struct {
 	DataDiskSize    int
 }
 
+// deployStep 表示部署任务的一个步骤，包含了该步骤对应的脚本名称和执行超时时间（秒）
 type deployStep struct {
-	scriptPath string
+	// script 表示该步骤对应的脚本名称
+	script string
+	// timeoutSec 是该步骤的执行超时时间，单位为秒
 	timeoutSec int
 }
 
+const scriptBasePath = "scripts/"
+
 // deploySteps 定义了部署任务的各个步骤，包括每个步骤对应的脚本模板路径和执行超时时间（秒）
 var deploySteps = []deployStep{
-	{scriptPath: "scripts/deploy.create-user.tmpl.sh", timeoutSec: 30},
-	{scriptPath: "scripts/deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
-	{scriptPath: "scripts/deploy.configure-apt-sources.tmpl.sh", timeoutSec: 120},
-	{scriptPath: "scripts/deploy.setup-java-repo.tmpl.sh", timeoutSec: 120},
-	{scriptPath: "scripts/deploy.install-system-packages.tmpl.sh", timeoutSec: 180},
-	{scriptPath: "scripts/deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
-	{scriptPath: "scripts/deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
-	{scriptPath: "scripts/deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
+	{script: "deploy.create-user.tmpl.sh", timeoutSec: 30},
+	{script: "deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
+	{script: "deploy.configure-apt-sources.tmpl.sh", timeoutSec: 120},
+	{script: "deploy.setup-java-repo.tmpl.sh", timeoutSec: 120},
+	{script: "deploy.install-system-packages.tmpl.sh", timeoutSec: 180},
+	{script: "deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
+	{script: "deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
+	{script: "deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
 }
 
 func deployTask(tc *TaskContext, args map[string]any) error {
@@ -65,7 +70,7 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 	for _, step := range deploySteps {
 		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d", tc.step, len(deploySteps)))
 
-		script, renderErr := remote_util.RenderScriptTemplate(step.scriptPath, expandedVars)
+		script, renderErr := remote_util.RenderScriptTemplate(scriptBasePath+step.script, expandedVars)
 		if renderErr != nil {
 			return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
 		}

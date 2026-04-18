@@ -126,6 +126,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	defer unsubscribe()
 
 	current, ok := states.SnapshotServerStatus()
+	
 	if ok {
 		handleSnapshot(current)
 	} else {
@@ -154,7 +155,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 
 			m.logger.Info("倒计时结束，开始执行归档流程")
 			if global_states.IsArchiving() {
-				m.logger.Info("检测到已有归档流程在进行，将继承此次运行结果")
+				m.logger.Info("检测到已有归档流程在进行，将尝试使用此次运行结果")
 				go func() {
 					executor, _ := tasks.GetExclusiveExecutor(models.TaskTypeArchive)
 

@@ -2,9 +2,7 @@
 HURL=hurl --variables-file ../env/dev.env
 instance?=ecs.e-c1m2.large
 zone?=cn-shenzhen-f
-
-# instance: ecs.u1-c1m4.xlarge
-# zone: cn-shenzhen-f
+taskType?=create_instance
 
 backup:
 	bash ./run_and_watch.sh ./backup.hurl
@@ -26,3 +24,6 @@ deploy-instance-watch:
 	
 start-server-watch:
 	bash ./run_and_watch.sh ./start-server.hurl
+
+get-def:
+	$(HURL) ./definition.hurl --variable taskType=$(taskType)
