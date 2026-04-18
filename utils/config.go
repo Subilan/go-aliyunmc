@@ -2,7 +2,7 @@
 package utils
 
 import (
-	"log"
+	"go-aliyunmc/log_util"
 	"os"
 
 	"github.com/go-playground/validator/v10"
@@ -11,24 +11,25 @@ import (
 
 const ConfigDir = "configs/"
 
+// MustBindConfig 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
 func MustBindConfig[T any](obj *T, name string) {
 	path := ConfigDir + name + ".toml"
 	fileContent, err := os.ReadFile(path)
 
 	if err != nil {
-		log.Fatal("无法读取配置文件" + path)
+		log_util.Fatal("无法读取配置文件" + path)
 	}
 
 	err = toml.Unmarshal(fileContent, obj)
 
 	if err != nil {
-		log.Fatal("无法解析配置文件")
+		log_util.Fatal("无法解析配置文件")
 	}
 
 	validator := validator.New()
 	err = validator.Struct(obj)
 
 	if err != nil {
-		log.Fatal("配置文件不合要求：" + err.Error())
+		log_util.Fatal("配置文件不合要求：" + err.Error())
 	}
 }
