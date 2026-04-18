@@ -15,9 +15,6 @@ type TaskDefinition struct {
 	// Exclusive 定义了任务是否属于独占类型。如果 Exclusive 为 true，则在该任务执行期间，同类型的其他任务将无法执行。
 	Exclusive bool `json:"exclusive"`
 
-	// Steps 定义了任务的步骤总数。该字段只用于外部参考，与内部执行流程无关。
-	Steps int `json:"steps"`
-
 	// F 是任务的执行函数，它接受一个 TaskContext 作为参数，并返回一个 error。任务函数包含了任务的具体执行逻辑。
 	//  - F 会在一个独立的 goroutine 中被调用，TaskContext 用于在任务执行过程中记录任务的状态、输出以及处理任务的中断等逻辑。
 	//  - F 返回表示任务结束，其成功与否取决于返回值 error 是否为 nil。
