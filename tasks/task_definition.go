@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"go-aliyunmc/perms"
 	"go-aliyunmc/store/models"
 	"time"
 )
@@ -14,6 +15,9 @@ type TaskDefinition struct {
 
 	// Exclusive 定义了任务是否属于独占类型。如果 Exclusive 为 true，则在该任务执行期间，同类型的其他任务将无法执行。
 	Exclusive bool `json:"exclusive"`
+
+	// Role 定义了执行该任务所需的权限等级，只有大于或等于该权限等级的用户可以执行此任务。如果不填，相当于 perms.RoleUser，表示所有登录用户都可以执行。
+	Role perms.Role `json:"role"`
 
 	// F 是任务的执行函数，它接受一个 TaskContext 作为参数，并返回一个 error。任务函数包含了任务的具体执行逻辑。
 	//  - F 会在一个独立的 goroutine 中被调用，TaskContext 用于在任务执行过程中记录任务的状态、输出以及处理任务的中断等逻辑。
@@ -30,6 +34,8 @@ type TaskDefinition struct {
 	// 权限检查函数用于在任务执行前验证执行者是否具有足够的权限来执行带有相应参数的该任务。
 	E TaskEnforcerFunc `json:"-"`
 }
+
+type TaskEnforcerFunc func(perms.Role, map[string]any) error
 
 type TaskFunc func(*TaskContext, map[string]any) error
 
@@ -48,8 +54,7 @@ func TryGetTaskDefinition(taskType string) (*TaskDefinition, bool) {
 	return def, ok
 }
 
-// MustInitialize 将所有任务定义注册到 TaskDefinitions 变量中。这个函数应该在程序启动时被调用一次，以确保所有任务定义都已正确注册。
-func MustInitialize() {
+func init() {
 	TaskDefinitions[models.TaskTypeTest] = &TaskDefinition{
 		Exclusive: true,
 		Type:      models.TaskTypeTest,
@@ -71,6 +76,7 @@ func MustInitialize() {
 		Timeout:   time.Duration(BackupC.TimeoutSec) * time.Second,
 		F:         backupTask,
 		C:         checkBackupTask,
+		Role:      perms.RoleOperator,
 	}
 
 	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
@@ -79,6 +85,7 @@ func MustInitialize() {
 		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
 		F:         archiveTask,
 		C:         checkArchiveTask,
+		Role:      perms.RoleOperator,
 	}
 
 	TaskDefinitions[models.TaskTypeCreateInstance] = &TaskDefinition{

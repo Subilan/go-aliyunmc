@@ -2,12 +2,14 @@ module go-aliyunmc
 
 go 1.25.0
 
-require github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
+require (
+	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
+	github.com/mcstatus-io/mcutil/v4 v4.0.1
+	github.com/pkg/sftp v1.13.10
+)
 
 require (
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/mcstatus-io/mcutil/v4 v4.0.1 // indirect
-	github.com/pkg/sftp v1.13.10 // indirect
 	golang.org/x/time v0.4.0 // indirect
 )
 
@@ -41,7 +43,7 @@ require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
-	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/goccy/go-yaml v1.19.2
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect

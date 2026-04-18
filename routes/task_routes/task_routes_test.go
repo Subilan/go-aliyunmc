@@ -28,7 +28,6 @@ func TestMain(m *testing.M) {
 	}
 	store.MustInitialize()
 	store.AutoMigrate()
-	tasks.MustInitialize()
 
 	code := m.Run()
 	_ = os.Remove(testDBPath)

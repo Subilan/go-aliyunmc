@@ -1,6 +1,7 @@
 package contextutil
 
 import (
+	"go-aliyunmc/perms"
 	"go-aliyunmc/store/models"
 
 	"github.com/gin-gonic/gin"
@@ -37,4 +38,13 @@ func GetUserID(c *gin.Context) (uint, bool) {
 	}
 
 	return id, true
+}
+
+func GetUserRole(c *gin.Context) (perms.Role, bool) {
+	user, exists := GetUser(c)
+	if !exists {
+		return "", false
+	}
+
+	return perms.Role(user.Role), true
 }
