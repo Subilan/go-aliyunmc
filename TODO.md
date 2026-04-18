@@ -16,11 +16,9 @@
   - [x] backup
   - [x] best candidate
   - [x] aliyun stop instance detection
-- [ ] monitor metrics
-- [ ] streamline archive task 
 - [x] backup
 - [x] archive
-- [ ] more template vars for backup and archive scripts
+- [x] more template vars for backup and archive scripts
 - [x] inherit running archive task result in auto archive idle monitor
 - [x] file logger
 - bss data
