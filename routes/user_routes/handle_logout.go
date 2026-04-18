@@ -5,20 +5,14 @@ import (
 	"go-aliyunmc/env"
 	"go-aliyunmc/log_util"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
 // HandleLogout 用户登出处理函数
 func HandleLogout(c *gin.Context) (any, error) {
-	// 获取session
-	session := sessions.Default(c)
+	err := contextutil.Logout(c)
 
-	// 清除session中的用户信息
-	session.Clear()
-
-	// 保存session
-	if err := session.Save(); err != nil {
+	if err != nil {
 		return nil, err
 	}
 
