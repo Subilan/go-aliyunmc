@@ -13,12 +13,17 @@ import (
 func HandleDeleteSelf(c *gin.Context) (any, error) {
 	// 从context中获取当前登录用户
 	currentUser, exists := contextutil.GetUser(c)
+
 	if !exists {
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
 	}
 
 	// 删除用户
 	if err := store.DB.Delete(&currentUser).Error; err != nil {
+		return nil, err
+	}
+
+	if err := contextutil.Logout(c); err != nil {
 		return nil, err
 	}
 
