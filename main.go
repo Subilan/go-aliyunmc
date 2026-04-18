@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyunmc/aliyun"
-	"go-aliyunmc/casbin"
 	"go-aliyunmc/env"
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/monitors"
+	"go-aliyunmc/perms"
 	"go-aliyunmc/routes/instance_routes"
 	"go-aliyunmc/routes/monitor_routes"
 	"go-aliyunmc/routes/server_routes"
@@ -34,7 +34,6 @@ func main() {
 	// 加载配置
 	MustLoadConfig()
 	store.MustLoadConfig()
-	casbin.MustLoadConfig()
 	aliyun.MustLoadConfig()
 	server.MustLoadConfig()
 	monitors.MustLoadConfig()
@@ -42,15 +41,15 @@ func main() {
 
 	// 初始化模块
 	store.MustInitialize()
-	casbin.MustInitialize()
+	perms.MustInitialize()
 	aliyun.MustInitialize()
 	env.MustInitialize()
+
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
 			log_util.Fatal("初始化DEV用户失败: %v", err)
 		}
 	}
-	tasks.MustInitialize()
 
 	if env.DEV {
 		store.AutoMigrate()

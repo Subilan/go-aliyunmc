@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"go-aliyunmc/aliyun"
-	"go-aliyunmc/casbin"
 	"go-aliyunmc/monitors"
+	"go-aliyunmc/perms"
 	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// 生成casbin.toml - Casbin配置
-	casbinConfig := casbin.Config{
+	casbinConfig := perms.Config{
 		ModelPath:  "casbin/rbac_model.conf",
 		PolicyPath: "casbin/rbac_policy.csv",
 	}

@@ -2,7 +2,7 @@ package tasks
 
 import "go-aliyunmc/store/models"
 
-// getTaskDefinitionAndCheck 是 TriggerTask 和 TriggerTaskSync 的公共部分：获取任务定义、执行检查函数和权限检查函数。user 可以为 nil 表示系统，此时跳过权限检查。
+// getTaskDefinitionAndCheck 用于获取任务定义并执行对权限、参数的检查。user为nil时表示系统。
 func getTaskDefinitionAndCheck(user *models.User, taskType models.TaskType, args map[string]any) (*TaskDefinition, error) {
 	def := GetTaskDefinition(taskType)
 
@@ -10,14 +10,21 @@ func getTaskDefinitionAndCheck(user *models.User, taskType models.TaskType, args
 		return nil, ErrTaskTypeNotFound
 	}
 
-	if def.C != nil {
-		if err := def.C(args); err != nil {
+	// 对任务类型的权限检查
+	if user != nil && def.Role.Gt(user.Role) {
+		return nil, ErrPermissionDenied
+	}
+
+	// 对具体任务参数的权限检查
+	if user != nil && def.E != nil {
+		if err := def.E(user.Role, args); err != nil {
 			return nil, err
 		}
 	}
 
-	if def.E != nil && user != nil {
-		if err := def.E(user.Role, args); err != nil {
+	// 对任务参数的检查
+	if def.C != nil {
+		if err := def.C(args); err != nil {
 			return nil, err
 		}
 	}

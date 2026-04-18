@@ -1,6 +1,8 @@
 package models
 
 import (
+	"go-aliyunmc/perms"
+
 	"gorm.io/gorm"
 )
 
@@ -13,5 +15,5 @@ type User struct {
 	// PasswordHash 是密码哈希
 	PasswordHash string `gorm:"not null" json:"-"`
 	// Role 是用户角色
-	Role string `gorm:"default:'basic'" json:"role"`
+	Role perms.Role `gorm:"default:''" json:"role"`
 }

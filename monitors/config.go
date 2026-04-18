@@ -12,6 +12,7 @@ type InstanceStatusMonitorConfig struct {
 
 type FileConfig struct {
 	RemotePath      string `toml:"remote_path" validate:"required" comment:"远端文件路径"`
+	Id              string `toml:"id" validate:"min=1,omitempty" comment:"用于唯一标识该文件，如果不填则使用LocalPath"`
 	LocalPath       string `toml:"local_path" validate:"required" comment:"本地文件相对路径（相对于 LocalCacheRoot）"`
 	PollIntervalSec int    `toml:"poll_interval_sec" validate:"required,min=1" comment:"轮询间隔（秒）"`
 }

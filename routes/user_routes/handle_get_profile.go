@@ -11,6 +11,7 @@ import (
 func HandleGetProfile(c *gin.Context) (any, error) {
 	// 从context中获取用户信息
 	user, exists := contextutil.GetUser(c)
+	
 	if !exists {
 		return nil, fmt.Errorf("用户信息不存在")
 	}

@@ -7,6 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/h"
 	"go-aliyunmc/log_util"
+	"go-aliyunmc/perms"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
@@ -319,17 +320,26 @@ func checkCreateInstanceTask(args map[string]any) error {
 	return nil
 }
 
-func enforceCreateInstanceTask(role string, args map[string]any) error {
-	return enforceRuleIfArgsMatch(
-		role,
-		"create-custom-instance",
-		args,
-		func(param CreateInstanceTaskArgs) bool {
-			return param.ZoneId != "" || 
-			param.InstanceType != "" || 
-			param.StartWhenCreated == false || 
-			param.VSwitchId != "" || 
-			param.UseDefaultVSwitch == false
-		},
-	)
+func enforceCreateInstanceTask(role perms.Role, args map[string]any) error {
+	var param CreateInstanceTaskArgs
+
+	if err := ShouldBindArgs(args, &param); err != nil {
+		return err
+	}
+
+	if param.ZoneId == "" && param.InstanceType == "" && param.StartWhenCreated == true && param.VSwitchId == "" && param.UseDefaultVSwitch == true {
+		return nil
+	}
+
+	ok, err := role.CanExecute("create-custom-instance")
+
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return h.HttpError(http.StatusForbidden, "权限不足")
+	}
+
+	return nil
 }

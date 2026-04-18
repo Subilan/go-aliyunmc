@@ -36,9 +36,9 @@ func init() {
 }
 
 func HandleGetData(c *gin.Context) (any, error) {
-	filename := c.Query("filename")
+	name := c.Query("name")
 
-	if filename == "" {
+	if name == "" {
 		return nil, h.HttpError(http.StatusBadRequest, "请提供文件名")
 	}
 
@@ -55,7 +55,7 @@ func HandleGetData(c *gin.Context) (any, error) {
 			continue
 		}
 
-		if file.Id != "" && file.Id == filename || file.LocalPath == filename {
+		if file.Id != "" && file.Id == name || file.LocalPath == name {
 			filePath := monitors.FileSyncC.LocalCacheRoot + file.LocalPath
 			content, err := os.ReadFile(filePath)
 
