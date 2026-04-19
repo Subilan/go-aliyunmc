@@ -2,6 +2,7 @@ package user_routes
 
 import (
 	"go-aliyunmc/h"
+	"go-aliyunmc/perms"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -28,7 +29,7 @@ func HandleRegister(req RegisterRequest, c *gin.Context) (any, error) {
 	user := models.User{
 		Username:     req.Username,
 		PasswordHash: string(hashedPassword),
-		Role:         "basic",
+		Role:         perms.RoleBasic,
 	}
 
 	if err := store.DB.Create(&user).Error; err != nil {

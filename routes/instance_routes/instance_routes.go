@@ -13,6 +13,7 @@ func Bind(router *gin.Engine) {
 	instanceGroup := router.Group("/instance")
 	authorized := instanceGroup.Group("")
 	authorized.Use(mid.Auth())
+	authorized.Use(mid.Perm())
 	{
 		authorized.DELETE("/active", h.G(HandleDeleteActiveInstance))
 		authorized.GET("/candidates", h.V(global_states.GetCurrentEcsCandidates))

@@ -12,6 +12,7 @@ func Bind(router *gin.Engine) {
 
 	authorized := taskGroup.Group("")
 	authorized.Use(mid.Auth())
+	authorized.Use(mid.Perm())
 
 	{
 		authorized.GET("/:id", h.G(HandleGetTask))
