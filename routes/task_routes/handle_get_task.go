@@ -1,7 +1,7 @@
 package task_routes
 
 import (
-	"go-aliyunmc/contextutil"
+	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"go-aliyunmc/store"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 )
 
 func HandleGetTask(c *gin.Context) (any, error) {
-	taskId, ok := contextutil.ParamUint(c, "id")
+	taskId, ok := context_util.ParamUint(c, "id")
 
 	if !ok {
 		return nil, h.HttpError(http.StatusBadRequest, "无效的任务ID")
