@@ -4,8 +4,7 @@ import "go-aliyunmc/utils"
 
 var C ServerConfig
 
-// MustLoadConfig 加载配置
-func MustLoadConfig() {
+func init() {
 	utils.MustBindConfig(&C, "server")
 }
 

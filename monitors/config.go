@@ -63,7 +63,7 @@ var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
 var BackupC BackupMonitorConfig
 var BestEcsCandidateC BestEcsCandidateMonitorConfig
 
-func MustLoadConfig() {
+func init() {
 	utils.MustBindConfig(&ServerStatusC, "monitor-server")
 	utils.MustBindConfig(&InstanceStatusC, "monitor-instance")
 	utils.MustBindConfig(&FileSyncC, "monitor-file-sync")
