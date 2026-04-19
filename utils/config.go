@@ -4,12 +4,26 @@ package utils
 import (
 	"go-aliyunmc/log_util"
 	"os"
+	"path/filepath"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
 )
 
 const ConfigDir = "configs/"
+
+var isTest bool
+
+// Test 切换到测试配置。这个函数必须在任何配置文件被加载之前被调用，并且只能在开发环境下调用。
+func Test() {
+	root := projectRoot()
+	if err := os.Chdir(root); err != nil {
+		log_util.Fatal("切换到项目根目录失败: %v", err)
+	}
+
+	log_util.Info("正在使用测试配置，项目根目录: %s", root)
+	isTest = true
+}
 
 // MustBindConfig 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
 func MustBindConfig[T any](obj *T, name string) {
@@ -32,4 +46,29 @@ func MustBindConfig[T any](obj *T, name string) {
 	if err != nil {
 		log_util.Fatal("配置文件不合要求：" + err.Error())
 	}
+}
+
+// projectRoot 返回项目根目录的绝对路径，依赖于 go.mod 文件的存在。如果无法找到 go.mod 文件，程序将会终止。
+// 这个函数只能用于开发环境。
+func projectRoot() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log_util.Fatal("无法获取当前工作目录")
+	}
+
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	log_util.Fatal("无法定位项目根目录(go.mod)")
+	return ""
 }

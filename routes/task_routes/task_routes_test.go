@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go-aliyunmc/perms"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
+	"go-aliyunmc/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,6 +28,9 @@ func TestMain(m *testing.M) {
 		DBName: "task_routes_test",
 		Path:   testDBPath,
 	}
+	utils.Test()
+	perms.MustLoadConfig()
+	perms.MustInitialize()
 	store.MustInitialize()
 	store.AutoMigrate()
 
@@ -60,7 +65,7 @@ func createTestUser(t *testing.T, username string) models.User {
 	user := models.User{
 		Username:     username,
 		PasswordHash: "hash",
-		Role:         "basic",
+		Role:         perms.RoleBasic,
 	}
 	if err := store.DB.Create(&user).Error; err != nil {
 		t.Fatalf("create user failed: %v", err)
