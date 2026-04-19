@@ -46,7 +46,7 @@ var BackupC BackupTaskConfig
 var ArchiveC ArchiveTaskConfig
 
 func init() {
-	utils.MustBindConfig(&DeployC, "task-deploy")
-	utils.MustBindConfig(&BackupC, "task-backup")
-	utils.MustBindConfig(&ArchiveC, "task-archive")
+	utils.MustBindConfigToml(&DeployC, "task-deploy")
+	utils.MustBindConfigToml(&BackupC, "task-backup")
+	utils.MustBindConfigToml(&ArchiveC, "task-archive")
 }

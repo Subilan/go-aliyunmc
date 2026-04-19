@@ -11,5 +11,5 @@ type Config struct {
 }
 
 func init() {
-	utils.MustBindConfig(&C, "perms")
+	utils.MustBindConfigToml(&C, "perms")
 }

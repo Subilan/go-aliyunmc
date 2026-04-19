@@ -64,10 +64,10 @@ var BackupC BackupMonitorConfig
 var BestEcsCandidateC BestEcsCandidateMonitorConfig
 
 func init() {
-	utils.MustBindConfig(&ServerStatusC, "monitor-server")
-	utils.MustBindConfig(&InstanceStatusC, "monitor-instance")
-	utils.MustBindConfig(&FileSyncC, "monitor-file-sync")
-	utils.MustBindConfig(&AutoArchiveIdleC, "monitor-auto-archive-idle")
-	utils.MustBindConfig(&BackupC, "monitor-backup")
-	utils.MustBindConfig(&BestEcsCandidateC, "monitor-best-ecs-candidate")
+	utils.MustBindConfigToml(&ServerStatusC, "monitor-server")
+	utils.MustBindConfigToml(&InstanceStatusC, "monitor-instance")
+	utils.MustBindConfigToml(&FileSyncC, "monitor-file-sync")
+	utils.MustBindConfigToml(&AutoArchiveIdleC, "monitor-auto-archive-idle")
+	utils.MustBindConfigToml(&BackupC, "monitor-backup")
+	utils.MustBindConfigToml(&BestEcsCandidateC, "monitor-best-ecs-candidate")
 }

@@ -13,8 +13,8 @@ import (
 
 const ConfigDir = "configs/"
 
-// MustBindConfig 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
-func MustBindConfig[T any](obj *T, name string) {
+// MustBindConfigToml 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
+func MustBindConfigToml[T any](obj *T, name string) {
 	path := ConfigDir + name + ".toml"
 	fileContent, err := os.ReadFile(path)
 
@@ -62,8 +62,8 @@ func projectRoot() string {
 }
 
 func init() {
-	isTesting := strings.HasSuffix(os.Args[0], ".test")
-	if isTesting {
+	testing := strings.HasSuffix(os.Args[0], ".test")
+	if testing {
 		if err := os.Chdir(projectRoot()); err != nil {
 			log_util.Fatal("切换到项目根目录失败: %v", err)
 		}

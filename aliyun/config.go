@@ -9,7 +9,7 @@ import (
 var C Config
 
 func init() {
-	utils.MustBindConfig(&C, "aliyun")
+	utils.MustBindConfigToml(&C, "aliyun")
 }
 
 // Config 包括与阿里云相关的所有配置项目。

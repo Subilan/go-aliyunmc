@@ -5,7 +5,7 @@ import "go-aliyunmc/utils"
 var C ServerConfig
 
 func init() {
-	utils.MustBindConfig(&C, "server")
+	utils.MustBindConfigToml(&C, "server")
 }
 
 type ServerConfig struct {
