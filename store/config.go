@@ -8,7 +8,7 @@ import (
 var C Config
 
 func init() {
-	utils.MustBindConfig(&C, "store")
+	utils.MustBindConfigToml(&C, "store")
 }
 
 // Config 数据库配置

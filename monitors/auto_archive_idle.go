@@ -42,7 +42,7 @@ type AutoArchiveIdleMonitor struct {
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	archiveCfg := archiveTaskRuntimeConfig{}
-	utils.MustBindConfig(&archiveCfg, "task-archive")
+	utils.MustBindConfigToml(&archiveCfg, "task-archive")
 	logger := log_util.NewNamedLogger("[monitor/auto-archive-idle] ", "auto-archive-idle-monitor")
 
 	return &AutoArchiveIdleMonitor{
@@ -126,7 +126,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	defer unsubscribe()
 
 	current, ok := states.SnapshotServerStatus()
-	
+
 	if ok {
 		handleSnapshot(current)
 	} else {

@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	utils.MustBindConfig(&C, "main")
+	utils.MustBindConfigToml(&C, "main")
 	store.MustInitialize()
 	perms.MustInitialize()
 	aliyun.MustInitialize()
