@@ -16,16 +16,14 @@ var supportedFileSuffix = [...]string{"json", "yml", "yaml"}
 var supportedFileHandlers map[string]func([]byte) (map[string]any, error)
 
 func init() {
-	jsonHandler := func(data []byte) (map[string]any, error) {
-		var result map[string]any
-		err := json.Unmarshal(data, &result)
-		return result, err
+	jsonHandler := func(data []byte) (result map[string]any, err error) {
+		err = json.Unmarshal(data, &result)
+		return
 	}
 
-	yamlHandler := func(data []byte) (map[string]any, error) {
-		var result map[string]any
-		err := yaml.Unmarshal(data, &result)
-		return result, err
+	yamlHandler := func(data []byte) (result map[string]any, err error) {
+		err = yaml.Unmarshal(data, &result)
+		return
 	}
 
 	supportedFileHandlers = map[string]func([]byte) (map[string]any, error){
