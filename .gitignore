@@ -14,5 +14,3 @@ configgen
 remote_data_cache/
 logs/
 ecs_candidates.json
-rbac_model.conf
-rbac_policy.csv

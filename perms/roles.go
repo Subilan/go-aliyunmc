@@ -20,12 +20,20 @@ var levelMap = map[Role]int{
 	RoleSuperuser: 3,
 }
 
+// Normal 返回一个 Role 的规范化字符串表示，用于与policy文件中的role（subject）进行匹配。
+func (r Role) Normal() string {
+	if r == RoleBasic {
+		return "basic"
+	}
+	return string(r)
+}
+
 // CanRequest 判断该权限等级是否可以以 c.Request.Method 方法访问 c.Request.URL.Path 路径
 func (r Role) CanRequest(c *gin.Context) (bool, error) {
 	obj := c.Request.URL.Path
 	act := c.Request.Method
 
-	return En.Enforce(string(r), obj, act)
+	return Enforce(r, obj, act)
 }
 
 // CanExecute 判断该权限等级是否可以对 target 进行 execute 操作
@@ -33,7 +41,7 @@ func (r Role) CanExecute(target string) (bool, error) {
 	obj := target
 	act := "execute"
 
-	return En.Enforce(string(r), obj, act)
+	return Enforce(r, obj, act)
 }
 
 // Gt 判断该权限等级是否严格高于另一个权限等级

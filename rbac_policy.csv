@@ -1,0 +1,20 @@
+g, operator, basic
+g, superuser, operator
+p, basic, /user/profile, GET
+p, basic, /user/logout, GET
+p, basic, /user, DELETE
+p, basic, /task/:id, GET
+p, basic, /task/definition/:taskType, GET
+p, basic, /task/:id/output, GET
+p, basic, /task/trigger, POST
+p, basic, /state/snapshot/server-status, GET
+p, basic, /state/watch/server-status, GET
+p, basic, /state/snapshot/instance-status, GET
+p, basic, /state/watch/instance-status, GET
+p, basic, /monitor/auto-archive-idle/remaining-secs, GET
+p, basic, /instance/candidates, GET
+p, basic, /instance/best-candidate, GET
+p, operator, /server/stop, GET
+p, operator, /server/data, GET
+p, operator, /instance/active, DELETE
+p, operator, create-custom-instance, execute
