@@ -1,4 +1,4 @@
-package contextutil
+package context_util
 
 import (
 	"github.com/gin-contrib/sessions"

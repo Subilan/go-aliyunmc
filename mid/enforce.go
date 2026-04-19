@@ -1,7 +1,7 @@
 package mid
 
 import (
-	"go-aliyunmc/contextutil"
+	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"net/http"
 
@@ -11,7 +11,7 @@ import (
 // Perm 中间件用于检查访问该路由的用户是否具有>=role的权限等级
 func Perm() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, exists := contextutil.GetUserRole(c)
+		role, exists := context_util.GetUserRole(c)
 
 		if !exists {
 			c.JSON(http.StatusUnauthorized, h.DetailsF("未登录"))

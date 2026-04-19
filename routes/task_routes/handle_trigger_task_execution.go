@@ -2,7 +2,7 @@ package task_routes
 
 import (
 	"errors"
-	"go-aliyunmc/contextutil"
+	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
@@ -17,7 +17,7 @@ type TriggerTaskExecutionRequest struct {
 }
 
 func HandleTriggerTaskExecution(body TriggerTaskExecutionRequest, c *gin.Context) (any, error) {
-	user, ok := contextutil.GetUser(c)
+	user, ok := context_util.GetUser(c)
 
 	if !ok {
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")

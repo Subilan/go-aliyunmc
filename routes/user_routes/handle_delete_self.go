@@ -1,7 +1,7 @@
 package user_routes
 
 import (
-	"go-aliyunmc/contextutil"
+	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"go-aliyunmc/store"
 	"net/http"
@@ -12,7 +12,7 @@ import (
 // HandleDeleteSelf 注销用户处理函数
 func HandleDeleteSelf(c *gin.Context) (any, error) {
 	// 从context中获取当前登录用户
-	currentUser, exists := contextutil.GetUser(c)
+	currentUser, exists := context_util.GetUser(c)
 
 	if !exists {
 		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
@@ -23,7 +23,7 @@ func HandleDeleteSelf(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
-	if err := contextutil.Logout(c); err != nil {
+	if err := context_util.Logout(c); err != nil {
 		return nil, err
 	}
 
