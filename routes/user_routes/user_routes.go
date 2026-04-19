@@ -31,6 +31,7 @@ func Bind(router *gin.Engine) {
 		// 需要登录的路由
 		authorized := userGroup.Group("")
 		authorized.Use(mid.Auth())
+		authorized.Use(mid.Perm())
 		{
 			authorized.GET("/profile", h.G(HandleGetProfile))
 			authorized.GET("/logout", h.G(HandleLogout))

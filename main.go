@@ -30,21 +30,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func main() {
-	// 加载配置
+func init() {
 	MustLoadConfig()
 	store.MustLoadConfig()
 	aliyun.MustLoadConfig()
 	server.MustLoadConfig()
 	monitors.MustLoadConfig()
 	tasks.MustLoadConfig()
+	perms.MustLoadConfig()
 
-	// 初始化模块
 	store.MustInitialize()
 	perms.MustInitialize()
 	aliyun.MustInitialize()
 	env.MustInitialize()
+}
 
+func main() {
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
 			log_util.Fatal("初始化DEV用户失败: %v", err)

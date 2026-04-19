@@ -15,6 +15,7 @@ func Bind(router *gin.Engine) {
 	stateGroup := router.Group("/state")
 	authorized := stateGroup.Group("")
 	authorized.Use(mid.Auth())
+	authorized.Use(mid.Perm())
 	{
 		bindStateRoutes[states.ServerStatusState](authorized, "server-status", states.HSKeyServerStatus, "server_status_snapshot", "server_status_update")
 		bindStateRoutes[string](authorized, "instance-status", states.HSKeyInstanceStatus, "instance_status_snapshot", "instance_status_update")

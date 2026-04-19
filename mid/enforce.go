@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Perm 中间件用于检查访问该路由的用户是否具有>=role的权限等级
+// Perm 中间件用于基于 Casbin 规则检查当前用户是否有权访问当前请求路径与方法。
 func Perm() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := context_util.GetUserRole(c)
