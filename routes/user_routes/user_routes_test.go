@@ -6,7 +6,6 @@ import (
 	"go-aliyunmc/perms"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
-	"go-aliyunmc/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -21,8 +20,6 @@ import (
 const testDBPath = "user_routes_test.db"
 
 func TestMain(m *testing.M) {
-	utils.Test()
-
 	store.C = store.Config{
 		Driver: "sqlite",
 		DBName: "user_routes_test",
@@ -32,7 +29,6 @@ func TestMain(m *testing.M) {
 	_ = os.Remove(testDBPath)
 	store.MustInitialize()
 	store.AutoMigrate()
-	perms.MustLoadConfig()
 	perms.MustInitialize()
 
 	code := m.Run()

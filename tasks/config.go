@@ -45,7 +45,7 @@ var DeployC DeployTaskConfig
 var BackupC BackupTaskConfig
 var ArchiveC ArchiveTaskConfig
 
-func MustLoadConfig() {
+func init() {
 	utils.MustBindConfig(&DeployC, "task-deploy")
 	utils.MustBindConfig(&BackupC, "task-backup")
 	utils.MustBindConfig(&ArchiveC, "task-archive")

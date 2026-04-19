@@ -1,8 +1,6 @@
 package main
 
 import (
-	"go-aliyunmc/utils"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -70,9 +68,4 @@ func (s *SessionConfig) GetSessionStore() sessions.Store {
 	}
 
 	return cookie.NewStore(keyPairs...)
-}
-
-// MustLoadConfig 加载配置
-func MustLoadConfig() {
-	utils.MustBindConfig(&C, "main")
 }

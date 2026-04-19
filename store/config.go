@@ -7,8 +7,7 @@ import (
 
 var C Config
 
-// MustLoadConfig 加载配置
-func MustLoadConfig() {
+func init() {
 	utils.MustBindConfig(&C, "store")
 }
 

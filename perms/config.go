@@ -10,6 +10,6 @@ type Config struct {
 	PolicyPath string `toml:"policy_path" validate:"required" comment:"Casbin策略文件路径"`
 }
 
-func MustLoadConfig() {
+func init() {
 	utils.MustBindConfig(&C, "perms")
 }

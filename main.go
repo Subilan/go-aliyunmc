@@ -15,9 +15,9 @@ import (
 	"go-aliyunmc/routes/state_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
-	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
+	"go-aliyunmc/utils"
 	"log"
 	"net/http"
 	"os/signal"
@@ -31,14 +31,7 @@ import (
 )
 
 func init() {
-	MustLoadConfig()
-	store.MustLoadConfig()
-	aliyun.MustLoadConfig()
-	server.MustLoadConfig()
-	monitors.MustLoadConfig()
-	tasks.MustLoadConfig()
-	perms.MustLoadConfig()
-
+	utils.MustBindConfig(&C, "main")
 	store.MustInitialize()
 	perms.MustInitialize()
 	aliyun.MustInitialize()

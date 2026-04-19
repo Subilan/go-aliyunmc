@@ -8,7 +8,6 @@ import (
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
-	"go-aliyunmc/utils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,8 +27,6 @@ func TestMain(m *testing.M) {
 		DBName: "task_routes_test",
 		Path:   testDBPath,
 	}
-	utils.Test()
-	perms.MustLoadConfig()
 	perms.MustInitialize()
 	store.MustInitialize()
 	store.AutoMigrate()
