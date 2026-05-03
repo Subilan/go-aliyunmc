@@ -54,10 +54,14 @@ func (tc *TaskContext) println(msg string) {
 	select {
 	case <-tc.ctx.Done():
 		return
+	default:
+	}
+	select {
 	case tc.outputChan <- TaskOutput{
 		Step:   tc.step,
 		Output: msg,
 	}:
+	default:
 	}
 }
 
