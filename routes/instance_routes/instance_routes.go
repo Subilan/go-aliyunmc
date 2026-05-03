@@ -16,6 +16,7 @@ func Bind(router *gin.Engine) {
 	authorized.Use(mid.Perm())
 	{
 		authorized.DELETE("/active", h.G(HandleDeleteActiveInstance))
+		authorized.GET("/active", h.G(HandleGetActiveInstance))
 		authorized.GET("/candidates", h.V(global_states.GetCurrentEcsCandidates))
 		authorized.GET("/best-candidate", h.VB(states.SnapshotBestEcsCandidate))
 	}
