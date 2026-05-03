@@ -13,3 +13,6 @@ build:
 # 运行项目
 dev:
 	@GO_ALIYUNMC_DEV=1 go run .
+
+run:
+	@go run .
