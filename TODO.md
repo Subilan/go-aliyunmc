@@ -1,4 +1,3 @@
-- Redis integration (not sure where & low priority)
 - monitors
   - [x] server status
     - [x] task check
