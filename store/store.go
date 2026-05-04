@@ -56,5 +56,6 @@ func AutoMigrate() {
 		&models.User{},
 		&models.Task{},
 		&models.Instance{},
+		&models.PlayerListSample{},
 	)
 }

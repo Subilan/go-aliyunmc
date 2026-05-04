@@ -126,7 +126,12 @@ func main() {
 		PollIntervalSec: 600,
 	}
 
-	monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
+	playerListSamplerConfig := monitors.PlayerListSamplerConfig{
+			MaxDataPoints:     100,
+			SampleIntervalSec: 5,
+		}
+
+		monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
 		PollIntervalSec:     600,
 		MemChoices:          []int{8, 16},
 		CpuCoreCountChoices: []int{4, 8},
@@ -241,6 +246,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/monitor-best-ecs-candidate.toml", monitorBestEcsCandidateConfig); err != nil {
 		fmt.Printf("Error writing monitor-best-ecs-candidate.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/sampler-player-count.toml", playerListSamplerConfig); err != nil {
+		fmt.Printf("Error writing sampler-player-count.toml: %v\n", err)
 		os.Exit(1)
 	}
 

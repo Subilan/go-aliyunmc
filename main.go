@@ -9,7 +9,9 @@ import (
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/perms"
+	"go-aliyunmc/routes/bss_routes"
 	"go-aliyunmc/routes/instance_routes"
+	"go-aliyunmc/routes/sample_routes"
 	"go-aliyunmc/routes/monitor_routes"
 	"go-aliyunmc/routes/server_routes"
 	"go-aliyunmc/routes/state_routes"
@@ -75,6 +77,12 @@ func main() {
 
 	// 注册服务器管理路由
 	server_routes.Bind(engine)
+
+	// 注册采样路由
+	sample_routes.Bind(engine)
+
+	// 注册财务账单路由
+	bss_routes.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

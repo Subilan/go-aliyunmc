@@ -56,12 +56,18 @@ type InstanceChargeFilters struct {
 	InstanceTypeExclusion string `toml:"instance_type_exclusion" comment:"正则表达式，表示对实例规格名（实例类型）的筛选，符合该正则表达式的实例会被过滤"`
 }
 
+type PlayerListSamplerConfig struct {
+	MaxDataPoints    int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	SampleIntervalSec int `toml:"sample_interval_sec" validate:"required,min=1" comment:"采样间隔（秒）"`
+}
+
 var ServerStatusC ServerStatusMonitorConfig
 var InstanceStatusC InstanceStatusMonitorConfig
 var FileSyncC FileSyncMonitorConfig
 var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
 var BackupC BackupMonitorConfig
 var BestEcsCandidateC BestEcsCandidateMonitorConfig
+var PlayerCountSamplerC PlayerListSamplerConfig
 
 func init() {
 	utils.MustBindConfigToml(&ServerStatusC, "monitor-server")
@@ -70,4 +76,5 @@ func init() {
 	utils.MustBindConfigToml(&AutoArchiveIdleC, "monitor-auto-archive-idle")
 	utils.MustBindConfigToml(&BackupC, "monitor-backup")
 	utils.MustBindConfigToml(&BestEcsCandidateC, "monitor-best-ecs-candidate")
+	utils.MustBindConfigToml(&PlayerCountSamplerC, "sampler-player-count")
 }

@@ -10,16 +10,22 @@ var emptyValueError = fmt.Errorf("值为空")
 var missingTargetError = fmt.Errorf("目标不存在")
 
 var (
-	serverMonitor   *ServerStatusMonitor
-	instanceMonitor *InstanceStatusMonitor
-	fileSyncPoller  *FileSyncPoller
-	autoArchiveIdle *AutoArchiveIdleMonitor
-	backupMonitor   *BackupMonitor
+	serverMonitor          *ServerStatusMonitor
+	instanceMonitor        *InstanceStatusMonitor
+	fileSyncPoller         *FileSyncPoller
+	autoArchiveIdle        *AutoArchiveIdleMonitor
+	backupMonitor          *BackupMonitor
 	bestEcsCandidateMonitor *BestEcsCandidateMonitor
-	initializeOnce  sync.Once
+	playerListSampler     *PlayerListSampler
+	initializeOnce         sync.Once
 )
 
-// MustInitialize 启动所有常驻 monitor。
+// GetPlayerListSampler 返回玩家列表采样器实例。
+func GetPlayerListSampler() *PlayerListSampler {
+	return playerListSampler
+}
+
+// MustInitialize 启动所有常驻 monitor 和 sampler。
 func MustInitialize(ctx context.Context) {
 	initializeOnce.Do(func() {
 		serverMonitor = newServerStatusMonitor()
@@ -28,6 +34,7 @@ func MustInitialize(ctx context.Context) {
 		autoArchiveIdle = newAutoArchiveIdleMonitor()
 		backupMonitor = newBackupMonitor()
 		bestEcsCandidateMonitor = newBestEcsCandidateMonitor()
+		playerListSampler = newPlayerListSampler()
 
 		go serverMonitor.run(ctx)
 		go instanceMonitor.run(ctx)
@@ -35,5 +42,6 @@ func MustInitialize(ctx context.Context) {
 		go autoArchiveIdle.run(ctx)
 		go backupMonitor.run(ctx)
 		go bestEcsCandidateMonitor.run(ctx)
+		go playerListSampler.run(ctx)
 	})
 }
