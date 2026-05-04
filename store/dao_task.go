@@ -29,8 +29,16 @@ func UpdateTask(task *models.Task) error {
 	return result.Error
 }
 
+var taskSortableFields = map[string]bool{
+	"created_at": true,
+	"updated_at": true,
+	"start_at":   true,
+	"end_at":     true,
+}
+
 // ListTasks 获取指定状态的任务列表。若不指定状态，则返回任意状态的任务。
-func ListTasks(status *models.TaskStatus, limit, offset int) ([]models.Task, error) {
+// sort 为排序字段，order 为排序方向（asc/desc）。若 sort 不在白名单内，则默认按 created_at DESC 排序。
+func ListTasks(status *models.TaskStatus, sort, order string, limit, offset int) ([]models.Task, error) {
 	var tasks []models.Task
 	query := DB.Model(&models.Task{})
 
@@ -38,8 +46,25 @@ func ListTasks(status *models.TaskStatus, limit, offset int) ([]models.Task, err
 		query = query.Where("status = ?", *status)
 	}
 
-	result := query.Order("created_at DESC").Limit(limit).Offset(offset).Find(&tasks)
+	if taskSortableFields[sort] && (order == "asc" || order == "desc") {
+		query = query.Order(sort + " " + order)
+	} else {
+		query = query.Order("created_at DESC")
+	}
+
+	result := query.Limit(limit).Offset(offset).Find(&tasks)
 	return tasks, result.Error
+}
+
+// CountTasks 返回任务总数，可按状态过滤。
+func CountTasks(status *models.TaskStatus) (int64, error) {
+	var count int64
+	query := DB.Model(&models.Task{})
+	if status != nil {
+		query = query.Where("status = ?", *status)
+	}
+	result := query.Count(&count)
+	return count, result.Error
 }
 
 // GetTask 根据任务ID获取任务详情。
