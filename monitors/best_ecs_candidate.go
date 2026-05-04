@@ -39,13 +39,16 @@ func (m *BestEcsCandidateMonitor) run(ctx context.Context) {
 
 	cacheFileContent, err := os.ReadFile(BestEcsCandidateC.CacheFile)
 	if err == nil {
-		var cacheFileData states.EcsCandidate
+		var cacheFileData []states.EcsCandidate
 		err = json.Unmarshal(cacheFileContent, &cacheFileData)
 		if err != nil {
 			m.logger.Error("无法反序列化缓存数据：%s", err.Error())
 		} else {
-			m.logger.Info("已读取缓存文件")
-			m.store.Store(cacheFileData, m.logger)
+			m.logger.Info("已读取缓存文件，共 %d 条候选", len(cacheFileData))
+			global_states.SetCurrentEcsCandidates(cacheFileData)
+			if len(cacheFileData) > 0 {
+				m.store.Store(cacheFileData[0], m.logger)
+			}
 		}
 	} else {
 		if !os.IsNotExist(err) {
@@ -80,7 +83,7 @@ func (m *BestEcsCandidateMonitor) pollAndStore(ctx context.Context) {
 		changed := m.store.Store(bestCandidate, m.logger)
 
 		if changed {
-			cacheData, err := json.Marshal(bestCandidate)
+			cacheData, err := json.Marshal(candidates)
 			if err != nil {
 				m.logger.Error("无法序列化缓存数据：%s", err.Error())
 			} else {
@@ -88,7 +91,7 @@ func (m *BestEcsCandidateMonitor) pollAndStore(ctx context.Context) {
 				if err != nil {
 					m.logger.Error("无法写入缓存数据：%s", err.Error())
 				} else {
-					m.logger.Info("已更新缓存数据：%s", bestCandidate.String())
+					m.logger.Info("已更新缓存数据：共 %d 条候选", len(candidates))
 				}
 			}
 		} else {
