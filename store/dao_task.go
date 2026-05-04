@@ -52,7 +52,7 @@ func ListTasks(status *models.TaskStatus, sort, order string, limit, offset int)
 		query = query.Order("created_at DESC")
 	}
 
-	result := query.Limit(limit).Offset(offset).Find(&tasks)
+	result := query.Preload("User").Limit(limit).Offset(offset).Find(&tasks)
 	return tasks, result.Error
 }
 
@@ -70,7 +70,7 @@ func CountTasks(status *models.TaskStatus) (int64, error) {
 // GetTask 根据任务ID获取任务详情。
 func GetTask(taskId uint) (*models.Task, error) {
 	var task models.Task
-	result := DB.First(&task, taskId)
+	result := DB.Preload("User").First(&task, taskId)
 	if result.Error != nil {
 		return nil, result.Error
 	}
