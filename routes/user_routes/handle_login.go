@@ -15,6 +15,12 @@ import (
 
 // HandleLogin 用户登录处理函数
 func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
+	// 检查是否已登录，防止重复登录
+	session := sessions.Default(c)
+	if _, exists := session.Get("user_id").(uint); exists {
+		return nil, h.HttpError(http.StatusBadRequest, "你已经登录了")
+	}
+
 	// 查找用户
 	var user models.User
 	if err := store.DB.Where("username = ?", req.Username).First(&user).Error; err != nil {
@@ -26,8 +32,8 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusUnauthorized, "用户名或密码错误")
 	}
 
-	// 设置session
-	session := sessions.Default(c)
+	// 清除旧session并设置新值，防止session固定攻击
+	session.Clear()
 	session.Set("user_id", user.ID)
 	session.Set("username", user.Username)
 
