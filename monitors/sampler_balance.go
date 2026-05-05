@@ -28,11 +28,27 @@ type BalanceSampler struct {
 }
 
 func newBalanceSampler() *BalanceSampler {
-	return &BalanceSampler{
+	s := &BalanceSampler{
 		interval:      time.Duration(BalanceSamplerC.SampleIntervalSec) * time.Second,
 		maxDataPoints: BalanceSamplerC.MaxDataPoints,
 		dataPoints:    make([]BalanceDataPoint, 0, BalanceSamplerC.MaxDataPoints),
 		logger:        log_util.NewNamedLogger("[sampler/balance] ", "balance-sampler"),
+	}
+	s.loadFromDB()
+	return s
+}
+
+func (s *BalanceSampler) loadFromDB() {
+	var records []models.BalanceSample
+	if err := store.DB.Order("created_at DESC").Limit(s.maxDataPoints).Find(&records).Error; err != nil {
+		s.logger.Error("加载历史余额数据失败: %v", err)
+		return
+	}
+	for i := len(records) - 1; i >= 0; i-- {
+		s.dataPoints = append(s.dataPoints, BalanceDataPoint{
+			Time:   records[i].CreatedAt,
+			Amount: records[i].Amount,
+		})
 	}
 }
 

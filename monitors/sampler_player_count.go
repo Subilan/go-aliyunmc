@@ -30,11 +30,27 @@ type PlayerListSampler struct {
 }
 
 func newPlayerListSampler() *PlayerListSampler {
-	return &PlayerListSampler{
+	s := &PlayerListSampler{
 		interval:      time.Duration(PlayerCountSamplerC.SampleIntervalSec) * time.Second,
 		maxDataPoints: PlayerCountSamplerC.MaxDataPoints,
 		dataPoints:    make([]PlayerListDataPoint, 0, PlayerCountSamplerC.MaxDataPoints),
 		logger:        log_util.NewNamedLogger("[sampler/player-list] ", "player-list-sampler"),
+	}
+	s.loadFromDB()
+	return s
+}
+
+func (s *PlayerListSampler) loadFromDB() {
+	var records []models.PlayerListSample
+	if err := store.DB.Order("created_at DESC").Limit(s.maxDataPoints).Find(&records).Error; err != nil {
+		s.logger.Error("加载历史玩家列表数据失败: %v", err)
+		return
+	}
+	for i := len(records) - 1; i >= 0; i-- {
+		s.dataPoints = append(s.dataPoints, PlayerListDataPoint{
+			Time:        records[i].CreatedAt,
+			PlayerNames: records[i].PlayerNames,
+		})
 	}
 }
 
