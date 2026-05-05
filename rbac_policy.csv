@@ -2,6 +2,7 @@ g, operator, basic
 g, superuser, operator
 p, basic, /user/profile, GET
 p, basic, /user/logout, GET
+p, basic, /user/change-password, POST
 p, basic, /user, DELETE
 p, basic, /task, GET
 p, basic, /task/:id, GET
@@ -16,7 +17,8 @@ p, basic, /monitor/auto-archive-idle/remaining-secs, GET
 p, basic, /instance/candidates, GET
 p, basic, /instance/active, GET
 p, basic, /instance/best-candidate, GET
-p, basic, /samples/player-count-history, GET
+p, basic, /samples/player-list-history, GET
+p, basic, /samples/account-balance-history, GET
 p, operator, /server/stop, GET
 p, operator, /server/data, GET
 p, operator, /instance/active, DELETE
