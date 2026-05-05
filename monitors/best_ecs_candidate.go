@@ -178,7 +178,7 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 
 						filters := BestEcsCandidateC.Filters
 
-						if tradePrice > filters.MaxTradePrice {
+						if tradePrice > filters.MaxTradePrice || tradePrice == -1 {
 							continue
 						}
 
