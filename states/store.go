@@ -29,6 +29,20 @@ func (state *State[T]) IsValid() bool {
 	return state.Error == nil && !state.UpdatedAt.IsZero()
 }
 
+// ForceStore 无条件地将值存储到 store 中，并更新时间。
+func (s *StateStore[T]) ForceStore(value T, hub *Hub[State[T]]) {
+	s.mu.Lock()
+	s.Value = value
+	s.UpdatedAt = time.Now()
+	s.Error = nil
+	snapshot := s.State
+	s.mu.Unlock()
+
+	if hub != nil {
+		hub.Broadcast(snapshot)
+	}
+}
+
 // Store 将新的 snapshot 存储到 store 中。如果值没有发生变化，则不做任何操作。返回值表示是否发生了变化。
 func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *log_util.NamedLogger) bool {
 	s.mu.Lock()

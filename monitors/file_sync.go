@@ -7,7 +7,6 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/global_states"
 	"go-aliyunmc/log_util"
-	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"io"
 	"os"
@@ -148,7 +147,8 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		return
 	}
 
-	if running, err := states.StableSnapshotIsInstanceRunning(syncFileTimeout); err != nil || !running {
+	snap, err := instanceMonitor.WaitSnapshot(syncFileTimeout)
+	if err != nil || !snap.IsValid() || snap.Value != "Running" {
 		p.logger.Info("实例未运行或无法获取状态，跳过")
 		return
 	}

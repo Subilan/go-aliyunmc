@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go-aliyunmc/h"
 	"go-aliyunmc/remote_util"
-	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"net/http"
 	"time"
@@ -80,13 +79,13 @@ func checkStartServerTask(_ map[string]any) error {
 		return err
 	}
 
-	status, ok := states.SnapshotServerStatus()
+	snap := SnapshotServerStatus()
 
-	if !ok || status.Error != nil {
+	if !snap.IsValid() {
 		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
 	}
 
-	if status.Value.Online {
+	if snap.Value.Online {
 		return h.HttpError(http.StatusConflict, "服务器已在线")
 	}
 

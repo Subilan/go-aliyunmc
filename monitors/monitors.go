@@ -3,6 +3,7 @@ package monitors
 import (
 	"context"
 	"fmt"
+	"go-aliyunmc/tasks"
 	"sync"
 )
 
@@ -31,6 +32,21 @@ func GetBalanceSampler() *BalanceSampler {
 	return balanceSampler
 }
 
+// GetServerStatusMonitor 返回服务器状态监控器实例。
+func GetServerStatusMonitor() *ServerStatusMonitor {
+	return serverMonitor
+}
+
+// GetInstanceStatusMonitor 返回实例状态监控器实例。
+func GetInstanceStatusMonitor() *InstanceStatusMonitor {
+	return instanceMonitor
+}
+
+// GetBestEcsCandidateMonitor 返回最佳ECS候选监控器实例。
+func GetBestEcsCandidateMonitor() *BestEcsCandidateMonitor {
+	return bestEcsCandidateMonitor
+}
+
 // MustInitialize 启动所有常驻 monitor 和 sampler。
 func MustInitialize(ctx context.Context) {
 	initializeOnce.Do(func() {
@@ -42,6 +58,10 @@ func MustInitialize(ctx context.Context) {
 		bestEcsCandidateMonitor = newBestEcsCandidateMonitor()
 		playerListSampler = newPlayerListSampler()
 		balanceSampler = newBalanceSampler()
+
+		tasks.SnapshotServerStatus = serverMonitor.Snapshot
+		tasks.SnapshotBestEcsCandidate = bestEcsCandidateMonitor.Snapshot
+		tasks.WaitInstanceSnapshot = instanceMonitor.WaitSnapshot
 
 		go serverMonitor.run(ctx)
 		go instanceMonitor.run(ctx)

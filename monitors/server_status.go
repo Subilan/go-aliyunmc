@@ -21,7 +21,7 @@ type ServerStatusMonitor struct {
 func newServerStatusMonitor() *ServerStatusMonitor {
 	return &ServerStatusMonitor{
 		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
-		store:    states.NewRecordedHubbedStore[states.ServerStatusState](states.HSKeyServerStatus),
+		store:    states.NewHubbedStore[states.ServerStatusState](),
 		logger:   log_util.NewNamedLogger("[monitor/server] ", "server-status-monitor"),
 	}
 }
@@ -68,7 +68,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	if err != nil {
 		next.Online = false
 		next.PlayerCount = 0
-		m.store.Store(next, m.logger)
+		m.store.ForceStore(next, m.logger)
 		return
 	}
 

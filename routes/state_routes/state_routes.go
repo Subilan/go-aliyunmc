@@ -5,11 +5,17 @@ import (
 
 	"go-aliyunmc/h"
 	"go-aliyunmc/mid"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/sse"
 	"go-aliyunmc/states"
 
 	"github.com/gin-gonic/gin"
 )
+
+type stateProvider[T any] interface {
+	Snapshot() states.State[T]
+	Subscribe() (<-chan states.State[T], func())
+}
 
 func Bind(router *gin.Engine) {
 	stateGroup := router.Group("/state")
@@ -17,29 +23,27 @@ func Bind(router *gin.Engine) {
 	authorized.Use(mid.Auth())
 	authorized.Use(mid.Perm())
 	{
-		bindStateRoutes[states.ServerStatusState](authorized, "server-status", states.HSKeyServerStatus, "server_status_snapshot", "server_status_update")
-		bindStateRoutes[string](authorized, "instance-status", states.HSKeyInstanceStatus, "instance_status_snapshot", "instance_status_update")
+		authorized.GET("/snapshot/server-status", h.G(func(c *gin.Context) (any, error) {
+			return monitors.GetServerStatusMonitor().Snapshot(), nil
+		}))
+		authorized.GET("/watch/server-status", newWatchHandler(
+			func() stateProvider[states.ServerStatusState] { return monitors.GetServerStatusMonitor() },
+			"server_status_snapshot", "server_status_update",
+		))
+
+		authorized.GET("/snapshot/instance-status", h.G(func(c *gin.Context) (any, error) {
+			return monitors.GetInstanceStatusMonitor().Snapshot(), nil
+		}))
+		authorized.GET("/watch/instance-status", newWatchHandler(
+			func() stateProvider[string] { return monitors.GetInstanceStatusMonitor() },
+			"instance_status_snapshot", "instance_status_update",
+		))
 	}
 }
 
-func bindStateRoutes[T comparable](group *gin.RouterGroup, name string, key string, snapshotEvent string, updateEvent string) {
-	group.GET("/snapshot/"+name, h.G(func(c *gin.Context) (any, error) {
-		store, ok := states.GetRecordedHubbedStore[T](key)
-		if !ok {
-			return nil, h.HttpError(http.StatusServiceUnavailable, "暂无监控数据")
-		}
-		return store.Snapshot(), nil
-	}))
-	group.GET("/watch/"+name, handleStateWatch[T](key, snapshotEvent, updateEvent))
-}
-
-func handleStateWatch[T comparable](key string, snapshotEvent string, updateEvent string) gin.HandlerFunc {
+func newWatchHandler[T any](getProvider func() stateProvider[T], snapshotEvent string, updateEvent string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		store, ok := states.GetRecordedHubbedStore[T](key)
-		if !ok {
-			c.JSON(http.StatusServiceUnavailable, h.Details(h.HttpError(http.StatusServiceUnavailable, "monitor尚未初始化")))
-			return
-		}
+		provider := getProvider()
 
 		client, err := sse.NewClient(c)
 		if err != nil {
@@ -47,10 +51,10 @@ func handleStateWatch[T comparable](key string, snapshotEvent string, updateEven
 			return
 		}
 
-		updates, unsubscribe := store.Subscribe()
+		updates, unsubscribe := provider.Subscribe()
 		defer unsubscribe()
 
-		if err := client.SendEvent(snapshotEvent, store.Snapshot()); err != nil {
+		if err := client.SendEvent(snapshotEvent, provider.Snapshot()); err != nil {
 			c.JSON(http.StatusInternalServerError, h.Details(err))
 			return
 		}
