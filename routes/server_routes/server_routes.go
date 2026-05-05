@@ -14,5 +14,6 @@ func Bind(engine *gin.Engine) {
 	{
 		serverGroup.GET("/stop", h.G(HandleStopServer))
 		serverGroup.GET("/data", h.G(HandleGetData))
+		serverGroup.GET("/query", h.G(HandleQueryServer))
 	}
 }
