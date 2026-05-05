@@ -4,6 +4,8 @@ import (
 	"errors"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
+	"go-aliyunmc/tasks"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -20,6 +22,9 @@ func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	interruptTask(models.TaskTypeArchive)
+	interruptTask(models.TaskTypeBackup)
 
 	deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
 		InstanceId: tea.String(instance.InstanceId),
@@ -41,4 +46,13 @@ func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
 	}
 
 	return nil, nil
+}
+
+func interruptTask(taskType models.TaskType) {
+	exec, ok := tasks.GetExclusiveExecutor(taskType)
+	if !ok {
+		return
+	}
+	exec.Interrupt()
+	<-exec.Done()
 }
