@@ -50,7 +50,7 @@ func HandleBindWhitelist(req bindWhitelistRequest, c *gin.Context) (any, error) 
 		}
 	}
 	if matched == nil {
-		return nil, h.HttpError(http.StatusNotFound, "白名单项目不存在")
+		return nil, h.HttpError(http.StatusNotFound, "玩家不存在")
 	}
 
 	user, exists := context_util.GetUser(c)
