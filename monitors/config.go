@@ -56,8 +56,19 @@ type InstanceChargeFilters struct {
 	InstanceTypeExclusion string `toml:"instance_type_exclusion" comment:"正则表达式，表示对实例规格名（实例类型）的筛选，符合该正则表达式的实例会被过滤"`
 }
 
+// PlayerListSamplerConfig 定义了玩家列表采样器的配置。
 type PlayerListSamplerConfig struct {
-	MaxDataPoints    int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	// MaxDataPoints 表示玩家列表采样器在内存中最多存储的数据点数量。
+	MaxDataPoints     int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	// SampleIntervalSec 采样间隔，单位为秒。
+	SampleIntervalSec int `toml:"sample_interval_sec" validate:"required,min=1" comment:"采样间隔（秒）"`
+}
+
+// BalanceSamplerConfig 定义了余额采样器的配置。
+type BalanceSamplerConfig struct {
+	// MaxDataPoints 表示余额采样器在内存中最多存储的数据点数量。
+	MaxDataPoints     int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	// SampleIntervalSec 采样间隔，单位为秒。
 	SampleIntervalSec int `toml:"sample_interval_sec" validate:"required,min=1" comment:"采样间隔（秒）"`
 }
 
@@ -68,6 +79,7 @@ var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
 var BackupC BackupMonitorConfig
 var BestEcsCandidateC BestEcsCandidateMonitorConfig
 var PlayerCountSamplerC PlayerListSamplerConfig
+var BalanceSamplerC BalanceSamplerConfig
 
 func init() {
 	utils.MustBindConfigToml(&ServerStatusC, "monitor-server")
@@ -77,4 +89,5 @@ func init() {
 	utils.MustBindConfigToml(&BackupC, "monitor-backup")
 	utils.MustBindConfigToml(&BestEcsCandidateC, "monitor-best-ecs-candidate")
 	utils.MustBindConfigToml(&PlayerCountSamplerC, "sampler-player-count")
+	utils.MustBindConfigToml(&BalanceSamplerC, "sampler-balance")
 }
