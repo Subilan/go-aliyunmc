@@ -57,5 +57,6 @@ func AutoMigrate() {
 		&models.Task{},
 		&models.Instance{},
 		&models.PlayerListSample{},
+		&models.BalanceSample{},
 	)
 }

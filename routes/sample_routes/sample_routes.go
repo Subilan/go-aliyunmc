@@ -16,5 +16,6 @@ func Bind(router *gin.Engine) {
 
 	{
 		authorized.GET("/player-list-history", h.G(HandleGetPlayerListHistory))
+		authorized.GET("/account-balance-history", h.G(HandleGetAccountBalanceHistory))
 	}
 }
