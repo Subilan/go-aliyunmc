@@ -2,6 +2,7 @@ package store
 
 import (
 	"go-aliyunmc/store/models"
+	"time"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -65,6 +66,42 @@ func CountTasks(status *models.TaskStatus) (int64, error) {
 	}
 	result := query.Count(&count)
 	return count, result.Error
+}
+
+// TaskStats 包含任务概览统计数据。
+type TaskStats struct {
+	Total           int64      `json:"total"`
+	SuccessCount    int64      `json:"successCount"`
+	LastCompletedAt *time.Time `json:"lastCompletedAt"`
+	LastCreatedBy   *uint      `json:"lastCreatedBy"`
+	LastCreatedUser *models.User `json:"lastCreatedUser"`
+}
+
+// GetTaskStats 返回任务概览统计数据。
+func GetTaskStats() (TaskStats, error) {
+	var stats TaskStats
+
+	if err := DB.Model(&models.Task{}).Count(&stats.Total).Error; err != nil {
+		return stats, err
+	}
+
+	successStatus := models.TaskStatusSuccess
+	if err := DB.Model(&models.Task{}).Where("status = ?", successStatus).Count(&stats.SuccessCount).Error; err != nil {
+		return stats, err
+	}
+
+	var lastCompleted models.Task
+	if err := DB.Where("status = ?", successStatus).Order("end_at DESC").First(&lastCompleted).Error; err == nil {
+		stats.LastCompletedAt = lastCompleted.EndAt
+	}
+
+	var lastCreated models.Task
+	if err := DB.Preload("User").Order("created_at DESC").First(&lastCreated).Error; err == nil {
+		stats.LastCreatedBy = lastCreated.By
+		stats.LastCreatedUser = lastCreated.User
+	}
+
+	return stats, nil
 }
 
 // GetTask 根据任务ID获取任务详情。

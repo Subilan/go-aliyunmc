@@ -14,6 +14,7 @@ func Bind(router *gin.Engine) {
 	authorized.Use(mid.Auth())
 	authorized.Use(mid.Perm())
 	{
+		authorized.GET("/stats", h.G(HandleGetTaskStats))
 		authorized.GET("/s", h.Q(HandleListTasks))
 		authorized.GET("/:id", h.G(HandleGetTask))
 		authorized.GET("/definition/:taskType", h.G(HandleGetTaskDefinition))
