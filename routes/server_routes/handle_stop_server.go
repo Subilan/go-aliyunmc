@@ -2,8 +2,8 @@ package server_routes
 
 import (
 	"go-aliyunmc/h"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/server"
-	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"net/http"
 
@@ -17,13 +17,11 @@ func HandleStopServer(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
-	status, ok := states.SnapshotServerStatus()
-	
-	if !ok || status.Error != nil {
+	snap := monitors.GetServerStatusMonitor().Snapshot()
+	if !snap.IsValid() {
 		return nil, h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
 	}
-	
-	if !status.Value.Online {
+	if !snap.Value.Online {
 		return nil, h.HttpError(http.StatusConflict, "服务器已离线")
 	}
 

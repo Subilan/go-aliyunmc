@@ -9,7 +9,6 @@ import (
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/perms"
 	"go-aliyunmc/remote_util"
-	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -152,12 +151,12 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 	}
 
 	if params.InstanceType == "" || params.ZoneId == "" {
-		candidate, ok := states.SnapshotBestEcsCandidate()
-		if !ok {
+		snap := SnapshotBestEcsCandidate()
+		if !snap.IsValid() {
 			return fmt.Errorf("未提供实例类型且无法获取最佳实例")
 		}
-		params.InstanceType = candidate.InstanceType
-		params.ZoneId = candidate.ZoneId
+		params.InstanceType = snap.Value.InstanceType
+		params.ZoneId = snap.Value.ZoneId
 	}
 
 	tc.nextStep()

@@ -125,9 +125,9 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	updates, unsubscribe := serverMonitor.Subscribe()
 	defer unsubscribe()
 
-	current, ok := states.SnapshotServerStatus()
+	current := serverMonitor.Snapshot()
 
-	if ok {
+	if current.IsValid() {
 		handleSnapshot(current)
 	} else {
 		m.logger.Info("无法获取服务器状态快照，直接进入监听循环")
@@ -215,7 +215,8 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 		return fmt.Errorf("active instance ip is empty")
 	}
 
-	if online, ok := states.SnapshotIsServerOnline(); ok && online {
+	snap := serverMonitor.Snapshot()
+	if snap.IsValid() && snap.Value.Online {
 		m.logger.Info("stop_sent")
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
@@ -247,13 +248,13 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 	waitCtx, cancel := context.WithTimeout(ctx, m.stopWaitTimeout)
 	defer cancel()
 
-	updates, unsubscribe := states.SubscribeServerStatus()
+	updates, unsubscribe := serverMonitor.Subscribe()
 	defer unsubscribe()
 
 	ticker := time.NewTicker(m.offlineCheckInterval)
 	defer ticker.Stop()
 
-	if offline, ok := states.SnapshotIsServerOffline(); ok && offline {
+	if snap := serverMonitor.Snapshot(); snap.IsValid() && !snap.Value.Online {
 		return nil
 	}
 
@@ -268,7 +269,7 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 				return nil
 			}
 		case <-ticker.C:
-			if offline, ok := states.SnapshotIsServerOffline(); ok && offline {
+			if snap := serverMonitor.Snapshot(); snap.IsValid() && !snap.Value.Online {
 				return nil
 			}
 		}

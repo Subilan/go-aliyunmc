@@ -25,10 +25,22 @@ type InstanceStatusMonitor struct {
 func newInstanceStatusMonitor() *InstanceStatusMonitor {
 	monitor := &InstanceStatusMonitor{
 		interval: time.Duration(InstanceStatusC.PollIntervalSec) * time.Second,
-		store:    states.NewRecordedHubbedStore[string](states.HSKeyInstanceStatus),
+		store:    states.NewHubbedStore[string](),
 		logger:   log_util.NewNamedLogger("[monitor/instance] ", "instance-status-monitor"),
 	}
 	return monitor
+}
+
+func (m *InstanceStatusMonitor) Snapshot() states.State[string] {
+	return m.store.Snapshot()
+}
+
+func (m *InstanceStatusMonitor) Subscribe() (<-chan states.State[string], func()) {
+	return m.store.Subscribe()
+}
+
+func (m *InstanceStatusMonitor) WaitSnapshot(timeout time.Duration) (states.State[string], error) {
+	return m.store.WaitSnapshot(timeout)
 }
 
 func (m *InstanceStatusMonitor) run(ctx context.Context) {

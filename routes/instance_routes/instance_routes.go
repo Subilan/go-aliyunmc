@@ -4,6 +4,7 @@ import (
 	"go-aliyunmc/global_states"
 	"go-aliyunmc/h"
 	"go-aliyunmc/mid"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/states"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,9 @@ func Bind(router *gin.Engine) {
 		authorized.DELETE("/active", h.G(HandleDeleteActiveInstance))
 		authorized.GET("/active", h.G(HandleGetActiveInstance))
 		authorized.GET("/candidates", h.V(global_states.GetCurrentEcsCandidates))
-		authorized.GET("/best-candidate", h.VB(states.SnapshotBestEcsCandidate))
+		authorized.GET("/best-candidate", h.VB(func() (states.EcsCandidate, bool) {
+			snap := monitors.GetBestEcsCandidateMonitor().Snapshot()
+			return snap.Value, snap.IsValid()
+		}))
 	}
 }

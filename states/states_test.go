@@ -49,60 +49,32 @@ func TestStateStore_BroadcastWhenErrorClearedWithoutValueChange(t *testing.T) {
 	}
 }
 
-func TestSnapshotAndTypeMismatch(t *testing.T) {
-	key := "test_snapshot_type_mismatch"
-	DeleteRecordedHubbedStore(key)
-	t.Cleanup(func() { DeleteRecordedHubbedStore(key) })
+func TestHubbedStore_WaitSnapshot(t *testing.T) {
+	store := NewHubbedStore[string]()
 
-	store := NewRecordedHubbedStore[string](key)
-	store.Store("ok", nil)
-
-	s, ok := Snapshot[string](key)
-	if !ok {
-		t.Fatalf("expected snapshot to exist")
-	}
-	if s.Value != "ok" {
-		t.Fatalf("unexpected snapshot value: %s", s.Value)
-	}
-
-	_, ok = Snapshot[int](key)
-	if ok {
-		t.Fatalf("expected type mismatch snapshot to fail")
-	}
-}
-
-func TestStableSnapshotWaitsForFirstUpdate(t *testing.T) {
-	key := "test_stable_snapshot_waits"
-	DeleteRecordedHubbedStore(key)
-	t.Cleanup(func() { DeleteRecordedHubbedStore(key) })
-
-	store := NewRecordedHubbedStore[string](key)
-
+	done := make(chan struct{})
 	go func() {
 		time.Sleep(30 * time.Millisecond)
 		store.Store("ready", nil)
+		close(done)
 	}()
 
-	snapshot, err := StableSnapshot[string](key, 500*time.Millisecond)
+	snap, err := store.WaitSnapshot(500 * time.Millisecond)
 	if err != nil {
-		t.Fatalf("expected stable snapshot success, got error: %v", err)
+		t.Fatalf("expected success, got: %v", err)
 	}
-	if snapshot.UpdatedAt.IsZero() {
+	if snap.Value != "ready" {
+		t.Fatalf("expected ready, got: %s", snap.Value)
+	}
+	if snap.UpdatedAt.IsZero() {
 		t.Fatalf("expected updated snapshot time")
 	}
-	if snapshot.Value != "ready" {
-		t.Fatalf("expected ready, got %s", snapshot.Value)
-	}
+	<-done
 }
 
-func TestStableSnapshotTimeoutReturnsError(t *testing.T) {
-	key := "test_stable_snapshot_timeout"
-	DeleteRecordedHubbedStore(key)
-	t.Cleanup(func() { DeleteRecordedHubbedStore(key) })
-
-	_ = NewRecordedHubbedStore[string](key)
-
-	_, err := StableSnapshot[string](key, 40*time.Millisecond)
+func TestHubbedStore_WaitSnapshotTimeout(t *testing.T) {
+	store := NewHubbedStore[string]()
+	_, err := store.WaitSnapshot(40 * time.Millisecond)
 	if err == nil {
 		t.Fatalf("expected timeout error")
 	}

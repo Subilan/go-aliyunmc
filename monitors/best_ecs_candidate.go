@@ -27,10 +27,18 @@ type BestEcsCandidateMonitor struct {
 
 func newBestEcsCandidateMonitor() *BestEcsCandidateMonitor {
 	return &BestEcsCandidateMonitor{
-		store:    states.NewRecordedHubbedStore[states.EcsCandidate](states.HSKeyBestEcsCandidate),
+		store:    states.NewHubbedStore[states.EcsCandidate](),
 		logger:   log_util.NewNamedLogger("[monitor/ecs-candidate] ", "best-ecs-candidate-monitor"),
 		interval: time.Duration(BestEcsCandidateC.PollIntervalSec) * time.Second,
 	}
+}
+
+func (m *BestEcsCandidateMonitor) Snapshot() states.State[states.EcsCandidate] {
+	return m.store.Snapshot()
+}
+
+func (m *BestEcsCandidateMonitor) Subscribe() (<-chan states.State[states.EcsCandidate], func()) {
+	return m.store.Subscribe()
 }
 
 func (m *BestEcsCandidateMonitor) run(ctx context.Context) {

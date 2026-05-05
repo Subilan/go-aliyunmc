@@ -2,15 +2,9 @@ package states
 
 import "fmt"
 
-var (
-	HSKeyInstanceStatus   = "instance_status_monitor"
-	HSKeyServerStatus     = "server_status_monitor"
-	HSKeyBestEcsCandidate = "best_ecs_candidate_monitor"
-)
-
 type ServerStatusState struct {
-	Online      bool   `json:"online"`
-	PlayerCount int64  `json:"playerCount"`
+	Online      bool  `json:"online"`
+	PlayerCount int64 `json:"playerCount"`
 }
 
 type EcsCandidate struct {
