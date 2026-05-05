@@ -2,7 +2,6 @@ package mid
 
 import (
 	"go-aliyunmc/context_util"
-	"go-aliyunmc/env"
 	"go-aliyunmc/h"
 	"net/http"
 
@@ -12,11 +11,6 @@ import (
 // Whitelisted 中间件用于检查当前用户是否已绑定游戏账号（WhitelistUUID），未绑定则拒绝访问。
 func Whitelisted() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if env.DEV {
-			c.Next()
-			return
-		}
-		
 		user, exists := context_util.GetUser(c)
 
 		if !exists {
