@@ -16,4 +16,6 @@ type User struct {
 	PasswordHash string `gorm:"not null" json:"-"`
 	// Role 是用户角色
 	Role perms.Role `gorm:"default:''" json:"role"`
+	// WhitelistUUID 是绑定的白名单项目UUID，一对一关系
+	WhitelistUUID *string `gorm:"uniqueIndex:idx_whitelist_uuid" json:"whitelist_uuid,omitempty"`
 }

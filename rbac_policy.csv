@@ -4,6 +4,8 @@ p, basic, /user/profile, GET
 p, basic, /user/logout, GET
 p, basic, /user/change-password, POST
 p, basic, /user, DELETE
+p, basic, /user/whitelist/bind, POST
+p, basic, /user/whitelist/unbind, POST
 p, basic, /task, GET
 p, basic, /task/:id, GET
 p, basic, /task/definition/:taskType, GET

@@ -37,6 +37,8 @@ func Bind(router *gin.Engine) {
 			authorized.GET("/logout", h.G(HandleLogout))
 			authorized.POST("/change-password", h.B(HandleChangePassword))
 			authorized.DELETE("", h.G(HandleDeleteSelf))
+			authorized.POST("/whitelist/bind", h.B(HandleBindWhitelist))
+			authorized.POST("/whitelist/unbind", h.G(HandleUnbindWhitelist))
 		}
 	}
 }
