@@ -42,6 +42,10 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 		session.Options(sessions.Options{
 			MaxAge: 7 * 24 * 60 * 60, // 7天
 		})
+	} else {
+		session.Options(sessions.Options{
+			MaxAge: 3600, // 1小时
+		})
 	}
 
 	if err := session.Save(); err != nil {

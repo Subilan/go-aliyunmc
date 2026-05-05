@@ -9,6 +9,9 @@ import (
 func Logout(c *gin.Context) error {
 	session := sessions.Default(c)
 	session.Clear()
+	session.Options(sessions.Options{
+		MaxAge: 0,
+	})
 
 	if err := session.Save(); err != nil {
 		return err
