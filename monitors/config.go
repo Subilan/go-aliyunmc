@@ -17,9 +17,16 @@ type FileConfig struct {
 	PollIntervalSec int    `toml:"poll_interval_sec" validate:"required,min=1" comment:"轮询间隔（秒）"`
 }
 
+type DirConfig struct {
+	RemotePath      string `toml:"remote_path" validate:"required" comment:"远端目录路径"`
+	LocalPath       string `toml:"local_path" validate:"required" comment:"本地目录相对路径（相对于 LocalCacheRoot）"`
+	PollIntervalSec int    `toml:"poll_interval_sec" validate:"required,min=1" comment:"轮询间隔（秒）"`
+}
+
 type FileSyncMonitorConfig struct {
 	LocalCacheRoot string       `toml:"local_cache_root" validate:"required" comment:"本地缓存根目录"`
-	Files          []FileConfig `toml:"files" validate:"required,min=1" comment:"文件同步配置列表"`
+	Files          []FileConfig `toml:"files" validate:"omitempty" comment:"文件同步配置列表"`
+	Dirs           []DirConfig  `toml:"dirs" validate:"omitempty" comment:"目录同步配置列表"`
 }
 
 type AutoArchiveIdleMonitorConfig struct {
