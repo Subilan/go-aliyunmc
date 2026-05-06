@@ -111,6 +111,13 @@ func main() {
 				PollIntervalSec: 10,
 			},
 		},
+		Dirs: []monitors.DirConfig{
+			{
+				RemotePath:      "/path/to/remote/dir",
+				LocalPath:       "dir",
+				PollIntervalSec: 300,
+			},
+		},
 	}
 
 	monitorAutoArchiveIdleConfig := monitors.AutoArchiveIdleMonitorConfig{

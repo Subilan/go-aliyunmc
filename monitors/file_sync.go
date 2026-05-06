@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,6 +77,97 @@ func downloadRemoteFile(ctx context.Context, ip string, remotePath string, local
 	return nil
 }
 
+// downloadRemoteDir 通过SSH连接远程主机，使用SFTP递归下载整个目录到本地
+func downloadRemoteDir(ctx context.Context, ip string, remoteDir string, localDir string) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("同步任务已取消: %w", err)
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User:            "root",
+		Auth:            []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         10 * time.Second,
+	}
+
+	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), sshConfig)
+	if err != nil {
+		return fmt.Errorf("SSH连接失败: %w", err)
+	}
+	defer client.Close()
+
+	sftpClient, err := sftp.NewClient(client)
+	if err != nil {
+		return fmt.Errorf("创建SFTP客户端失败: %w", err)
+	}
+	defer sftpClient.Close()
+
+	walker := sftpClient.Walk(remoteDir)
+	for walker.Step() {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("同步任务已取消: %w", err)
+		}
+
+		stat := walker.Stat()
+		if stat == nil {
+			continue
+		}
+
+		if stat.IsDir() {
+			continue
+		}
+
+		remotePath := walker.Path()
+		relPath, err := filepath.Rel(remoteDir, remotePath)
+		if err != nil {
+			return fmt.Errorf("计算相对路径失败: %w", err)
+		}
+		relPath = filepath.ToSlash(relPath)
+		if strings.HasPrefix(relPath, "../") {
+			continue
+		}
+
+		localFilePath := filepath.Join(localDir, filepath.FromSlash(relPath))
+		if err := os.MkdirAll(filepath.Dir(localFilePath), 0755); err != nil {
+			return fmt.Errorf("创建本地目录失败 %s: %w", filepath.Dir(localFilePath), err)
+		}
+
+		remoteFile, err := sftpClient.Open(remotePath)
+		if err != nil {
+			return fmt.Errorf("打开远端文件失败 %s: %w", remotePath, err)
+		}
+
+		localFile, err := os.Create(localFilePath)
+		if err != nil {
+			remoteFile.Close()
+			return fmt.Errorf("创建本地文件失败 %s: %w", localFilePath, err)
+		}
+
+		copyErrCh := make(chan error, 1)
+		go func() {
+			_, copyErr := io.Copy(localFile, remoteFile)
+			localFile.Close()
+			remoteFile.Close()
+			copyErrCh <- copyErr
+		}()
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("复制远端文件超时或取消: %w", ctx.Err())
+		case copyErr := <-copyErrCh:
+			if copyErr != nil {
+				return fmt.Errorf("复制远端文件失败 %s: %w", remotePath, copyErr)
+			}
+		}
+	}
+
+	if err := walker.Err(); err != nil {
+		return fmt.Errorf("遍历远端目录失败: %w", err)
+	}
+
+	return nil
+}
+
 // FileSyncPoller 是一个定时轮询器，用于定期从远端服务器同步指定文件到本地缓存目录
 type FileSyncPoller struct {
 	stopChans map[string]chan struct{}
@@ -91,7 +183,7 @@ func newFileSyncPoller() *FileSyncPoller {
 	}
 }
 
-// run 为每个配置的文件启动一个独立的轮询 goroutine，定期从远端服务器同步文件到本地缓存目录
+// run 为每个配置的文件和目录启动独立的轮询 goroutine，定期从远端服务器同步到本地缓存目录
 func (p *FileSyncPoller) run(ctx context.Context) {
 	// 确保本地缓存目录存在
 	if err := p.ensureCacheDir(); err != nil {
@@ -106,6 +198,16 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 		p.mu.Unlock()
 
 		go p.pollFile(ctx, fileConfig, stopCh)
+	}
+
+	// 为每个目录创建独立的轮询 goroutine
+	for _, dirConfig := range FileSyncC.Dirs {
+		stopCh := make(chan struct{})
+		p.mu.Lock()
+		p.stopChans[dirConfig.RemotePath] = stopCh
+		p.mu.Unlock()
+
+		go p.pollDir(ctx, dirConfig, stopCh)
 	}
 }
 
@@ -183,6 +285,76 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 	}
 
 	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
+}
+
+// pollDir 为单个目录执行定时轮询
+func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopCh chan struct{}) {
+	ticker := time.NewTicker(time.Duration(dirConfig.PollIntervalSec) * time.Second)
+	defer ticker.Stop()
+
+	p.syncDir(ctx, dirConfig)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			p.syncDir(ctx, dirConfig)
+		}
+	}
+}
+
+// syncDir 执行单次目录同步
+func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
+	if global_states.IsArchiving() {
+		p.logger.Info("自动回收流程正在执行，跳过目录同步")
+		return
+	}
+
+	instance, err := store.GetActiveInstance()
+	if err != nil {
+		p.logger.Info("无法获取实例，跳过目录同步")
+		return
+	}
+
+	if !instance.IsDeployed {
+		p.logger.Info("实例未部署，跳过目录同步")
+		return
+	}
+
+	snap, err := instanceMonitor.WaitSnapshot(syncFileTimeout)
+	if err != nil || !snap.IsValid() || snap.Value != "Running" {
+		p.logger.Info("实例未运行或无法获取状态，跳过目录同步")
+		return
+	}
+
+	localFullPath := filepath.Join(FileSyncC.LocalCacheRoot, dirConfig.LocalPath)
+	if err := os.MkdirAll(localFullPath, 0755); err != nil {
+		p.logger.Error("无法创建本地目录: %v", err)
+		return
+	}
+
+	syncCtx, cancel := context.WithTimeout(ctx, syncFileTimeout)
+	defer cancel()
+
+	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
+
+	if err := downloadRemoteDir(syncCtx, instance.Ip, dirConfig.RemotePath, localFullPath); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			p.logger.Error("目录同步超时(%s)", syncFileTimeout)
+			return
+		}
+		if errors.Is(err, context.Canceled) {
+			p.logger.Error("目录同步取消")
+			return
+		}
+		p.logger.Error("目录同步失败: %v", err)
+		return
+	}
+
+	p.logger.Info("目录同步完成: %s -> %s", dirConfig.RemotePath, localFullPath)
 }
 
 // ensureCacheDir 确保本地缓存目录存在
