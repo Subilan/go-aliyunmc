@@ -39,6 +39,7 @@ func MustInitialize() {
 	// 配置GORM
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info),
+		TranslateError: true,
 	}
 
 	// 连接数据库

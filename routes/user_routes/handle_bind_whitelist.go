@@ -2,6 +2,7 @@ package user_routes
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 
@@ -10,6 +11,7 @@ import (
 	"go-aliyunmc/store"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const whitelistPath = "remote_data_cache/whitelist.json"
@@ -59,7 +61,11 @@ func HandleBindWhitelist(req bindWhitelistRequest, c *gin.Context) (any, error) 
 	}
 
 	user.WhitelistUUID = &matched.UUID
+
 	if err := store.DB.Save(user).Error; err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return nil, h.HttpError(http.StatusConflict, "该游戏名已被绑定")
+		}
 		return nil, err
 	}
 
