@@ -8,6 +8,7 @@ p, basic, /user/whitelist/bind, POST
 p, basic, /user/whitelist/unbind, POST
 p, basic, /user/preferences, GET
 p, basic, /user/preferences, PUT
+p, basic, /user/permissions, GET
 p, basic, /task, GET
 p, basic, /task/:id, GET
 p, basic, /task/definition/:taskType, GET
