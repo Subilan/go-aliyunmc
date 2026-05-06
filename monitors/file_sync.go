@@ -7,8 +7,10 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/global_states"
 	"go-aliyunmc/log_util"
+	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,14 +21,15 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-const syncFileTimeout = 30 * time.Second
+const (
+	waitSnapshotTimeout = 10 * time.Second
+	syncFileTimeout     = 60 * time.Second
+	syncDirTimeout      = 120 * time.Second
+	initialJitterMax    = 3 * time.Second
+)
 
-// downloadRemoteFile 通过SSH连接远程主机，并使用SFTP协议下载指定文件到本地
-func downloadRemoteFile(ctx context.Context, ip string, remotePath string, localPath string) error {
-	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("同步任务已取消: %w", err)
-	}
-
+// dialSSHWithRetry 带重试的SSH连接，避免启动时多个goroutine同时拨号导致服务端限流
+func dialSSHWithRetry(ip string) (*ssh.Client, error) {
 	sshConfig := &ssh.ClientConfig{
 		User:            "root",
 		Auth:            []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)},
@@ -34,9 +37,27 @@ func downloadRemoteFile(ctx context.Context, ip string, remotePath string, local
 		Timeout:         10 * time.Second,
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), sshConfig)
+	client, err := remote_util.DialWithRetry(fmt.Sprintf("%s:22", ip), sshConfig, 3)
 	if err != nil {
-		return fmt.Errorf("SSH连接失败: %w", err)
+		return nil, fmt.Errorf("SSH连接失败: %w", err)
+	}
+	return client, nil
+}
+
+// initialJitter 返回一个随机延迟，用于错开首次同步时的并发连接
+func initialJitter() time.Duration {
+	return time.Duration(rand.Int63n(int64(initialJitterMax)))
+}
+
+// downloadRemoteFile 通过SSH连接远程主机，并使用SFTP协议下载指定文件到本地
+func downloadRemoteFile(ctx context.Context, ip string, remotePath string, localPath string) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("同步任务已取消: %w", err)
+	}
+
+	client, err := dialSSHWithRetry(ip)
+	if err != nil {
+		return err
 	}
 	defer client.Close()
 
@@ -83,16 +104,9 @@ func downloadRemoteDir(ctx context.Context, ip string, remoteDir string, localDi
 		return fmt.Errorf("同步任务已取消: %w", err)
 	}
 
-	sshConfig := &ssh.ClientConfig{
-		User:            "root",
-		Auth:            []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         10 * time.Second,
-	}
-
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", ip), sshConfig)
+	client, err := dialSSHWithRetry(ip)
 	if err != nil {
-		return fmt.Errorf("SSH连接失败: %w", err)
+		return err
 	}
 	defer client.Close()
 
@@ -216,6 +230,7 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 	ticker := time.NewTicker(time.Duration(fileConfig.PollIntervalSec) * time.Second)
 	defer ticker.Stop()
 
+	time.Sleep(initialJitter())
 	p.syncFile(ctx, fileConfig)
 
 	for {
@@ -249,7 +264,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		return
 	}
 
-	snap, err := instanceMonitor.WaitSnapshot(syncFileTimeout)
+	snap, err := instanceMonitor.WaitSnapshot(waitSnapshotTimeout)
 	if err != nil || !snap.IsValid() || snap.Value != "Running" {
 		p.logger.Info("实例未运行或无法获取状态，跳过")
 		return
@@ -292,6 +307,7 @@ func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopC
 	ticker := time.NewTicker(time.Duration(dirConfig.PollIntervalSec) * time.Second)
 	defer ticker.Stop()
 
+	time.Sleep(initialJitter())
 	p.syncDir(ctx, dirConfig)
 
 	for {
@@ -324,7 +340,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 		return
 	}
 
-	snap, err := instanceMonitor.WaitSnapshot(syncFileTimeout)
+	snap, err := instanceMonitor.WaitSnapshot(waitSnapshotTimeout)
 	if err != nil || !snap.IsValid() || snap.Value != "Running" {
 		p.logger.Info("实例未运行或无法获取状态，跳过目录同步")
 		return
@@ -336,14 +352,14 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 		return
 	}
 
-	syncCtx, cancel := context.WithTimeout(ctx, syncFileTimeout)
+	syncCtx, cancel := context.WithTimeout(ctx, syncDirTimeout)
 	defer cancel()
 
 	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
 
 	if err := downloadRemoteDir(syncCtx, instance.Ip, dirConfig.RemotePath, localFullPath); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
-			p.logger.Error("目录同步超时(%s)", syncFileTimeout)
+			p.logger.Error("目录同步超时(%s)", syncDirTimeout)
 			return
 		}
 		if errors.Is(err, context.Canceled) {

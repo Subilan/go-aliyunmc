@@ -33,6 +33,23 @@ type SSHExecParams struct {
 	OnLine func(string)
 }
 
+// DialWithRetry 带重试的SSH拨号，避免启动时多个goroutine同时拨号导致服务端限流。
+// maxRetries 为最大尝试次数（含首次），退避间隔为 2s, 4s, 8s...
+func DialWithRetry(addr string, config *ssh.ClientConfig, maxRetries int) (*ssh.Client, error) {
+	var lastErr error
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			time.Sleep(time.Duration(1<<(i-1)) * 2 * time.Second)
+		}
+		client, err := ssh.Dial("tcp", addr, config)
+		if err == nil {
+			return client, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
+}
+
 // ExecuteWithStartFn 建立一次SSH会话，调用 startFn 启动远端命令并逐行回传输出。
 func ExecuteWithStartFn(p SSHExecParams, startFn func(*ssh.Session) error) error {
 	if p.Config.ConnectTimeoutSec == 0 {
@@ -54,7 +71,7 @@ func ExecuteWithStartFn(p SSHExecParams, startFn func(*ssh.Session) error) error
 		Timeout:         time.Duration(p.Config.ConnectTimeoutSec) * time.Second,
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", p.IP, p.Port), sshConfig)
+	client, err := DialWithRetry(fmt.Sprintf("%s:%d", p.IP, p.Port), sshConfig, 3)
 	if err != nil {
 		return fmt.Errorf("SSH连接失败(%s): %w", p.IP, err)
 	}
