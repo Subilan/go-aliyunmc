@@ -25,9 +25,7 @@ import (
 type archiveTaskRuntimeConfig struct {
 	TemplatePath string `toml:"template_path" validate:"required"`
 	TimeoutSec   int    `toml:"timeout_sec" validate:"required,min=1"`
-	Vars         struct {
-		OSSRoot string `toml:"oss_root" validate:"required"`
-	} `toml:"vars" validate:"required"`
+	Vars         tasks.ArchiveTemplateVars `toml:"vars" validate:"required"`
 }
 
 type AutoArchiveIdleMonitor struct {
