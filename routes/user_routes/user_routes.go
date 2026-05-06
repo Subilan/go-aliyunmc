@@ -41,6 +41,7 @@ func Bind(router *gin.Engine) {
 			authorized.POST("/whitelist/unbind", h.G(HandleUnbindWhitelist))
 			authorized.GET("/preferences", h.G(HandleGetPreferences))
 			authorized.PUT("/preferences", h.B(HandleSetPreferences))
+			authorized.GET("/permissions", h.G(HandleGetPermissions))
 		}
 	}
 }
