@@ -27,14 +27,11 @@ func TryDialRoot(host string, timeout time.Duration) bool {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // should not be used in prod but whatever...
 	}
 
-	client, err := ssh.Dial("tcp", host+":22", cfg)
-
+	client, err := DialWithRetry(host+":22", cfg, 3)
 	if err != nil {
 		return false
 	}
-
 	client.Close()
-
 	return true
 }
 
