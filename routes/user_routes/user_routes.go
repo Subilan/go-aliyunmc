@@ -47,6 +47,7 @@ func Bind(router *gin.Engine) {
 			gameGroup.Use(mid.Whitelisted())
 			{
 				gameGroup.GET("/advancements", h.G(HandleGetAdvancements))
+					gameGroup.GET("/stats", h.G(HandleGetGameStats))
 			}
 		}
 	}
