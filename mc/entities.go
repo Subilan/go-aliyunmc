@@ -24,7 +24,11 @@ func buildEntities(langEn, langZh map[string]string) {
 
 		entityIdentifier := "minecraft:" + matches[1]
 
-		zhName := langZh[key]
+		zhName, ok := langZh[key]
+
+		if !ok {
+			zhName = value
+		}
 
 		Entities[entityIdentifier] = Entity{
 			enOrZh: enOrZh{

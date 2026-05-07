@@ -9,8 +9,8 @@ import (
 )
 
 type enOrZh struct {
-	EnglishName string
-	ChineseName string
+	EnglishName string `json:"englishName"`
+	ChineseName string `json:"chineseName"`
 }
 
 func init() {

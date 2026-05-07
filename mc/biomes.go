@@ -24,7 +24,11 @@ func buildBiomes(langEn, langZh map[string]string) {
 
 		biomeIdentifier := "minecraft:" + matches[1]
 
-		zhName := langZh[key]
+		zhName, ok := langZh[key]
+
+		if !ok {
+			zhName = value
+		}
 
 		Biomes[biomeIdentifier] = Biome{
 			enOrZh: enOrZh{

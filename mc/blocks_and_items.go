@@ -27,7 +27,10 @@ func buildBlocksAndItems(langEn, langZh map[string]string) {
 
 		blockOrItemIdentifier := "minecraft:" + matches[2]
 
-		zhName := langZh[key]
+		zhName, ok := langZh[key]
+		if !ok {
+			zhName = value
+		}
 
 		BlocksAndItems[blockOrItemIdentifier] = BlockOrItem{
 			enOrZh: enOrZh{
