@@ -36,9 +36,9 @@ func MustBindConfigToml[T any](obj *T, name string) {
 	}
 }
 
-// projectRoot 返回项目根目录的绝对路径，依赖于 go.mod 文件的存在。如果无法找到 go.mod 文件，程序将会终止。
+// ProjectRoot 返回项目根目录的绝对路径，依赖于 go.mod 文件的存在。如果无法找到 go.mod 文件，程序将会终止。
 // 这个函数只能用于开发环境。
-func projectRoot() string {
+func ProjectRoot() string {
 	cwd, err := os.Getwd()
 	if err != nil {
 		log_util.Fatal("无法获取当前工作目录")
@@ -64,7 +64,7 @@ func projectRoot() string {
 func init() {
 	testing := strings.HasSuffix(os.Args[0], ".test")
 	if testing {
-		if err := os.Chdir(projectRoot()); err != nil {
+		if err := os.Chdir(ProjectRoot()); err != nil {
 			log_util.Fatal("切换到项目根目录失败: %v", err)
 		}
 	}
