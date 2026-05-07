@@ -11,9 +11,10 @@ import (
 	"go-aliyunmc/perms"
 	"go-aliyunmc/routes/bss_routes"
 	"go-aliyunmc/routes/instance_routes"
-	"go-aliyunmc/routes/sample_routes"
 	"go-aliyunmc/routes/monitor_routes"
+	"go-aliyunmc/routes/sample_routes"
 	"go-aliyunmc/routes/server_routes"
+	"go-aliyunmc/routes/simple_routes"
 	"go-aliyunmc/routes/state_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
@@ -83,6 +84,9 @@ func main() {
 
 	// 注册财务账单路由
 	bss_routes.Bind(engine)
+
+	// 注册简单数据路由
+	simple_routes.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()

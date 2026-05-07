@@ -54,4 +54,5 @@ func init() {
 	buildBlocksAndItems(langEn, langZh)
 	buildBiomes(langEn, langZh)
 	buildEntities(langEn, langZh)
+	buildStats(langEn, langZh)
 }
