@@ -7,8 +7,10 @@ import (
 	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"go-aliyunmc/mc"
+	"go-aliyunmc/store"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -48,6 +50,7 @@ type GameStatsResponse struct {
 	Playtime            *PlaytimeInfo       `json:"playtime"`
 	AdvancementProgress AdvancementProgress `json:"advancement_progress"`
 	PlayerName          string              `json:"player_name"`
+	OnlineDates         []string            `json:"online_dates"`
 }
 
 func HandleGetGameStats(c *gin.Context) (any, error) {
@@ -86,6 +89,7 @@ func HandleGetGameStats(c *gin.Context) (any, error) {
 		Playtime:            playtime,
 		AdvancementProgress: advProgress,
 		PlayerName:          playerName,
+		OnlineDates:         queryOnlineDates(playerName),
 	}, nil
 }
 
@@ -174,6 +178,23 @@ func lookupPlayerName(uuid string) string {
 		}
 	}
 	return ""
+}
+
+func queryOnlineDates(playerName string) []string {
+	if playerName == "" {
+		return nil
+	}
+
+	var dates []string
+	if err := store.DB.Raw(
+		"SELECT DISTINCT DATE(created_at) AS date FROM player_list_samples WHERE ',' || player_names || ',' LIKE '%,' || ? || ',%' ORDER BY date DESC",
+		playerName,
+	).Pluck("date", &dates).Error; err != nil {
+		return nil
+	}
+
+	sort.Strings(dates)
+	return dates
 }
 
 func queryPlaytime(uuid string) *PlaytimeInfo {
