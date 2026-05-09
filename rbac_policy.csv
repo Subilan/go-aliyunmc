@@ -9,8 +9,8 @@ p, basic, /user/whitelist/unbind, POST
 p, basic, /user/preferences, GET
 p, basic, /user/preferences, PUT
 p, basic, /user/permissions, GET
-p, basic, /user/game/advancements, GET
-p, basic, /user/game/stats, GET
+p, basic, /server/advancements/:uuid, GET
+p, basic, /server/stats/:uuid, GET
 p, basic, /task, GET
 p, basic, /task/:id, GET
 p, basic, /task/definition/:taskType, GET
@@ -28,6 +28,7 @@ p, basic, /samples/player-list-history, GET
 p, basic, /samples/account-balance-history, GET
 p, basic, /server/query, GET
 p, basic, /server/leaderboard, GET
+p, basic, /server/player-list, GET
 p, operator, /server/stop, GET
 p, operator, /server/data, GET
 p, operator, /instance/active, DELETE

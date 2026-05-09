@@ -1,4 +1,4 @@
-package user_routes
+package server_routes
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
 	"go-aliyunmc/mc"
+	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"net/http"
 	"os"
 	"regexp"
@@ -30,13 +32,28 @@ type AdvancementEntry struct {
 var advancementKeyRe = regexp.MustCompile(`minecraft:(adventure|story|end|nether|husbandry).*`)
 
 func HandleGetAdvancements(c *gin.Context) (any, error) {
-	user, exists := context_util.GetUser(c)
-	if !exists {
-		return nil, h.HttpError(http.StatusUnauthorized, "未登录")
+	uuid := c.Param("uuid")
+	if uuid == "" {
+		return nil, h.HttpError(http.StatusBadRequest, "缺少玩家UUID参数")
 	}
 
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", advancementsDir, *user.WhitelistUUID))
+	// Check privacy
+	var owner models.User
+	if err := store.DB.Where("whitelist_uuid = ?", uuid).First(&owner).Error; err == nil {
+		currentUser, _ := context_util.GetUser(c)
+		if currentUser != nil && currentUser.ID != owner.ID {
+			prefs, err := store.GetUserPreferences(owner.ID)
+			if err == nil && prefs.DisallowPublicGameStats {
+				return nil, h.HttpError(http.StatusForbidden, "该玩家不允许其他人查看游戏统计")
+			}
+		}
+	}
+
+	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", advancementsDir, uuid))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, h.HttpError(http.StatusNotFound, "未找到该玩家的成就数据")
+		}
 		return nil, fmt.Errorf("读取成就数据失败: %w", err)
 	}
 
