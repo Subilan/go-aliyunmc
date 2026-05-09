@@ -150,3 +150,4 @@ The file-sync monitor (`monitors/file_sync.go`) periodically downloads files fro
 - Tests that rely on `store.DB` must run from the project root (handled by `utils.init()` which detects `go test` and chdirs).
 - Script templates use `{{.VarName}}` Go template syntax and live under `scripts/`.
 - DB unique constraints are preferred over application-level checks for enforcing uniqueness (e.g. `WhitelistUUID` unique index).
+- Every newly-created or just-updated API route should be configured correctly in `rbac_policy.csv` to prevent access control issues.
