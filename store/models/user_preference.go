@@ -15,12 +15,14 @@ type UserPreference struct {
 
 // Preferences 用户偏好项（类型安全）
 type Preferences struct {
-	LeaderboardOptIn bool `json:"leaderboard_opt_in"`
+	LeaderboardOptIn          bool `json:"leaderboard_opt_in"`
+	DisallowPublicGameStats   bool `json:"disallow_public_game_stats"`
 }
 
 // DefaultPreferences 默认偏好设置
 var DefaultPreferences = Preferences{
-	LeaderboardOptIn: true,
+	LeaderboardOptIn:        true,
+	DisallowPublicGameStats: false,
 }
 
 // ParsePreferences 从 JSON 字符串解析偏好，用默认值填充零值字段
