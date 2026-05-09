@@ -42,13 +42,6 @@ func Bind(router *gin.Engine) {
 			authorized.GET("/preferences", h.G(HandleGetPreferences))
 			authorized.PUT("/preferences", h.B(HandleSetPreferences))
 			authorized.GET("/permissions", h.G(HandleGetPermissions))
-
-			gameGroup := authorized.Group("/game")
-			gameGroup.Use(mid.Whitelisted())
-			{
-				gameGroup.GET("/advancements", h.G(HandleGetAdvancements))
-					gameGroup.GET("/stats", h.G(HandleGetGameStats))
 			}
-		}
 	}
 }

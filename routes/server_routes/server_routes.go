@@ -16,5 +16,13 @@ func Bind(engine *gin.Engine) {
 		serverGroup.GET("/data", h.G(HandleGetData))
 		serverGroup.GET("/query", h.G(HandleQueryServer))
 		serverGroup.GET("/leaderboard", h.Q(HandleLeaderboard))
+
+		gameGroup := serverGroup.Group("")
+		gameGroup.Use(mid.Whitelisted())
+		{
+			gameGroup.GET("/stats/:uuid", h.G(HandleGetStats))
+			gameGroup.GET("/advancements/:uuid", h.G(HandleGetAdvancements))
+			gameGroup.GET("/player-list", h.G(HandleGetPlayerList))
+		}
 	}
 }

@@ -80,16 +80,18 @@ func LookupPlayerName(uuid string) string {
 // ReadStats reads the raw Minecraft stats JSON for a player
 func ReadStats(uuid string) (json.RawMessage, error) {
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", StatsDir, uuid))
+
 	if err != nil {
-		return nil, fmt.Errorf("读取玩家统计数据失败: %w", err)
+		return nil, err
 	}
 
 	var wrapper struct {
 		Stats       json.RawMessage `json:"stats"`
 		DataVersion int             `json:"DataVersion"`
 	}
+
 	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return nil, fmt.Errorf("解析玩家统计数据失败: %w", err)
+		return nil, err
 	}
 
 	return wrapper.Stats, nil
