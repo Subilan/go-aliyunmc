@@ -29,6 +29,7 @@ p, basic, /samples/account-balance-history, GET
 p, basic, /server/query, GET
 p, basic, /server/leaderboard, GET
 p, basic, /server/player-list, GET
+p, basic, /server/ip, GET
 p, operator, /server/stop, GET
 p, operator, /server/data, GET
 p, operator, /instance/active, DELETE
