@@ -19,6 +19,7 @@ const (
 	MetricDistance          MetricType = "distance"
 	MetricMobKills          MetricType = "mob_kills"
 	MetricBlocksMined       MetricType = "blocks_mined"
+	MetricAvgMoveDistance   MetricType = "avg_move_distance"
 )
 
 var validMetrics = map[string]bool{
@@ -28,6 +29,7 @@ var validMetrics = map[string]bool{
 	"distance":           true,
 	"mob_kills":          true,
 	"blocks_mined":       true,
+	"avg_move_distance":  true,
 }
 
 // Entry represents a single player's ranking entry
@@ -142,6 +144,8 @@ func computeMetric(uuid string, metric string) (float64, bool) {
 		return computeMobKills(uuid)
 	case "blocks_mined":
 		return computeBlocksMined(uuid)
+	case "avg_move_distance":
+		return computeAvgMoveDistance(uuid)
 	}
 	return 0, false
 }
@@ -224,4 +228,34 @@ func computeBlocksMined(uuid string) (float64, bool) {
 		total += val
 	}
 	return total, true
+}
+
+func computeAvgMoveDistance(uuid string) (float64, bool) {
+	playtime, err := playerdata.ReadMinecraftPlaytime(uuid)
+	if err != nil || playtime == 0 {
+		return 0, false
+	}
+
+	stats, err := playerdata.ReadStats(uuid)
+	if err != nil {
+		return 0, false
+	}
+
+	var data struct {
+		Custom map[string]float64 `json:"minecraft:custom"`
+	}
+	if err := json.Unmarshal(stats, &data); err != nil {
+		return 0, false
+	}
+
+	var totalCm float64
+	for key, val := range data.Custom {
+		if strings.HasSuffix(key, "_cm") {
+			totalCm += val
+		}
+	}
+
+	distanceKm := totalCm / 100000
+	playtimeHours := playtime / 3600
+	return distanceKm / float64(playtimeHours), true
 }
