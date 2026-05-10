@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	golang.org/x/time v0.4.0 // indirect
 )

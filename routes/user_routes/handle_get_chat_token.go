@@ -1,0 +1,41 @@
+package user_routes
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+
+	"go-aliyunmc/context_util"
+	"go-aliyunmc/h"
+	"go-aliyunmc/playerdata"
+
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
+)
+
+func HandleGetChatToken(c *gin.Context) (any, error) {
+	user, exists := context_util.GetUser(c)
+	if !exists {
+		return nil, h.HttpError(http.StatusNotFound, "用户信息不存在")
+	}
+
+	gameName := playerdata.LookupPlayerName(*user.WhitelistUUID)
+
+	if gameName == "" {
+		return nil, h.HttpError(http.StatusNotFound, "找不到玩家名称")
+	}
+
+	claims := jwt.MapClaims{
+		"uuid": user.WhitelistUUID,
+		"playername": gameName,
+		"exp":  time.Now().Add(time.Duration(C.ChatToken.ExpireSeconds) * time.Second).Unix(),
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(C.ChatToken.Secret))
+	if err != nil {
+		return nil, fmt.Errorf("生成聊天令牌失败：%v", err)
+	}
+
+	return gin.H{"token": tokenString, "playername": gameName}, nil
+}
