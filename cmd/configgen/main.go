@@ -7,6 +7,7 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/perms"
+	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/server"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
@@ -258,6 +259,18 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/sampler-player-count.toml", playerListSamplerConfig); err != nil {
 		fmt.Printf("Error writing sampler-player-count.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	userRoutesConfig := user_routes.Config{
+		ChatToken: user_routes.ChatTokenConfig{
+			Secret:        "your-chat-token-secret-here",
+			ExpireSeconds: 3600,
+		},
+	}
+
+	if err := writeConfigFile(configDir+"/user-routes.toml", userRoutesConfig); err != nil {
+		fmt.Printf("Error writing user-routes.toml: %v\n", err)
 		os.Exit(1)
 	}
 
