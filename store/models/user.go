@@ -18,4 +18,6 @@ type User struct {
 	Role perms.Role `gorm:"default:''" json:"role"`
 	// WhitelistUUID 是绑定的白名单项目UUID，一对一关系
 	WhitelistUUID *string `gorm:"uniqueIndex:idx_whitelist_uuid" json:"whitelist_uuid,omitempty"`
+	// LikedChangelogs 是用户点赞过的 changelog
+	LikedChangelogs []Changelog `gorm:"many2many:changelog_likes;" json:"-"`
 }

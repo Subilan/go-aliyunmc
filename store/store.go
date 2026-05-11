@@ -60,5 +60,6 @@ func AutoMigrate() {
 		&models.PlayerListSample{},
 		&models.BalanceSample{},
 		&models.UserPreference{},
+		&models.Changelog{},
 	)
 }
