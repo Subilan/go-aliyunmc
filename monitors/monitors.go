@@ -7,8 +7,8 @@ import (
 	"sync"
 )
 
-var emptyValueError = fmt.Errorf("值为空")
-var missingTargetError = fmt.Errorf("目标不存在")
+var emptyValueError = fmt.Errorf("empty_value")
+var missingTargetError = fmt.Errorf("missing_target")
 
 var (
 	serverMonitor           *ServerStatusMonitor
