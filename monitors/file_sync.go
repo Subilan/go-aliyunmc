@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"go-aliyunmc/aliyun"
-	"go-aliyunmc/global_states"
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
+	"go-aliyunmc/tasks"
 	"io"
 	"math/rand"
 	"os"
@@ -247,8 +247,8 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 
 // syncFile 执行单次文件同步
 func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
-	if global_states.IsArchiving() {
-		p.logger.Info("自动回收流程正在执行，跳过文件同步")
+	if tasks.IsArchiveTaskRunning() {
+		p.logger.Info("归档流程正在执行，跳过文件同步")
 		return
 	}
 	// 获取实例
@@ -324,7 +324,7 @@ func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopC
 
 // syncDir 执行单次目录同步
 func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
-	if global_states.IsArchiving() {
+	if tasks.IsArchiveTaskRunning() {
 		p.logger.Info("自动回收流程正在执行，跳过目录同步")
 		return
 	}

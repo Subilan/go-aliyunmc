@@ -87,7 +87,6 @@ func (e *Executor) Unsubscribe(client *sse.Client) {
 //   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
 //   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
 func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) {
-	/** 初始化阶段，此阶段发生的错误被认为是 earlyExit **/
 	if e.taskDefinition.Exclusive {
 		if _, ok := GetExclusiveExecutor(e.taskDefinition.Type); ok {
 			return nil, ErrTaskTypeExecuting

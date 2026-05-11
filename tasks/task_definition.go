@@ -63,7 +63,7 @@ func init() {
 	}
 
 	TaskDefinitions[models.TaskTypeDeploy] = &TaskDefinition{
-		Exclusive: DeployC.Exclusive,
+		Exclusive: true,
 		Type:      models.TaskTypeDeploy,
 		Timeout:   0, // 不设置超时，由任务内部逻辑控制
 		F:         deployTask,
@@ -80,7 +80,7 @@ func init() {
 	}
 
 	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
-		Exclusive: ArchiveC.Exclusive,
+		Exclusive: true,
 		Type:      models.TaskTypeArchive,
 		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
 		F:         archiveTask,
