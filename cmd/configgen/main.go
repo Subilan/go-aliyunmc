@@ -151,7 +151,6 @@ func main() {
 	}
 
 	deployTaskConfig := tasks.DeployTaskConfig{
-		Exclusive: true,
 		Vars: tasks.DeployTemplateVars{
 			SSHPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
 			JavaVersion:    21,
@@ -175,7 +174,6 @@ func main() {
 	archiveTaskConfig := tasks.ArchiveTaskConfig{
 		TemplatePath: "scripts/archive.tmpl.sh",
 		TimeoutSec:   1800,
-		Exclusive:    true,
 		Vars: tasks.ArchiveTemplateVars{
 			OSSRoot:          "oss://your-bucket",
 			ArchiveName:      "archive",

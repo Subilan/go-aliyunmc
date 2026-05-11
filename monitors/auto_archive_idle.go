@@ -9,24 +9,16 @@ import (
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/global_states"
 	"go-aliyunmc/log_util"
-	"go-aliyunmc/remote_util"
 	"go-aliyunmc/server"
 	"go-aliyunmc/states"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
-	"go-aliyunmc/utils"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
 	"gorm.io/gorm"
 )
-
-type archiveTaskRuntimeConfig struct {
-	TemplatePath string `toml:"template_path" validate:"required"`
-	TimeoutSec   int    `toml:"timeout_sec" validate:"required,min=1"`
-	Vars         tasks.ArchiveTemplateVars `toml:"vars" validate:"required"`
-}
 
 type AutoArchiveIdleMonitor struct {
 	enabled               bool
@@ -34,13 +26,10 @@ type AutoArchiveIdleMonitor struct {
 	stopWaitTimeout       time.Duration
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
-	archiveCfg            archiveTaskRuntimeConfig
 	logger                *log_util.NamedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
-	archiveCfg := archiveTaskRuntimeConfig{}
-	utils.MustBindConfigToml(&archiveCfg, "task-archive")
 	logger := log_util.NewNamedLogger("[monitor/auto-archive-idle] ", "auto-archive-idle-monitor")
 
 	return &AutoArchiveIdleMonitor{
@@ -49,7 +38,6 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 		stopWaitTimeout:       time.Duration(AutoArchiveIdleC.StopWaitTimeoutSec) * time.Second,
 		offlineCheckInterval:  time.Duration(AutoArchiveIdleC.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: AutoArchiveIdleC.DeleteIgnoreNonExistent,
-		archiveCfg:            archiveCfg,
 		logger:                logger,
 	}
 }
@@ -66,8 +54,6 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		countdownC     <-chan time.Time
 		running        bool
 	)
-
-	doneCh := make(chan error, 1)
 
 	cancelCountdown := func(reason string) {
 		if countdownTimer == nil {
@@ -131,6 +117,8 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		m.logger.Info("无法获取服务器状态快照，直接进入监听循环")
 	}
 
+	doneCh := make(chan error, 1)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -150,40 +138,11 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 				continue
 			}
 			running = true
-
 			m.logger.Info("倒计时结束，开始执行归档流程")
-			if global_states.IsArchiving() {
-				m.logger.Info("检测到已有归档流程在进行，将尝试使用此次运行结果")
-				go func() {
-					executor, _ := tasks.GetExclusiveExecutor(models.TaskTypeArchive)
-
-					select {
-					case err, ok := <-executor.Wait():
-						if !ok {
-							err = nil
-						}
-						select {
-						case doneCh <- err:
-						default:
-						}
-					case <-ctx.Done():
-						select {
-						case doneCh <- ctx.Err():
-						default:
-						}
-					}
-				}()
-			} else {
-				global_states.SetArchiving(true)
-				go func() {
-					defer global_states.SetArchiving(false)
-					err := m.executeArchivePipeline(ctx)
-					select {
-					case doneCh <- err:
-					default:
-					}
-				}()
-			}
+			go func() {
+				err := m.executeArchivePipeline(ctx)
+				doneCh <- err
+			}()
 		case err := <-doneCh:
 			running = false
 			if err != nil {
@@ -215,29 +174,40 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 
 	snap := serverMonitor.Snapshot()
 	if snap.IsValid() && snap.Value.Online {
-		m.logger.Info("stop_sent")
+		m.logger.Info("已请求关闭服务器")
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
 		}
 		if err := m.waitServerOffline(ctx); err != nil {
 			return err
 		}
-		m.logger.Info("offline_confirmed")
+		m.logger.Info("服务器已关闭")
 	} else {
-		m.logger.Info("skip stop: already offline or status unavailable")
+		m.logger.Info("服务器离线，跳过关闭步骤")
 	}
 
-	if err := m.runArchiveTask(ctx); err != nil {
-		return err
+	exec, _, err := tasks.TriggerTaskSystem(models.TaskTypeArchive, nil)
+	if err != nil {
+		return fmt.Errorf("trigger archive task failed: %w", err)
 	}
 
-	m.logger.Info("archive_done")
+	select {
+	case err := <-exec.Wait():
+		if err != nil {
+			return fmt.Errorf("archive task failed: %w", err)
+		}
+	case <-ctx.Done():
+		exec.Interrupt()
+		return ctx.Err()
+	}
+
+	m.logger.Info("归档成功")
 
 	if err := m.deleteActiveInstance(); err != nil {
 		return err
 	}
 
-	m.logger.Info("delete_done")
+	m.logger.Info("实例删除成功")
 	return nil
 }
 
@@ -272,36 +242,6 @@ func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
 			}
 		}
 	}
-}
-
-// runArchiveTask 执行归档任务。
-func (m *AutoArchiveIdleMonitor) runArchiveTask(ctx context.Context) error {
-	instance, err := store.GetActiveInstanceDefaultNil()
-	if err != nil {
-		return err
-	}
-	if instance == nil {
-		return fmt.Errorf("active instance not found before archive")
-	}
-	if instance.Ip == "" {
-		return fmt.Errorf("active instance ip is empty before archive")
-	}
-
-	script, err := remote_util.RenderScriptTemplate(m.archiveCfg.TemplatePath, m.archiveCfg.Vars)
-
-	if err != nil {
-		return err
-	}
-
-	m.logger.Info("archive_started")
-	archiveCtx, cancel := context.WithTimeout(ctx, time.Duration(m.archiveCfg.TimeoutSec)*time.Second)
-	defer cancel()
-
-	if err := remote_util.ExecuteScriptRemote(script, instance.Ip, archiveCtx, nil, true); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // deleteActiveInstance 删除当前的活跃实例记录，并尝试删除对应的云服务器实例。如果配置了 ignoreMissingOnDelete，则在数据库记录不存在时不返回错误。

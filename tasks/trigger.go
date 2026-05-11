@@ -1,6 +1,8 @@
 package tasks
 
-import "go-aliyunmc/store/models"
+import (
+	"go-aliyunmc/store/models"
+)
 
 // getTaskDefinitionAndCheck 用于获取任务定义并执行对权限、参数的检查。user为nil时表示系统。
 func getTaskDefinitionAndCheck(user *models.User, taskType models.TaskType, args map[string]any) (*TaskDefinition, error) {
@@ -54,6 +56,16 @@ func TriggerTask(taskType models.TaskType, user *models.User, args map[string]an
 	}
 
 	return executor, task, nil
+}
+
+// TriggerTaskSystem 以系统身份触发任务。
+func TriggerTaskSystem(taskType models.TaskType, args map[string]any) (*Executor, *models.Task, error) {
+	return TriggerTask(taskType, nil, args)
+}
+
+// TriggerTaskSystemSync 与 TriggerTaskSystem 类似，但阻塞到任务结束。
+func TriggerTaskSystemSync(taskType models.TaskType, args map[string]any) (*models.Task, error) {
+	return TriggerTaskSync(taskType, nil, args)
 }
 
 // TriggerTaskSync 与 TriggerTask 类似，但会阻塞到任务结束。user 可以为 nil 表示系统。

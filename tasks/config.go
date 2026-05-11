@@ -10,7 +10,6 @@ type DeployTemplateVars struct {
 }
 
 type DeployTaskConfig struct {
-	Exclusive bool               `toml:"exclusive" comment:"是否同类互斥执行"`
 	Vars      DeployTemplateVars `toml:"vars" validate:"required" comment:"部署脚本模板变量"`
 }
 
@@ -37,7 +36,6 @@ type ArchiveTemplateVars struct {
 type ArchiveTaskConfig struct {
 	TemplatePath string              `toml:"template_path" validate:"required" comment:"归档脚本模板路径"`
 	TimeoutSec   int                 `toml:"timeout_sec" validate:"required,min=1" comment:"任务超时时间（秒）"`
-	Exclusive    bool                `toml:"exclusive" comment:"是否同类互斥执行"`
 	Vars         ArchiveTemplateVars `toml:"vars" validate:"required" comment:"归档脚本模板变量"`
 }
 
