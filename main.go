@@ -10,6 +10,7 @@ import (
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/perms"
 	"go-aliyunmc/routes/bss_routes"
+	"go-aliyunmc/routes/changelog_routes"
 	"go-aliyunmc/routes/instance_routes"
 	"go-aliyunmc/routes/monitor_routes"
 	"go-aliyunmc/routes/sample_routes"
@@ -84,6 +85,9 @@ func main() {
 
 	// 注册财务账单路由
 	bss_routes.Bind(engine)
+
+	// 注册更新日志路由
+	changelog_routes.Bind(engine)
 
 	// 注册简单数据路由
 	simple_routes.Bind(engine)
