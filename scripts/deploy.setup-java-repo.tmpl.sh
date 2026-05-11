@@ -3,6 +3,11 @@ set -euo pipefail
 export MAN_DISABLE_CACHE=yes
 export DEBIAN_FRONTEND=noninteractive
 
+if [ -f /etc/apt/sources.list.d/adoptium.list ] && [ -f /etc/apt/keyrings/adoptium.asc ]; then
+  echo "Adoptium Java 源已配置，跳过"
+  exit 0
+fi
+
 echo "配置 Adoptium Java 源"
 
 # https://mirrors.tuna.tsinghua.edu.cn/help/Adoptium/

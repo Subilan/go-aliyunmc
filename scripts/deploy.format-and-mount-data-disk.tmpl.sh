@@ -4,11 +4,17 @@ set -euo pipefail
 USERNAME="{{ .Username }}"
 USER_HOME="/home/${USERNAME}"
 
+DATA_DISK_MOUNT_POINT="${USER_HOME}/server"
+
+if mountpoint -q "${DATA_DISK_MOUNT_POINT}" 2>/dev/null; then
+  echo "数据盘已挂载，跳过"
+  exit 0
+fi
+
 echo "格式化并挂载数据盘"
 
 DATA_DISK_SIZE="{{ .DataDiskSize }} GiB"
 DATA_DISK=$(fdisk -l | grep "${DATA_DISK_SIZE}" | head -n 1 | awk '{print $2}' | sed 's/://')
-DATA_DISK_MOUNT_POINT="${USER_HOME}/server"
 
 mkdir -p "${DATA_DISK_MOUNT_POINT}"
 mkfs.ext4 "$DATA_DISK"
