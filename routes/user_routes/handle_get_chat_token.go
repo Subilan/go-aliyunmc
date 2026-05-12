@@ -7,6 +7,7 @@ import (
 
 	"go-aliyunmc/context_util"
 	"go-aliyunmc/h"
+	"go-aliyunmc/monitors"
 	"go-aliyunmc/playerdata"
 
 	"github.com/gin-gonic/gin"
@@ -15,8 +16,19 @@ import (
 
 func HandleGetChatToken(c *gin.Context) (any, error) {
 	user, exists := context_util.GetUser(c)
+
 	if !exists {
 		return nil, h.HttpError(http.StatusNotFound, "用户信息不存在")
+	}
+	
+	serverStatus := monitors.GetServerStatusMonitor().Snapshot()
+
+	if serverStatus.Error != nil {
+		return nil, h.HttpError(http.StatusInternalServerError, "无法获取服务器状态")
+	}
+
+	if !serverStatus.Value.Online {
+		return nil, h.HttpError(http.StatusBadRequest, "服务器当前离线，请稍候再试")
 	}
 
 	gameName := playerdata.LookupPlayerName(*user.WhitelistUUID)
