@@ -10,6 +10,7 @@ func Logout(c *gin.Context) error {
 	session := sessions.Default(c)
 	session.Clear()
 	session.Options(sessions.Options{
+		Path:   "/",
 		MaxAge: 0,
 	})
 

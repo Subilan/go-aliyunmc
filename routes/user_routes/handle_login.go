@@ -40,10 +40,12 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 	// 如果选择"记住我"，设置session过期时间为7天
 	if req.Remember {
 		session.Options(sessions.Options{
+			Path:   "/",
 			MaxAge: 7 * 24 * 60 * 60, // 7天
 		})
 	} else {
 		session.Options(sessions.Options{
+			Path:   "/",
 			MaxAge: 3600, // 1小时
 		})
 	}
