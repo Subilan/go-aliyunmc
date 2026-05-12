@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go-aliyunmc/perms"
+	"go-aliyunmc/session"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
@@ -14,8 +15,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,33 +35,30 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setupTaskRouter() *gin.Engine {
+func setupTaskRouter() http.Handler {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-
-	sessionStore := cookie.NewStore([]byte("task-routes-test-secret"))
-	router.Use(sessions.Sessions("session", sessionStore))
 
 	// 测试辅助路由：将 user_id 写入 session，便于通过 Auth 中间件。
 	router.GET("/_test/login/:id", func(c *gin.Context) {
 		var uid uint
 		_, _ = fmt.Sscanf(c.Param("id"), "%d", &uid)
-		s := sessions.Default(c)
-		s.Set("user_id", uid)
-		_ = s.Save()
+		session.Set(c, session.KeyUserId, uid)
 		c.Status(http.StatusNoContent)
 	})
 
 	Bind(router)
-	return router
+	return session.LoadAndSave(router)
 }
 
 func createTestUser(t *testing.T, username string) models.User {
 	t.Helper()
+	whitelistUUID := fmt.Sprintf("wl-%s", username)
 	user := models.User{
 		Username:     username,
 		PasswordHash: "hash",
 		Role:         perms.RoleBasic,
+		WhitelistUUID: &whitelistUUID,
 	}
 	if err := store.DB.Create(&user).Error; err != nil {
 		t.Fatalf("create user failed: %v", err)
@@ -70,11 +66,11 @@ func createTestUser(t *testing.T, username string) models.User {
 	return user
 }
 
-func loginCookie(t *testing.T, router *gin.Engine, userID uint) *http.Cookie {
+func loginCookie(t *testing.T, handler http.Handler, userID uint) *http.Cookie {
 	t.Helper()
 	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/_test/login/%d", userID), nil)
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("login helper failed: status=%d", w.Code)
 	}
@@ -87,7 +83,7 @@ func loginCookie(t *testing.T, router *gin.Engine, userID uint) *http.Cookie {
 	return nil
 }
 
-func postTrigger(t *testing.T, router *gin.Engine, cookie *http.Cookie, taskType string) *httptest.ResponseRecorder {
+func postTrigger(t *testing.T, handler http.Handler, cookie *http.Cookie, taskType string) *httptest.ResponseRecorder {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"type": taskType})
 	req, _ := http.NewRequest(http.MethodPost, "/task/trigger", bytes.NewBuffer(body))
@@ -96,7 +92,7 @@ func postTrigger(t *testing.T, router *gin.Engine, cookie *http.Cookie, taskType
 		req.AddCookie(cookie)
 	}
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 	return w
 }
 
@@ -113,30 +109,30 @@ func cleanupExecutor(taskID uint) {
 }
 
 func TestHandleTriggerTaskExecution_Unauthorized(t *testing.T) {
-	router := setupTaskRouter()
-	w := postTrigger(t, router, nil, string(models.TaskTypeTest))
+	handler := setupTaskRouter()
+	w := postTrigger(t, handler, nil, string(models.TaskTypeTest))
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected %d, got %d", http.StatusUnauthorized, w.Code)
 	}
 }
 
 func TestHandleTriggerTaskExecution_InvalidType(t *testing.T) {
-	router := setupTaskRouter()
+	handler := setupTaskRouter()
 	user := createTestUser(t, fmt.Sprintf("task_user_invalid_%d", time.Now().UnixNano()))
-	cookie := loginCookie(t, router, user.ID)
+	cookie := loginCookie(t, handler, user.ID)
 
-	w := postTrigger(t, router, cookie, "not_exist_type")
+	w := postTrigger(t, handler, cookie, "not_exist_type")
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("expected %d, got %d, body=%s", http.StatusNotFound, w.Code, w.Body.String())
 	}
 }
 
 func TestTaskRoutes_TriggerThenGetTask(t *testing.T) {
-	router := setupTaskRouter()
+	handler := setupTaskRouter()
 	user := createTestUser(t, fmt.Sprintf("task_user_ok_%d", time.Now().UnixNano()))
-	cookie := loginCookie(t, router, user.ID)
+	cookie := loginCookie(t, handler, user.ID)
 
-	triggerResp := postTrigger(t, router, cookie, string(models.TaskTypeTest))
+	triggerResp := postTrigger(t, handler, cookie, string(models.TaskTypeTest))
 	if triggerResp.Code != http.StatusOK {
 		t.Fatalf("trigger expected %d, got %d, body=%s", http.StatusOK, triggerResp.Code, triggerResp.Body.String())
 	}
@@ -157,21 +153,21 @@ func TestTaskRoutes_TriggerThenGetTask(t *testing.T) {
 	getReq, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/task/%d", payload.Data.ID), nil)
 	getReq.AddCookie(cookie)
 	getResp := httptest.NewRecorder()
-	router.ServeHTTP(getResp, getReq)
+	handler.ServeHTTP(getResp, getReq)
 	if getResp.Code != http.StatusOK {
 		t.Fatalf("get task expected %d, got %d, body=%s", http.StatusOK, getResp.Code, getResp.Body.String())
 	}
 }
 
 func TestHandleGetTaskOutput_NotFoundExecutor(t *testing.T) {
-	router := setupTaskRouter()
+	handler := setupTaskRouter()
 	user := createTestUser(t, fmt.Sprintf("task_user_output_%d", time.Now().UnixNano()))
-	cookie := loginCookie(t, router, user.ID)
+	cookie := loginCookie(t, handler, user.ID)
 
 	req, _ := http.NewRequest(http.MethodGet, "/task/999999/output", nil)
 	req.AddCookie(cookie)
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d, body=%s", http.StatusBadRequest, w.Code, w.Body.String())
@@ -179,9 +175,9 @@ func TestHandleGetTaskOutput_NotFoundExecutor(t *testing.T) {
 }
 
 func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
-	router := setupTaskRouter()
+	handler := setupTaskRouter()
 	user := createTestUser(t, fmt.Sprintf("task_user_exclusive_%d", time.Now().UnixNano()))
-	cookie := loginCookie(t, router, user.ID)
+	cookie := loginCookie(t, handler, user.ID)
 
 	taskType := models.TaskType(fmt.Sprintf("exclusive_test_%d", time.Now().UnixNano()))
 	release := make(chan struct{})
@@ -202,7 +198,7 @@ func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
 	}
 	defer delete(tasks.TaskDefinitions, taskType)
 
-	first := postTrigger(t, router, cookie, string(taskType))
+	first := postTrigger(t, handler, cookie, string(taskType))
 	if first.Code != http.StatusOK {
 		t.Fatalf("first trigger expected %d, got %d, body=%s", http.StatusOK, first.Code, first.Body.String())
 	}
@@ -224,7 +220,7 @@ func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
 		cleanupExecutor(payload.Data.ID)
 	}()
 
-	second := postTrigger(t, router, cookie, string(taskType))
+	second := postTrigger(t, handler, cookie, string(taskType))
 	if second.Code != http.StatusConflict {
 		t.Fatalf("second trigger expected %d for exclusive lock, got %d, body=%s", http.StatusConflict, second.Code, second.Body.String())
 	}

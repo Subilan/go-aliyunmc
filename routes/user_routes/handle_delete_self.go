@@ -22,10 +22,8 @@ func HandleDeleteSelf(c *gin.Context) (any, error) {
 	if err := store.DB.Delete(&currentUser).Error; err != nil {
 		return nil, err
 	}
-
-	if err := context_util.Logout(c); err != nil {
-		return nil, err
-	}
+	
+	context_util.Logout(c)
 
 	return nil, nil
 }

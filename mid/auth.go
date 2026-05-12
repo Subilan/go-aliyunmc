@@ -2,11 +2,11 @@ package mid
 
 import (
 	"go-aliyunmc/env"
+	"go-aliyunmc/session"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -28,8 +28,7 @@ func Auth() gin.HandlerFunc {
 		}
 
 		// 从session中获取用户信息
-		session := sessions.Default(c)
-		userID, exists := session.Get("user_id").(uint)
+		userID, exists := session.GetUserID(c)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "未登录"})
 			c.Abort()

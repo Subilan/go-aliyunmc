@@ -12,7 +12,7 @@ build:
 
 # 运行项目
 dev:
-	@GO_ALIYUNMC_DEV=1 go run .
+	@GO_ALIYUNMC_DEV=1 go run . run
 
 run:
-	@go run .
+	@go run . run

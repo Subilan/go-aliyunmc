@@ -1,14 +1,14 @@
 package user_routes
 
 import (
-	"go-aliyunmc/env"
 	"go-aliyunmc/h"
-	"go-aliyunmc/log_util"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
+	"time"
 
-	"github.com/gin-contrib/sessions"
+	"go-aliyunmc/session"
+
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,8 +16,7 @@ import (
 // HandleLogin 用户登录处理函数
 func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 	// 检查是否已登录，防止重复登录
-	session := sessions.Default(c)
-	if _, exists := session.Get("user_id").(uint); exists {
+	if _, exists := session.GetUserID(c); exists {
 		return nil, h.HttpError(http.StatusBadRequest, "你已经登录了")
 	}
 
@@ -32,32 +31,12 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusUnauthorized, "用户名或密码错误")
 	}
 
-	// 清除旧session并设置新值，防止session固定攻击
-	session.Clear()
-	session.Set("user_id", user.ID)
-	session.Set("username", user.Username)
+	session.Set(c, session.KeyUserId, user.ID)
+	session.Set(c, session.KeyUsername, user.Username)
 
-	// 如果选择"记住我"，设置session过期时间为7天
 	if req.Remember {
-		session.Options(sessions.Options{
-			Path:   "/",
-			MaxAge: 7 * 24 * 60 * 60, // 7天
-		})
-	} else {
-		session.Options(sessions.Options{
-			Path:   "/",
-			MaxAge: 3600, // 1小时
-		})
+		session.SetDeadline(c, 7*24*time.Hour)
 	}
 
-	if err := session.Save(); err != nil {
-		return nil, err
-	}
-
-	// 在DEV模式下输出登录信息
-	if env.DEV {
-		log_util.Debug("用户登录: ID=%d, 用户名=%s, 角色=%s, 记住我=%v",
-			user.ID, user.Username, user.Role, req.Remember)
-	}
 	return nil, nil
 }
