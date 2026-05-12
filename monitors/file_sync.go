@@ -90,37 +90,37 @@ func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, st
 	}
 }
 
-// syncFile 执行单次文件同步
-func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
+// syncTarget 执行同步前置检查，返回实例 IP；不满足条件时返回空字符串。
+func (p *FileSyncPoller) syncTarget(name string) string {
 	if tasks.IsArchiveTaskRunning() {
-		p.logger.Info("归档流程正在执行，跳过文件同步")
-		return
+		p.logger.Info("归档流程正在执行，跳过%s同步", name)
+		return ""
 	}
-	// 获取实例
 	instance, err := store.GetActiveInstance()
-
 	if err != nil {
-		p.logger.Info("无法获取实例，跳过")
-		return
+		p.logger.Info("无法获取实例，跳过%s同步", name)
+		return ""
 	}
-
 	if !instance.IsDeployed {
-		p.logger.Info("实例未部署，跳过")
-		return
+		p.logger.Info("实例未部署，跳过%s同步", name)
+		return ""
 	}
-
 	snap, err := instanceMonitor.WaitSnapshot(waitSnapshotTimeout)
 	if err != nil || !snap.IsValid() || snap.Value != "Running" {
-		p.logger.Info("实例未运行或无法获取状态，跳过")
+		p.logger.Info("实例未运行或无法获取状态，跳过%s同步", name)
+		return ""
+	}
+	return instance.Ip
+}
+
+// syncFile 执行单次文件同步
+func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
+	ip := p.syncTarget("文件")
+	if ip == "" {
 		return
 	}
 
-	ip := instance.Ip
-
-	// 构建本地目标文件地址
 	localFullPath := filepath.Join(FileSyncC.LocalCacheRoot, fileConfig.LocalPath)
-
-	// 创建文件地址所在的目录（如果不存在）
 	if err := os.MkdirAll(filepath.Dir(localFullPath), 0755); err != nil {
 		p.logger.Error("无法创建本地目录: %v", err)
 		return
@@ -130,7 +130,6 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 	defer cancel()
 
 	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
-
 	if err := remote_util.RsyncDownloadFile(syncCtx, fileConfig.RemotePath, localFullPath, ip); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("文件同步超时(%s)", syncFileTimeout)
@@ -143,7 +142,6 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		p.logger.Error("文件同步失败: %v", err)
 		return
 	}
-
 	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
 }
 
@@ -169,25 +167,8 @@ func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopC
 
 // syncDir 执行单次目录同步
 func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
-	if tasks.IsArchiveTaskRunning() {
-		p.logger.Info("自动回收流程正在执行，跳过目录同步")
-		return
-	}
-
-	instance, err := store.GetActiveInstance()
-	if err != nil {
-		p.logger.Info("无法获取实例，跳过目录同步")
-		return
-	}
-
-	if !instance.IsDeployed {
-		p.logger.Info("实例未部署，跳过目录同步")
-		return
-	}
-
-	snap, err := instanceMonitor.WaitSnapshot(waitSnapshotTimeout)
-	if err != nil || !snap.IsValid() || snap.Value != "Running" {
-		p.logger.Info("实例未运行或无法获取状态，跳过目录同步")
+	ip := p.syncTarget("目录")
+	if ip == "" {
 		return
 	}
 
@@ -201,8 +182,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 	defer cancel()
 
 	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
-
-	if err := remote_util.RsyncDownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, instance.Ip); err != nil {
+	if err := remote_util.RsyncDownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, ip); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("目录同步超时(%s)", syncDirTimeout)
 			return
@@ -214,7 +194,6 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 		p.logger.Error("目录同步失败: %v", err)
 		return
 	}
-
 	p.logger.Info("目录同步完成: %s -> %s", dirConfig.RemotePath, localFullPath)
 }
 
