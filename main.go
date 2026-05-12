@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/env"
@@ -22,6 +23,7 @@ import (
 	"go-aliyunmc/routes/user_routes"
 	"go-aliyunmc/session"
 	"go-aliyunmc/store"
+	"go-aliyunmc/store/models"
 	"go-aliyunmc/tasks"
 	"go-aliyunmc/utils"
 	"log"
@@ -33,6 +35,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func init() {
@@ -46,8 +49,9 @@ func init() {
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: %s <command>\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  run     启动服务器\n")
-		fmt.Fprintf(os.Stderr, "  migrate 手动执行数据库迁移\n")
+		fmt.Fprintf(os.Stderr, "  run          启动服务器\n")
+		fmt.Fprintf(os.Stderr, "  migrate      手动执行数据库迁移\n")
+		fmt.Fprintf(os.Stderr, "  create_user  创建用户\n")
 		os.Exit(1)
 	}
 
@@ -56,6 +60,8 @@ func main() {
 		runServer()
 	case "migrate":
 		runMigrate()
+	case "create_user":
+		runCreateUser()
 	default:
 		fmt.Fprintf(os.Stderr, "未知指令: %s\n", os.Args[1])
 		os.Exit(1)
@@ -141,6 +147,54 @@ func runServer() {
 func runMigrate() {
 	store.AutoMigrate()
 	log_util.Info("数据库迁移完成")
+}
+
+func runCreateUser() {
+	fs := flag.NewFlagSet("create_user", flag.ExitOnError)
+	username := fs.String("username", "", "用户名")
+	password := fs.String("password", "", "密码")
+	role := fs.String("role", "basic", "角色 (basic, operator, superuser)")
+	fs.Parse(os.Args[2:])
+
+	if *username == "" || *password == "" {
+		fmt.Fprintf(os.Stderr, "错误: --username 和 --password 为必填项\n")
+		os.Exit(1)
+	}
+
+	validRoles := map[string]perms.Role{
+		"basic":     perms.RoleBasic,
+		"operator":  perms.RoleOperator,
+		"superuser": perms.RoleSuperuser,
+	}
+	r, ok := validRoles[*role]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "错误: 无效角色 '%s'，可选值: basic, operator, superuser\n", *role)
+		os.Exit(1)
+	}
+
+	var existing models.User
+	if err := store.DB.Where("username = ?", *username).First(&existing).Error; err == nil {
+		fmt.Fprintf(os.Stderr, "错误: 用户 '%s' 已存在\n", *username)
+		os.Exit(1)
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "错误: 密码哈希失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	user := models.User{
+		Username:     *username,
+		PasswordHash: string(hash),
+		Role:         r,
+	}
+	if err := store.DB.Create(&user).Error; err != nil {
+		fmt.Fprintf(os.Stderr, "错误: 创建用户失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("用户 '%s' 创建成功，角色: %s\n", *username, *role)
 }
 
 func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
