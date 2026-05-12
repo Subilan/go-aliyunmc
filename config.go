@@ -35,7 +35,7 @@ func (c *CorsConfig) GinCorsConfig() cors.Config {
 }
 
 type TLSConfig struct {
-	Enabled  bool   `toml:"enabled" comment:"是否启用HTTPS（生产模式）"`
+	Enabled  bool   `toml:"enabled" comment:"是否启用HTTPS。如果启用，将覆盖Expose端口，使用443端口"`
 	CertFile string `toml:"cert_file" comment:"证书文件路径 (fullchain.cer)"`
 	KeyFile  string `toml:"key_file" comment:"私钥文件路径"`
 	HttpPort int    `toml:"http_port" comment:"HTTP明文端口，供内网服务访问（如DDNS）" validate:"required_if=Enabled true"`
