@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go-aliyunmc/aliyun"
 	"go-aliyunmc/env"
+	"go-aliyunmc/h"
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/monitors"
 	"go-aliyunmc/perms"
@@ -24,13 +25,13 @@ import (
 	"go-aliyunmc/utils"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,14 +44,29 @@ func init() {
 }
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "usage: %s <command>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  run     启动服务器\n")
+		fmt.Fprintf(os.Stderr, "  migrate 手动执行数据库迁移\n")
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "run":
+		runServer()
+	case "migrate":
+		runMigrate()
+	default:
+		fmt.Fprintf(os.Stderr, "未知指令: %s\n", os.Args[1])
+		os.Exit(1)
+	}
+}
+
+func runServer() {
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
 			log_util.Fatal("初始化DEV用户失败: %v", err)
 		}
-	}
-
-	if env.DEV {
-		store.AutoMigrate()
 	}
 
 	engine := gin.New()
@@ -61,6 +77,8 @@ func main() {
 	engine.Use(sessions.Sessions("session", C.Session.GetSessionStore()))
 
 	engine.Use(cors.New(C.Cors.GinCorsConfig()))
+
+	engine.GET("/", h.V(func() string { return "Hello, World!" }))
 
 	// 注册任务路由
 	task_routes.Bind(engine)
@@ -101,15 +119,15 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	if env.DEV || !C.Autotls.Enabled {
-		run(engine, stop)
+	if env.DEV || !C.TLS.Enabled {
+		run(engine, C.Expose, stop)
 	} else {
-		runTLS(engine, ctx, stop)
+		runTLS(engine, stop)
+		run(engine, C.TLS.HttpPort, stop)
 	}
 
 	<-ctx.Done()
 	log_util.Info("清理中...")
-	// cleanup logic here
 
 	log_util.Info("清除正在运行的任务")
 	var wg sync.WaitGroup
@@ -123,18 +141,23 @@ func main() {
 	log_util.Info("清除完毕")
 }
 
-func runTLS(engine *gin.Engine, ctx context.Context, cancel context.CancelFunc) {
+func runMigrate() {
+	store.AutoMigrate()
+	log_util.Info("数据库迁移完成")
+}
+
+func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
 	go func() {
-		if err := autotls.RunWithContext(ctx, engine, C.Autotls.Domains...); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := engine.RunTLS(fmt.Sprintf(":%d", C.Expose), C.TLS.CertFile, C.TLS.KeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
 	}()
 }
 
-func run(engine *gin.Engine, cancel context.CancelFunc) {
+func run(engine *gin.Engine, port int, cancel context.CancelFunc) {
 	go func() {
-		if err := engine.Run(fmt.Sprintf(":%d", C.Expose)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := engine.Run(fmt.Sprintf(":%d", port)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}

@@ -15,8 +15,8 @@ type Config struct {
 	// Cors 是针对 gin-contrib/cors 跨域中间件的设置，对应 cors.Config
 	Cors CorsConfig `toml:"cors" validate:"required" comment:""`
 
-	// Autotls 是针对 gin-gonic/autotls 中间件的设置
-	Autotls AutotlsConfig `toml:"autotls" validate:"required" comment:""`
+	// TLS 是 HTTPS 配置，使用本地证书文件
+	TLS TlsConfig `toml:"tls" validate:"required" comment:""`
 
 	// Session 是针对 gin-contrib/sessions 中间件的设置
 	Session SessionConfig `toml:"session" validate:"required" comment:""`
@@ -39,9 +39,11 @@ func (c *CorsConfig) GinCorsConfig() cors.Config {
 	}
 }
 
-type AutotlsConfig struct {
-	Enabled bool     `toml:"enabled" comment:"是否启用"`
-	Domains []string `toml:"domains" comment:"签发域名" validate:"omitempty,dive,min=1"`
+type TlsConfig struct {
+	Enabled  bool   `toml:"enabled" comment:"是否启用HTTPS（生产模式）"`
+	CertFile string `toml:"cert_file" comment:"证书文件路径 (fullchain.cer)"`
+	KeyFile  string `toml:"key_file" comment:"私钥文件路径"`
+	HttpPort int    `toml:"http_port" comment:"HTTP明文端口，供内网服务访问（如DDNS）" validate:"required_if=Enabled true"`
 }
 
 type SessionConfig struct {
