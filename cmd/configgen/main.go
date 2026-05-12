@@ -152,7 +152,8 @@ func main() {
 
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Vars: tasks.DeployTemplateVars{
-			SSHPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
+			SSHAccessPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
+		SSHGomcPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
 			JavaVersion:    21,
 			Packages:       []string{"zip", "unzip"},
 			ArchiveOSSPath: "oss://your-bucket/archive",

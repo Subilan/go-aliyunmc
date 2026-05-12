@@ -3,7 +3,8 @@ package tasks
 import "go-aliyunmc/utils"
 
 type DeployTemplateVars struct {
-	SSHPublicKey   string   `toml:"ssh_public_key" validate:"required" comment:"部署用户写入的公钥"`
+	SSHAccessPublicKey string `toml:"ssh_access_public_key" validate:"required" comment:"用于SSH访问的公钥"`
+	SSHGomcPublicKey   string `toml:"ssh_gomc_public_key" validate:"required" comment:"gomc服务所在主机的公钥"`
 	JavaVersion    int      `toml:"java_version" validate:"required,min=1" comment:"JRE版本号，建议使用当前服务端要求的最低版本"`
 	Packages       []string `toml:"packages" validate:"omitempty,dive,min=1" comment:"额外安装的软件包列表"`
 	ArchiveOSSPath string   `toml:"archive_oss_path" validate:"required" comment:"用于部署恢复的OSS归档路径"`
