@@ -14,3 +14,4 @@ configgen
 remote_data_cache/
 logs/
 ecs_candidates.json
+production/

@@ -32,9 +32,11 @@ func main() {
 			"allow_headers":     []string{"Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
 			"allow_methods":     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
 		},
-		"autotls": map[string]interface{}{
-			"enabled": false,
-			"domains": []string{},
+		"tls": map[string]interface{}{
+			"enabled":   false,
+			"cert_file": "",
+			"key_file":  "",
+			"http_port": 80,
 		},
 		"session": map[string]interface{}{
 			"key_pairs": []map[string]string{
