@@ -4,21 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go-aliyunmc/aliyun"
 	"go-aliyunmc/log_util"
 	"go-aliyunmc/remote_util"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
-
-	"github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -28,158 +22,9 @@ const (
 	initialJitterMax    = 3 * time.Second
 )
 
-// dialSSHWithRetry 带重试的SSH连接，避免启动时多个goroutine同时拨号导致服务端限流
-func dialSSHWithRetry(ip string) (*ssh.Client, error) {
-	sshConfig := &ssh.ClientConfig{
-		User:            "root",
-		Auth:            []ssh.AuthMethod{ssh.Password(aliyun.C.Ecs.RootPassword)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         10 * time.Second,
-	}
-
-	client, err := remote_util.DialWithRetry(fmt.Sprintf("%s:22", ip), sshConfig, 3)
-	if err != nil {
-		return nil, fmt.Errorf("SSH连接失败: %w", err)
-	}
-	return client, nil
-}
-
 // initialJitter 返回一个随机延迟，用于错开首次同步时的并发连接
 func initialJitter() time.Duration {
 	return time.Duration(rand.Int63n(int64(initialJitterMax)))
-}
-
-// downloadRemoteFile 通过SSH连接远程主机，并使用SFTP协议下载指定文件到本地
-func downloadRemoteFile(ctx context.Context, ip string, remotePath string, localPath string) error {
-	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("同步任务已取消: %w", err)
-	}
-
-	client, err := dialSSHWithRetry(ip)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	sftpClient, err := sftp.NewClient(client)
-	if err != nil {
-		return fmt.Errorf("创建SFTP客户端失败: %w", err)
-	}
-	defer sftpClient.Close()
-
-	file, err := os.Create(localPath)
-	if err != nil {
-		return fmt.Errorf("创建本地文件失败: %w", err)
-	}
-	defer file.Close()
-
-	remoteFile, err := sftpClient.Open(remotePath)
-	if err != nil {
-		return fmt.Errorf("打开远端文件失败: %w", err)
-	}
-	defer remoteFile.Close()
-
-	copyErrCh := make(chan error, 1)
-	go func() {
-		_, copyErr := io.Copy(file, remoteFile)
-		copyErrCh <- copyErr
-	}()
-
-	select {
-	case <-ctx.Done():
-		_ = client.Close()
-		return fmt.Errorf("复制远端文件超时或取消: %w", ctx.Err())
-	case copyErr := <-copyErrCh:
-		if copyErr != nil {
-			return fmt.Errorf("复制远端文件失败: %w", copyErr)
-		}
-	}
-
-	return nil
-}
-
-// downloadRemoteDir 通过SSH连接远程主机，使用SFTP递归下载整个目录到本地
-func downloadRemoteDir(ctx context.Context, ip string, remoteDir string, localDir string) error {
-	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("同步任务已取消: %w", err)
-	}
-
-	client, err := dialSSHWithRetry(ip)
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-
-	sftpClient, err := sftp.NewClient(client)
-	if err != nil {
-		return fmt.Errorf("创建SFTP客户端失败: %w", err)
-	}
-	defer sftpClient.Close()
-
-	walker := sftpClient.Walk(remoteDir)
-	for walker.Step() {
-		if err := ctx.Err(); err != nil {
-			return fmt.Errorf("同步任务已取消: %w", err)
-		}
-
-		stat := walker.Stat()
-		if stat == nil {
-			continue
-		}
-
-		if stat.IsDir() {
-			continue
-		}
-
-		remotePath := walker.Path()
-		relPath, err := filepath.Rel(remoteDir, remotePath)
-		if err != nil {
-			return fmt.Errorf("计算相对路径失败: %w", err)
-		}
-		relPath = filepath.ToSlash(relPath)
-		if strings.HasPrefix(relPath, "../") {
-			continue
-		}
-
-		localFilePath := filepath.Join(localDir, filepath.FromSlash(relPath))
-		if err := os.MkdirAll(filepath.Dir(localFilePath), 0755); err != nil {
-			return fmt.Errorf("创建本地目录失败 %s: %w", filepath.Dir(localFilePath), err)
-		}
-
-		remoteFile, err := sftpClient.Open(remotePath)
-		if err != nil {
-			return fmt.Errorf("打开远端文件失败 %s: %w", remotePath, err)
-		}
-
-		localFile, err := os.Create(localFilePath)
-		if err != nil {
-			remoteFile.Close()
-			return fmt.Errorf("创建本地文件失败 %s: %w", localFilePath, err)
-		}
-
-		copyErrCh := make(chan error, 1)
-		go func() {
-			_, copyErr := io.Copy(localFile, remoteFile)
-			localFile.Close()
-			remoteFile.Close()
-			copyErrCh <- copyErr
-		}()
-
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("复制远端文件超时或取消: %w", ctx.Err())
-		case copyErr := <-copyErrCh:
-			if copyErr != nil {
-				return fmt.Errorf("复制远端文件失败 %s: %w", remotePath, copyErr)
-			}
-		}
-	}
-
-	if err := walker.Err(); err != nil {
-		return fmt.Errorf("遍历远端目录失败: %w", err)
-	}
-
-	return nil
 }
 
 // FileSyncPoller 是一个定时轮询器，用于定期从远端服务器同步指定文件到本地缓存目录
@@ -286,7 +131,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 
 	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
 
-	if err := downloadRemoteFile(syncCtx, ip, fileConfig.RemotePath, localFullPath); err != nil {
+	if err := remote_util.RsyncDownloadFile(syncCtx, fileConfig.RemotePath, localFullPath, ip); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("文件同步超时(%s)", syncFileTimeout)
 			return
@@ -357,7 +202,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 
 	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
 
-	if err := downloadRemoteDir(syncCtx, instance.Ip, dirConfig.RemotePath, localFullPath); err != nil {
+	if err := remote_util.RsyncDownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, instance.Ip); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("目录同步超时(%s)", syncDirTimeout)
 			return

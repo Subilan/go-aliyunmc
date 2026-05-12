@@ -63,7 +63,7 @@ func deployCopyWssCert(tc *TaskContext, ip string, ctx context.Context) error {
 	tc.println(fmt.Sprintf("[deploy] 上传WSS证书: %s", DeployC.Vars.WssCertSrc))
 	remotePath := DeployC.Vars.WssCertDst
 
-	if err := remote_util.UploadFileRemote(DeployC.Vars.WssCertSrc, remotePath, ip, ctx, true); err != nil {
+	if err := remote_util.RsyncUpload(ctx, DeployC.Vars.WssCertSrc, remotePath, ip); err != nil {
 		return fmt.Errorf("上传WSS证书失败: %w", err)
 	}
 
