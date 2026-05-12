@@ -20,6 +20,7 @@ import (
 	"go-aliyunmc/routes/state_routes"
 	"go-aliyunmc/routes/task_routes"
 	"go-aliyunmc/routes/user_routes"
+	"go-aliyunmc/session"
 	"go-aliyunmc/store"
 	"go-aliyunmc/tasks"
 	"go-aliyunmc/utils"
@@ -31,7 +32,6 @@ import (
 	"syscall"
 
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -72,9 +72,6 @@ func runServer() {
 	engine := gin.New()
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
-
-	// 配置session中间件
-	engine.Use(sessions.Sessions("session", C.Session.GetSessionStore()))
 
 	engine.Use(cors.New(C.Cors.GinCorsConfig()))
 
@@ -148,7 +145,7 @@ func runMigrate() {
 
 func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
 	go func() {
-		if err := engine.RunTLS(fmt.Sprintf(":%d", C.Expose), C.TLS.CertFile, C.TLS.KeyFile); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", C.Expose), C.TLS.CertFile, C.TLS.KeyFile, session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
@@ -157,7 +154,7 @@ func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
 
 func run(engine *gin.Engine, port int, cancel context.CancelFunc) {
 	go func() {
-		if err := engine.Run(fmt.Sprintf(":%d", port)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"go-aliyunmc/perms"
+	"go-aliyunmc/session"
 	"go-aliyunmc/store"
 	"go-aliyunmc/store/models"
 	"net/http"
@@ -11,8 +12,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -38,19 +37,15 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func setupTestRouter() *gin.Engine {
+func setupTestRouter() http.Handler {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 
-	// 配置session中间件
-	sessionStore := cookie.NewStore([]byte("secret-key-12345"))
-	router.Use(sessions.Sessions("session", sessionStore))
-	// 注册用户路由
 	Bind(router)
-	return router
+	return session.LoadAndSave(router)
 }
 
-func loginAndGetSessionCookie(t *testing.T, router *gin.Engine, username, password string) *http.Cookie {
+func loginAndGetSessionCookie(t *testing.T, handler http.Handler, username, password string) *http.Cookie {
 	t.Helper()
 
 	loginReq := LoginRequest{
@@ -64,7 +59,7 @@ func loginAndGetSessionCookie(t *testing.T, router *gin.Engine, username, passwo
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("login failed, status=%d, body=%s", w.Code, w.Body.String())
@@ -81,7 +76,7 @@ func loginAndGetSessionCookie(t *testing.T, router *gin.Engine, username, passwo
 }
 
 func TestHandleRegister(t *testing.T) {
-	router := setupTestRouter()
+	handler := setupTestRouter()
 
 	// 测试注册新用户
 	registerReq := RegisterRequest{
@@ -94,7 +89,7 @@ func TestHandleRegister(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
@@ -114,7 +109,7 @@ func TestHandleRegister(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusConflict {
 		t.Errorf("Expected status code %d for duplicate registration, got %d", http.StatusConflict, w.Code)
@@ -122,7 +117,7 @@ func TestHandleRegister(t *testing.T) {
 }
 
 func TestHandleLogin(t *testing.T) {
-	router := setupTestRouter()
+	handler := setupTestRouter()
 
 	// 先创建测试用户
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
@@ -144,7 +139,7 @@ func TestHandleLogin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
@@ -166,7 +161,7 @@ func TestHandleLogin(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	w = httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected status code %d for wrong password, got %d", http.StatusUnauthorized, w.Code)
@@ -174,7 +169,7 @@ func TestHandleLogin(t *testing.T) {
 }
 
 func TestHandleDeleteUser(t *testing.T) {
-	router := setupTestRouter()
+	handler := setupTestRouter()
 
 	// 先创建测试用户并登录拿到session
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password123"), bcrypt.DefaultCost)
@@ -183,14 +178,14 @@ func TestHandleDeleteUser(t *testing.T) {
 		PasswordHash: string(hashedPassword),
 	}
 	store.DB.Create(&testUser)
-	cookie := loginAndGetSessionCookie(t, router, "deleteuser", "password123")
+	cookie := loginAndGetSessionCookie(t, handler, "deleteuser", "password123")
 
 	req, _ := http.NewRequest("DELETE", "/user", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
 
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
+	handler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, w.Code)
