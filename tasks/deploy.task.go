@@ -24,11 +24,18 @@ type deployTaskVars struct {
 	DataDiskSize    int
 }
 
-// deployStep 表示部署任务的一个步骤，包含了该步骤对应的脚本名称和执行超时时间（秒）
+type deployStepType int
+
+const (
+	deployStepScript deployStepType = iota // 在远程服务器上执行的shell脚本
+	deployStepLocal                        // 在当前后端执行的Go函数
+)
+
+// deployStep 表示部署任务的一个步骤
 type deployStep struct {
-	// script 表示该步骤对应的脚本名称
-	script string
-	// timeoutSec 是该步骤的执行超时时间，单位为秒
+	stepType   deployStepType
+	script     string                                            // 脚本步骤：模板路径
+	localFn    func(*TaskContext, string, context.Context) error // 本地步骤：执行函数
 	timeoutSec int
 }
 
@@ -44,6 +51,29 @@ var deploySteps = []deployStep{
 	{script: "deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
 	{script: "deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
 	{script: "deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
+	{stepType: deployStepLocal, localFn: deployCopyWssCert, timeoutSec: 30},
+}
+
+func deployCopyWssCert(tc *TaskContext, ip string, ctx context.Context) error {
+	if DeployC.Vars.WssCertSrc == "" || DeployC.Vars.WssCertDst == "" {
+		tc.println("[deploy] WSS证书路径未配置，跳过证书上传步骤")
+		return nil
+	}
+
+	tc.println(fmt.Sprintf("[deploy] 上传WSS证书: %s", DeployC.Vars.WssCertSrc))
+	remotePath := DeployC.Vars.WssCertDst
+
+	if err := remote_util.UploadFileRemote(DeployC.Vars.WssCertSrc, remotePath, ip, ctx, true); err != nil {
+		return fmt.Errorf("上传WSS证书失败: %w", err)
+	}
+
+	chownCmd := fmt.Sprintf("chown mc:mc %s && chmod 600 %s", remotePath, remotePath)
+	if err := remote_util.ExecuteRemoteCommand(chownCmd, ip, ctx, tc.println, true); err != nil {
+		return fmt.Errorf("设置WSS证书权限失败: %w", err)
+	}
+
+	tc.println("[deploy] WSS证书上传完成")
+	return nil
 }
 
 func deployTask(tc *TaskContext, args map[string]any) error {
@@ -70,13 +100,20 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 	for _, step := range deploySteps {
 		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d", tc.step, len(deploySteps)))
 
-		script, renderErr := remote_util.RenderScriptTemplate(scriptBasePath+step.script, expandedVars)
-		if renderErr != nil {
-			return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
-		}
-
 		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.timeoutSec)*time.Second)
-		execErr := remote_util.ExecuteScriptRemote(script, ip, stepCtx, tc.println, true)
+		var execErr error
+
+		switch step.stepType {
+		case deployStepScript:
+			script, renderErr := remote_util.RenderScriptTemplate(scriptBasePath+step.script, expandedVars)
+			if renderErr != nil {
+				cancel()
+				return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
+			}
+			execErr = remote_util.ExecuteScriptRemote(script, ip, stepCtx, tc.println, true)
+		case deployStepLocal:
+			execErr = step.localFn(tc, ip, stepCtx)
+		}
 		cancel()
 		if execErr != nil {
 			// 如果stepCtx超时或被取消，返回特定的错误信息；否则返回一般的执行错误
