@@ -7,10 +7,12 @@ type DeployTemplateVars struct {
 	JavaVersion    int      `toml:"java_version" validate:"required,min=1" comment:"JRE版本号，建议使用当前服务端要求的最低版本"`
 	Packages       []string `toml:"packages" validate:"omitempty,dive,min=1" comment:"额外安装的软件包列表"`
 	ArchiveOSSPath string   `toml:"archive_oss_path" validate:"required" comment:"用于部署恢复的OSS归档路径"`
+	WssCertSrc     string   `toml:"wss_cert_src" comment:"WSS证书文件路径（.p12格式），留空则跳过证书上传"`
+	WssCertDst     string   `toml:"wss_cert_dst" comment:"WSS证书在远程服务器上的目标路径，留空则跳过证书上传"`
 }
 
 type DeployTaskConfig struct {
-	Vars      DeployTemplateVars `toml:"vars" validate:"required" comment:"部署脚本模板变量"`
+	Vars DeployTemplateVars `toml:"vars" validate:"required" comment:"部署脚本模板变量"`
 }
 
 type BackupTemplateVars struct {
