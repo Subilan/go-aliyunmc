@@ -100,7 +100,7 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 
 	if len(resp.Body.InstanceStatuses.InstanceStatus) == 0 {
 		m.logger.Warn("未查询到实例，这表示实例已经被外部删除")
-		m.logger.Warn("删除数据库实例")
+		m.logger.Warn("将删除数据库实例")
 		err := store.DeleteActiveInstance()
 		if err != nil {
 			m.logger.Error("删除数据库实例失败: %v", err)
