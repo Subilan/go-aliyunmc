@@ -2,7 +2,6 @@ package session
 
 import (
 	"context"
-	"go-aliyunmc/log_util"
 	"net/http"
 	"time"
 
@@ -40,7 +39,6 @@ func Remove(c *gin.Context, key string) {
 
 func Get(c *gin.Context, key string) (result any) {
 	result = manager.Get(gtx(c), key)
-	log_util.Debug("get key %s = %v", key, result)
 	return
 }
 
@@ -55,7 +53,6 @@ func GetUserID(c *gin.Context) (uint, bool) {
 }
 
 func Set(c *gin.Context, key string, value any) {
-	log_util.Debug("设置session: %s = %v", key, value)
 	manager.Put(gtx(c), key, value)
 }
 
