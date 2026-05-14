@@ -1,11 +1,11 @@
 package instance_routes
 
 import (
-	"go-aliyunmc/global_states"
-	"go-aliyunmc/h"
-	"go-aliyunmc/mid"
-	"go-aliyunmc/monitors"
-	"go-aliyunmc/states"
+	"github.com/Subilan/go-aliyunmc/global_states"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mid"
+	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/states"
 
 	"github.com/gin-gonic/gin"
 )

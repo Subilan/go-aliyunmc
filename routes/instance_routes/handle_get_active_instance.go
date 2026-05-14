@@ -1,8 +1,8 @@
 package instance_routes
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/store"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

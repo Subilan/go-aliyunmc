@@ -1,6 +1,6 @@
 package server
 
-import "go-aliyunmc/utils"
+import "github.com/Subilan/go-aliyunmc/utils"
 
 var C ServerConfig
 

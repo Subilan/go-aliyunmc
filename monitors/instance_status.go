@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"go-aliyunmc/aliyun"
-	"go-aliyunmc/env"
-	"go-aliyunmc/log_util"
-	"go-aliyunmc/states"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/env"
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/states"
+	"github.com/Subilan/go-aliyunmc/store"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"

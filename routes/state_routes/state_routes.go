@@ -3,11 +3,11 @@ package state_routes
 import (
 	"net/http"
 
-	"go-aliyunmc/h"
-	"go-aliyunmc/mid"
-	"go-aliyunmc/monitors"
-	"go-aliyunmc/sse"
-	"go-aliyunmc/states"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mid"
+	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/sse"
+	"github.com/Subilan/go-aliyunmc/states"
 
 	"github.com/gin-gonic/gin"
 )

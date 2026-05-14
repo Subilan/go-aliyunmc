@@ -1,9 +1,9 @@
 package changelog_routes
 
 import (
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/store"
 	"net/http"
 	"strconv"
 

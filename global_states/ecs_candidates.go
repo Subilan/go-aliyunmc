@@ -1,7 +1,7 @@
 package global_states
 
 import (
-	"go-aliyunmc/states"
+	"github.com/Subilan/go-aliyunmc/states"
 	"sync"
 )
 

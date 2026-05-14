@@ -2,10 +2,10 @@ package instance_routes
 
 import (
 	"errors"
-	"go-aliyunmc/aliyun"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
-	"go-aliyunmc/tasks"
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/tasks"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"

@@ -1,7 +1,7 @@
 package bss_routes
 
 import (
-	"go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/aliyun"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

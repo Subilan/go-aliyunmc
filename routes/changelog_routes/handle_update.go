@@ -2,8 +2,8 @@ package changelog_routes
 
 import (
 	"errors"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

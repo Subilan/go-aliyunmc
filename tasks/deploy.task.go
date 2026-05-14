@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"time"
 
-	"go-aliyunmc/aliyun"
-	"go-aliyunmc/h"
-	"go-aliyunmc/remote_util"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/remote_util"
+	"github.com/Subilan/go-aliyunmc/store"
 )
 
 // deployTaskVars 表示部署任务实际所需要的模板变量，包含了DeployTemplateVars中的字段以及从aliyun.C读取的相关字段。

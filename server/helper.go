@@ -1,7 +1,7 @@
 package server
 
 import (
-	"go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/h"
 	"net/http"
 	"strings"
 

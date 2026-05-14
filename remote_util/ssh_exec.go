@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/aliyun"
 	"os"
 	"path/filepath"
 	"strings"

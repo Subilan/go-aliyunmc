@@ -3,7 +3,7 @@ package tasks
 import (
 	"testing"
 
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/store/models"
 )
 
 func TestExecutorWaitSuccessReturnsNil(t *testing.T) {

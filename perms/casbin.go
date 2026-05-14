@@ -1,7 +1,7 @@
 package perms
 
 import (
-	"go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/log_util"
 
 	"github.com/casbin/casbin/v2"
 )

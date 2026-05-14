@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"go-aliyunmc/log_util"
-	"go-aliyunmc/server"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/server"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"github.com/mcstatus-io/mcutil/v4/query"
 )

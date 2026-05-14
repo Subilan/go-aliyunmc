@@ -1,9 +1,9 @@
 package context_util
 
 import (
-	// "go-aliyunmc/session"
+	// "github.com/Subilan/go-aliyunmc/session"
 
-	"go-aliyunmc/session"
+	"github.com/Subilan/go-aliyunmc/session"
 
 	"github.com/gin-gonic/gin"
 )

@@ -2,7 +2,7 @@ package mc
 
 import (
 	"encoding/json"
-	"go-aliyunmc/utils"
+	"github.com/Subilan/go-aliyunmc/utils"
 	"log"
 	"os"
 	"strings"

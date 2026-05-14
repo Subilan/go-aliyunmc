@@ -1,8 +1,8 @@
 package user_routes
 
 import (
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/perms"
 
 	"github.com/gin-gonic/gin"
 )

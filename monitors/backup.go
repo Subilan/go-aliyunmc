@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"go-aliyunmc/log_util"
-	"go-aliyunmc/store/models"
-	"go-aliyunmc/tasks"
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/tasks"
 )
 
 // BackupMonitor 定时触发备份任务。触发前会检查实例是否运行，并复用 tasks 的校验与执行逻辑。

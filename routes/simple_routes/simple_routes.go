@@ -1,9 +1,9 @@
 package simple_routes
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/mc"
-	"go-aliyunmc/mid"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mc"
+	"github.com/Subilan/go-aliyunmc/mid"
 
 	"github.com/gin-gonic/gin"
 )

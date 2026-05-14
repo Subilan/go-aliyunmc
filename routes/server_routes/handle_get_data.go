@@ -2,8 +2,8 @@ package server_routes
 
 import (
 	"encoding/json"
-	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/monitors"
 	"net/http"
 	"os"
 	"strings"

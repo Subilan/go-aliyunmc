@@ -94,7 +94,7 @@ func resolveDefaultLogsDir() string {
 	}
 
 	if strings.HasSuffix(os.Args[0], ".test") {
-		return filepath.Join(os.TempDir(), "go-aliyunmc-logs")
+		return filepath.Join(os.TempDir(), "github.com/Subilan/go-aliyunmc-logs")
 	}
 
 	return "logs"

@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/store/models"
 	"sync"
 )
 

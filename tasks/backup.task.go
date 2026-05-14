@@ -1,9 +1,9 @@
 package tasks
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/remote_util"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/remote_util"
+	"github.com/Subilan/go-aliyunmc/store"
 	"net/http"
 )
 

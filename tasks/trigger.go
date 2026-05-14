@@ -1,7 +1,7 @@
 package tasks
 
 import (
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/store/models"
 )
 
 // getTaskDefinitionAndCheck 用于获取任务定义并执行对权限、参数的检查。user为nil时表示系统。

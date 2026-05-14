@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"go-aliyunmc/aliyun"
-	"go-aliyunmc/log_util"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 )
 
 // BalanceDataPoint 表示一个余额采样数据点。
