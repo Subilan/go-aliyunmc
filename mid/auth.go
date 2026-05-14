@@ -1,10 +1,10 @@
 package mid
 
 import (
-	"go-aliyunmc/env"
-	"go-aliyunmc/session"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/env"
+	"github.com/Subilan/go-aliyunmc/session"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

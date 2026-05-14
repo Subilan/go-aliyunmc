@@ -1,8 +1,8 @@
 package sample_routes
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/mid"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mid"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,9 +1,9 @@
 package monitor_routes
 
 import (
-	"go-aliyunmc/global_states"
-	"go-aliyunmc/h"
-	"go-aliyunmc/mid"
+	"github.com/Subilan/go-aliyunmc/global_states"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mid"
 
 	"github.com/gin-gonic/gin"
 )

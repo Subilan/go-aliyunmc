@@ -1,6 +1,6 @@
 package tasks
 
-import "go-aliyunmc/utils"
+import "github.com/Subilan/go-aliyunmc/utils"
 
 type DeployTemplateVars struct {
 	SSHAccessPublicKey string `toml:"ssh_access_public_key" validate:"required" comment:"用于SSH访问的公钥"`

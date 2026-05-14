@@ -1,9 +1,9 @@
 package tasks
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/states"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/states"
+	"github.com/Subilan/go-aliyunmc/store"
 	"net/http"
 	"time"
 )

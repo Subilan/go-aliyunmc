@@ -1,10 +1,10 @@
 package server_routes
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
-	"go-aliyunmc/server"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/server"
+	"github.com/Subilan/go-aliyunmc/store"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

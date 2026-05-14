@@ -2,7 +2,7 @@ package states
 
 import (
 	"fmt"
-	"go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/log_util"
 	"time"
 )
 

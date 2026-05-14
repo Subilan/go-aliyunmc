@@ -1,6 +1,6 @@
 package monitors
 
-import "go-aliyunmc/utils"
+import "github.com/Subilan/go-aliyunmc/utils"
 
 type ServerStatusMonitorConfig struct {
 	PollIntervalSec int `toml:"poll_interval_sec" validate:"required,min=1" comment:"服务器状态轮询间隔（秒）"`

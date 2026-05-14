@@ -3,9 +3,9 @@ package user_routes
 import (
 	"net/http"
 
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/store"
 
 	"github.com/gin-gonic/gin"
 )

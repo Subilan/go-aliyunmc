@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/monitors"
-	"go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/playerdata"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

@@ -2,10 +2,10 @@ package task_routes
 
 import (
 	"errors"
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/store/models"
-	"go-aliyunmc/tasks"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/tasks"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

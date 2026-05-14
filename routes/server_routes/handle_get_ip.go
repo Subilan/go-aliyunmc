@@ -1,7 +1,7 @@
 package server_routes
 
 import (
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store"
 
 	"github.com/gin-gonic/gin"
 )

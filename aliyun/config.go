@@ -3,7 +3,7 @@ package aliyun
 import (
 	"fmt"
 
-	"go-aliyunmc/utils"
+	"github.com/Subilan/go-aliyunmc/utils"
 )
 
 var C Config

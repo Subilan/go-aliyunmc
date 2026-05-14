@@ -4,10 +4,10 @@ import (
 	"errors"
 	"net/http"
 
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/playerdata"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/store"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"go-aliyunmc/aliyun"
-	"go-aliyunmc/monitors"
-	"go-aliyunmc/perms"
-	"go-aliyunmc/routes/user_routes"
-	"go-aliyunmc/server"
-	"go-aliyunmc/store"
-	"go-aliyunmc/tasks"
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/routes/user_routes"
+	"github.com/Subilan/go-aliyunmc/server"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/tasks"
 
 	"github.com/pelletier/go-toml/v2"
 )

@@ -2,7 +2,7 @@ package changelog_routes
 
 import (
 	"errors"
-	"go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

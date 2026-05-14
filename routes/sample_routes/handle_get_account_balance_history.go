@@ -1,7 +1,7 @@
 package sample_routes
 
 import (
-	"go-aliyunmc/monitors"
+	"github.com/Subilan/go-aliyunmc/monitors"
 
 	"github.com/gin-gonic/gin"
 )

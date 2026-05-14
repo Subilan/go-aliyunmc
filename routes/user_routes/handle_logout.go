@@ -1,7 +1,7 @@
 package user_routes
 
 import (
-	"go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/context_util"
 	"github.com/gin-gonic/gin"
 )
 

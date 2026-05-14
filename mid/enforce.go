@@ -1,8 +1,8 @@
 package mid
 
 import (
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

@@ -1,8 +1,8 @@
 package context_util
 
 import (
-	"go-aliyunmc/perms"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"github.com/gin-gonic/gin"
 )

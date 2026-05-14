@@ -1,7 +1,7 @@
 package models
 
 import (
-	"go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/perms"
 
 	"gorm.io/gorm"
 )

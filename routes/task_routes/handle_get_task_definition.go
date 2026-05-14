@@ -1,8 +1,8 @@
 package task_routes
 
 import (
-	"go-aliyunmc/h"
-	"go-aliyunmc/tasks"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/tasks"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

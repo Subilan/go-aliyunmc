@@ -2,7 +2,7 @@
 package utils
 
 import (
-	"go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/log_util"
 	"os"
 	"path/filepath"
 	"strings"

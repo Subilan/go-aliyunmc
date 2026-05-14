@@ -1,7 +1,7 @@
 package store
 
 import (
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/store/models"
 	"time"
 
 	"gorm.io/gorm"

@@ -1,7 +1,7 @@
 package aliyun
 
 import (
-	"go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/log_util"
 
 	"github.com/aliyun/credentials-go/credentials"
 )

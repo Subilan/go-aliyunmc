@@ -1,6 +1,6 @@
 package store
 
-import "go-aliyunmc/store/models"
+import "github.com/Subilan/go-aliyunmc/store/models"
 
 // GetUserPreferences 获取用户的偏好设置，无记录时返回默认值
 func GetUserPreferences(userID uint) (models.Preferences, error) {

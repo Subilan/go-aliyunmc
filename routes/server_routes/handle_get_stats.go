@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"os"
 
-	"go-aliyunmc/context_util"
-	"go-aliyunmc/h"
-	"go-aliyunmc/playerdata"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"github.com/gin-gonic/gin"
 )

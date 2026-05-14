@@ -1,9 +1,9 @@
 package server_routes
 
 import (
-	"go-aliyunmc/playerdata"
-	"go-aliyunmc/store"
-	"go-aliyunmc/store/models"
+	"github.com/Subilan/go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"github.com/gin-gonic/gin"
 )
