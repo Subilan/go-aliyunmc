@@ -24,7 +24,7 @@ func HandleGetChatToken(c *gin.Context) (any, error) {
 	serverStatus := monitors.GetServerStatusMonitor().Snapshot()
 
 	if serverStatus.Error != nil {
-		return nil, h.HttpError(http.StatusInternalServerError, "无法获取服务器状态")
+		return nil, h.HttpError(http.StatusBadRequest, "无法获取服务器状态（离线？）")
 	}
 
 	if !serverStatus.Value.Online {
