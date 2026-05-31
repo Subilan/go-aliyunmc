@@ -27,6 +27,7 @@ func Bind(router *gin.Engine) {
 		// 公开访问的路由（无需登录）
 		userGroup.POST("/register", h.B(HandleRegister))
 		userGroup.POST("/login", h.B(HandleLogin))
+		userGroup.POST("/bot-token", h.B(HandleBotToken))
 
 		// 需要登录的路由
 		authorized := userGroup.Group("")
