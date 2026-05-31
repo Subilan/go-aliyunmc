@@ -46,6 +46,7 @@ func main() {
 				},
 			},
 		},
+		"bot_key": "your-bot-key-here",
 	}
 
 	// 生成store.toml - 数据库配置
@@ -267,6 +268,10 @@ func main() {
 		ChatToken: user_routes.ChatTokenConfig{
 			Secret:        "your-chat-token-secret-here",
 			ExpireSeconds: 3600,
+		},
+		BotToken: user_routes.BotTokenConfig{
+			Secret:        "your-bot-token-secret-here",
+			ExpireSeconds: 7776000, // 3个月
 		},
 	}
 
