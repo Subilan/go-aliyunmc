@@ -34,7 +34,7 @@ jobs:
     #   run: make test
 
     - name: Combine
-      run: mkdir output && cp -r ./scripts go-aliyunmc ./example_configs README.md output
+      run: make gen-config && mkdir output && cp -r ./scripts go-aliyunmc ./example_configs README.md output
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v6.0.0
