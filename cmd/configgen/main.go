@@ -177,7 +177,7 @@ func main() {
 
 	archiveTaskConfig := tasks.ArchiveTaskConfig{
 		TemplatePath: "scripts/archive.tmpl.sh",
-		TimeoutSec:   1800,
+		TimeoutSec:   600,
 		Vars: tasks.ArchiveTemplateVars{
 			OSSRoot:          "oss://your-bucket",
 			ArchiveName:      "archive",

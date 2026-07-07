@@ -31,8 +31,8 @@ type BackupTaskConfig struct {
 }
 
 type ArchiveTemplateVars struct {
-	OSSRoot          string `toml:"oss_root" validate:"required,min=1" comment:"归档轮转根路径"`
-	ArchiveName      string `toml:"archive_name" validate:"required,min=1" comment:"归档文件名称"`
+	OSSRoot          string `toml:"oss_root" validate:"required,min=1" comment:"归档OSS根路径"`
+	ArchiveName      string `toml:"archive_name" validate:"required,min=1" comment:"归档目录名称"`
 	RemoteArchiveDir string `toml:"remote_archive_dir" validate:"required,min=1" comment:"位于远程服务器上的归档目录的绝对路径"`
 }
 
