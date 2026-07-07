@@ -1,10 +1,10 @@
 # 生成配置文件
 gen-config:
-	@go run ./cmd/configgen
+	@CONFIGGEN_SKIP_CONFIG=1 go run ./cmd/configgen
 
 # 运行测试
 test:
-	@go run ./cmd/configgen
+	@CONFIGGEN_SKIP_CONFIG=1 go run ./cmd/configgen
 	@mkdir -p configs
 	@cp -n example_configs/*.toml configs/ 2>/dev/null || true
 	@go test -v ./...
