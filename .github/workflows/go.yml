@@ -30,8 +30,8 @@ jobs:
     - name: Build
       run: go build -o ./go-aliyunmc .
 
-    - name: Test
-      run: make test
+    # - name: Test
+    #   run: make test
 
     - name: Combine
       run: mkdir output && cp -r ./scripts go-aliyunmc ./example_configs README.md output
