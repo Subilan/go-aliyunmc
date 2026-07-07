@@ -15,6 +15,9 @@ const ConfigDir = "configs/"
 
 // MustBindConfigToml 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
 func MustBindConfigToml[T any](obj *T, name string) {
+	if os.Getenv("CONFIGGEN_SKIP_CONFIG") == "1" {
+		return
+	}
 	path := ConfigDir + name + ".toml"
 	fileContent, err := os.ReadFile(path)
 
