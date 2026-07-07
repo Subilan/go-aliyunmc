@@ -4,6 +4,8 @@ gen-config:
 
 # 运行测试
 test:
+	@mkdir -p configs
+	@cp -n example_configs/*.toml configs/ 2>/dev/null || true
 	@go test -v ./...
 
 # 构建项目
