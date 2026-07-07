@@ -62,7 +62,7 @@ func main() {
 		Path:     "",
 	}
 
-	// 生成casbin.toml - Casbin配置
+	// 生成perms.toml - Casbin配置
 	casbinConfig := perms.Config{
 		ModelPath:  "casbin/rbac_model.conf",
 		PolicyPath: "casbin/rbac_policy.csv",
@@ -197,8 +197,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 写入casbin.toml
-	if err := writeConfigFile(configDir+"/casbin.toml", casbinConfig); err != nil {
+	// 写入perms.toml
+	if err := writeConfigFile(configDir+"/perms.toml", casbinConfig); err != nil {
 		fmt.Printf("Error writing casbin.toml: %v\n", err)
 		os.Exit(1)
 	}
