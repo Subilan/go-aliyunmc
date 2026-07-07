@@ -4,6 +4,7 @@ gen-config:
 
 # 运行测试
 test:
+	@go run ./cmd/configgen
 	@mkdir -p configs
 	@cp -n example_configs/*.toml configs/ 2>/dev/null || true
 	@go test -v ./...
