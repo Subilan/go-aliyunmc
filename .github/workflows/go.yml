@@ -31,7 +31,7 @@ jobs:
       run: go build -o ./go-aliyunmc .
 
     - name: Test
-      run: make test
+      run: make test-ci
 
     - name: Combine
       run: make gen-config && mkdir output && cp -r ./scripts go-aliyunmc ./example_configs README.md output

@@ -4,9 +4,13 @@ gen-config:
 
 # 运行测试
 test:
+	@go test -v ./...
+	
+test-ci:
 	@CONFIGGEN_SKIP_CONFIG=1 go run ./cmd/configgen
-	@mkdir -p configs
+	@mkdir -p configs casbin
 	@cp -n example_configs/*.toml configs/ 2>/dev/null || true
+	@cp rbac_model.conf rbac_policy.csv casbin 2>/dev/null || true
 	@go test -v ./...
 
 # 构建项目
