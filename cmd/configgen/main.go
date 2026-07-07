@@ -138,11 +138,16 @@ func main() {
 	}
 
 	playerListSamplerConfig := monitors.PlayerListSamplerConfig{
-			MaxDataPoints:     100,
-			SampleIntervalSec: 5,
-		}
+		MaxDataPoints:     100,
+		SampleIntervalSec: 5,
+	}
 
-		monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
+	balanceSamplerConfig := monitors.BalanceSamplerConfig{
+		MaxDataPoints:     100,
+		SampleIntervalSec: 300,
+	}
+
+	monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
 		PollIntervalSec:     600,
 		MemChoices:          []int{8, 16},
 		CpuCoreCountChoices: []int{4, 8},
@@ -156,7 +161,7 @@ func main() {
 	deployTaskConfig := tasks.DeployTaskConfig{
 		Vars: tasks.DeployTemplateVars{
 			SSHAccessPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
-		SSHGomcPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
+			SSHGomcPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
 			JavaVersion:    21,
 			Packages:       []string{"zip", "unzip"},
 			ArchiveOSSPath: "oss://your-bucket/archive",
@@ -261,6 +266,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/sampler-player-count.toml", playerListSamplerConfig); err != nil {
 		fmt.Printf("Error writing sampler-player-count.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/sampler-balance.toml", balanceSamplerConfig); err != nil {
+		fmt.Printf("Error writing sampler-balance.toml: %v\n", err)
 		os.Exit(1)
 	}
 
