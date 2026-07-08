@@ -17,8 +17,10 @@ echo "增量同步归档 -> ${OSS_PATH}"
 
 ossutil sync "${LOCAL_DIR}/" "${OSS_PATH}/" \
     --delete \
-    -f \
+    --force \
+    --update \
     --jobs=$J \
-    --parallel=$P
+    --parallel=$P > /dev/null
 
 echo "归档完成"
+
