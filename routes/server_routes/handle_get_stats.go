@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/Subilan/go-aliyunmc/context_util"
 	"github.com/Subilan/go-aliyunmc/h"
@@ -19,7 +20,7 @@ type GameStatsResponse struct {
 	Playtime            float64                        `json:"playtime"`
 	AdvancementProgress playerdata.AdvancementProgress `json:"advancement_progress"`
 	PlayerName          string                         `json:"player_name"`
-	OnlineDates         []string                       `json:"online_dates"`
+	OnlineDates         []time.Time                     `json:"online_dates"`
 	JoinStreak          int                            `json:"join_streak"`
 	LastSeen            *int64                         `json:"last_seen"`
 }

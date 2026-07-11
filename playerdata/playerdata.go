@@ -170,12 +170,12 @@ func playerNameMatchExpr() string {
 }
 
 // QueryOnlineDates returns sorted list of dates when the player was online.
-func QueryOnlineDates(playerName string) []string {
+func QueryOnlineDates(playerName string) []time.Time {
 	if playerName == "" {
 		return nil
 	}
 
-	var dates []string
+	var dates []time.Time
 	query := fmt.Sprintf(
 		"SELECT DISTINCT DATE(created_at) AS date FROM player_list_samples WHERE %s ORDER BY date DESC",
 		playerNameMatchExpr(),
@@ -184,7 +184,7 @@ func QueryOnlineDates(playerName string) []string {
 		return nil
 	}
 
-	sort.Strings(dates)
+	sort.Slice(dates, func(i, j int) bool { return dates[i].Before(dates[j]) })
 	return dates
 }
 
@@ -217,13 +217,9 @@ func QueryJoinStreak(playerName string) int {
 		return 0
 	}
 
-	dateSet := make(map[string]bool, len(dates))
-	for _, d := range dates {
-		dateSet[d] = true
-	}
-
 	maxStreak := 0
 	currentStreak := 0
+	day := 24 * time.Hour
 
 	for i, d := range dates {
 		if i == 0 {
@@ -231,10 +227,7 @@ func QueryJoinStreak(playerName string) int {
 			continue
 		}
 
-		prev, _ := time.Parse("2006-01-02", dates[i-1])
-		curr, _ := time.Parse("2006-01-02", d)
-
-		if curr.Sub(prev).Hours() == 24 {
+		if d.Sub(dates[i-1]) == day {
 			currentStreak++
 		} else {
 			if currentStreak > maxStreak {
