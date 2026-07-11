@@ -31,5 +31,19 @@ func checkBackupTask(args map[string]any) error {
 		return h.HttpError(http.StatusConflict, "自动回收流程正在执行，不允许触发backup任务")
 	}
 
-	return checkMustHaveActiveDeployedRunningInstance(args)
+	if err := checkMustHaveActiveDeployedRunningInstance(args); err != nil {
+		return err
+	}
+
+	snap := SnapshotServerStatus()
+
+	if !snap.IsValid() {
+		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
+	}
+	
+	if !snap.Value.Online {
+		return h.HttpError(http.StatusServiceUnavailable, "服务器未运行，跳过备份")
+	}
+
+	return nil
 }
