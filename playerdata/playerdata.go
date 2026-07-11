@@ -1,7 +1,6 @@
 package playerdata
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/Subilan/go-aliyunmc/mc"
@@ -10,14 +9,11 @@ import (
 	"sort"
 	"strings"
 	"time"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const (
 	StatsDir        = "remote_data_cache/player_stats"
 	AdvancementsDir = "remote_data_cache/player_advancements"
-	PlaytimeDB      = "remote_data_cache/playtime.db"
 	WhitelistPath   = "remote_data_cache/whitelist.json"
 )
 
@@ -25,16 +21,6 @@ const (
 type WhitelistEntry struct {
 	UUID string `json:"uuid"`
 	Name string `json:"name"`
-}
-
-// PlaytimeInfo holds playtime statistics
-type PlaytimeInfo struct {
-	Playtime           int64  `json:"playtime"`
-	ArtificialPlaytime int64  `json:"artificial_playtime"`
-	AfkPlaytime        int64  `json:"afk_playtime"`
-	LastSeen           *int64 `json:"last_seen"`
-	FirstJoin          *int64 `json:"first_join"`
-	JoinStreak         int    `json:"join_streak"`
 }
 
 // CategoryProgress holds per-category advancement counts
@@ -172,29 +158,6 @@ func AdvancementCategory(key string) string {
 	return before
 }
 
-// QueryPlaytime queries playtime data from the SQLite database
-func QueryPlaytime(uuid string) *PlaytimeInfo {
-	db, err := sql.Open("sqlite3", PlaytimeDB)
-	if err != nil {
-		return nil
-	}
-	defer db.Close()
-
-	row := db.QueryRow(
-		"SELECT playtime, artificial_playtime, afk_playtime, last_seen, first_join, relative_join_streak FROM play_time WHERE uuid = ?",
-		uuid,
-	)
-
-	var info PlaytimeInfo
-	err = row.Scan(&info.Playtime, &info.ArtificialPlaytime, &info.AfkPlaytime,
-		&info.LastSeen, &info.FirstJoin, &info.JoinStreak)
-	if err != nil {
-		return nil
-	}
-
-	return &info
-}
-
 // playerNameMatchExpr returns a SQL expression that matches playerName
 // within the comma-separated player_names column.
 func playerNameMatchExpr() string {
@@ -246,8 +209,8 @@ func QueryLastSeen(playerName string) *time.Time {
 	return &lastSeen
 }
 
-// QueryJoinStreak returns the number of consecutive days (counting backwards
-// from today) that the player has appeared online.
+// QueryJoinStreak returns the maximum number of consecutive days
+// the player has appeared online in their entire history.
 func QueryJoinStreak(playerName string) int {
 	dates := QueryOnlineDates(playerName)
 	if len(dates) == 0 {
@@ -259,18 +222,32 @@ func QueryJoinStreak(playerName string) int {
 		dateSet[d] = true
 	}
 
-	today := time.Now()
-	streak := 0
-	for i := 0; ; i++ {
-		d := today.AddDate(0, 0, -i)
-		dateStr := d.Format("2006-01-02")
-		if dateSet[dateStr] {
-			streak++
+	maxStreak := 0
+	currentStreak := 0
+
+	for i, d := range dates {
+		if i == 0 {
+			currentStreak = 1
+			continue
+		}
+
+		prev, _ := time.Parse("2006-01-02", dates[i-1])
+		curr, _ := time.Parse("2006-01-02", d)
+
+		if curr.Sub(prev).Hours() == 24 {
+			currentStreak++
 		} else {
-			break
+			if currentStreak > maxStreak {
+				maxStreak = currentStreak
+			}
+			currentStreak = 1
 		}
 	}
-	return streak
+	if currentStreak > maxStreak {
+		maxStreak = currentStreak
+	}
+
+	return maxStreak
 }
 
 // ReadMinecraftPlaytime reads the playtime (in seconds) from the player's stats JSON
