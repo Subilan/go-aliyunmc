@@ -54,16 +54,15 @@ func HandleGetStats(c *gin.Context) (any, error) {
 	advProgress := playerdata.ReadAdvancementProgress(uuid)
 
 	playtime, _ := playerdata.ReadMinecraftPlaytime(uuid)
-	pluginPlaytime := playerdata.QueryPlaytime(uuid)
-
-	var joinStreak int
-	var lastSeen *int64
-	if pluginPlaytime != nil {
-		joinStreak = pluginPlaytime.JoinStreak
-		lastSeen = pluginPlaytime.LastSeen
-	}
-
 	playerName := playerdata.LookupPlayerName(uuid)
+
+	joinStreak := playerdata.QueryJoinStreak(playerName)
+
+	var lastSeen *int64
+	if t := playerdata.QueryLastSeen(playerName); t != nil {
+		ts := t.UnixMilli()
+		lastSeen = &ts
+	}
 
 	return &GameStatsResponse{
 		Stats:               stats,

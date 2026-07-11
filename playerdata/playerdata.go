@@ -9,6 +9,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -194,22 +195,82 @@ func QueryPlaytime(uuid string) *PlaytimeInfo {
 	return &info
 }
 
-// QueryOnlineDates returns sorted list of dates when the player was online
+// playerNameMatchExpr returns a SQL expression that matches playerName
+// within the comma-separated player_names column.
+func playerNameMatchExpr() string {
+	switch store.C.Driver {
+	case "mysql":
+		return "CONCAT(',', player_names, ',') LIKE CONCAT('%,', ?, ',%')"
+	default:
+		return "',' || player_names || ',' LIKE '%,' || ? || ',%'"
+	}
+}
+
+// QueryOnlineDates returns sorted list of dates when the player was online.
 func QueryOnlineDates(playerName string) []string {
 	if playerName == "" {
 		return nil
 	}
 
 	var dates []string
-	if err := store.DB.Raw(
-		"SELECT DISTINCT DATE(created_at) AS date FROM player_list_samples WHERE ',' || player_names || ',' LIKE '%,' || ? || ',%' ORDER BY date DESC",
-		playerName,
-	).Pluck("date", &dates).Error; err != nil {
+	query := fmt.Sprintf(
+		"SELECT DISTINCT DATE(created_at) AS date FROM player_list_samples WHERE %s ORDER BY date DESC",
+		playerNameMatchExpr(),
+	)
+	if err := store.DB.Raw(query, playerName).Pluck("date", &dates).Error; err != nil {
 		return nil
 	}
 
 	sort.Strings(dates)
 	return dates
+}
+
+// QueryLastSeen returns the most recent time the player appeared online.
+func QueryLastSeen(playerName string) *time.Time {
+	if playerName == "" {
+		return nil
+	}
+
+	query := fmt.Sprintf(
+		"SELECT MAX(created_at) FROM player_list_samples WHERE %s",
+		playerNameMatchExpr(),
+	)
+
+	var lastSeen time.Time
+	if err := store.DB.Raw(query, playerName).Scan(&lastSeen).Error; err != nil {
+		return nil
+	}
+	if lastSeen.IsZero() {
+		return nil
+	}
+	return &lastSeen
+}
+
+// QueryJoinStreak returns the number of consecutive days (counting backwards
+// from today) that the player has appeared online.
+func QueryJoinStreak(playerName string) int {
+	dates := QueryOnlineDates(playerName)
+	if len(dates) == 0 {
+		return 0
+	}
+
+	dateSet := make(map[string]bool, len(dates))
+	for _, d := range dates {
+		dateSet[d] = true
+	}
+
+	today := time.Now()
+	streak := 0
+	for i := 0; ; i++ {
+		d := today.AddDate(0, 0, -i)
+		dateStr := d.Format("2006-01-02")
+		if dateSet[dateStr] {
+			streak++
+		} else {
+			break
+		}
+	}
+	return streak
 }
 
 // ReadMinecraftPlaytime reads the playtime (in seconds) from the player's stats JSON
