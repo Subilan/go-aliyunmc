@@ -14,7 +14,6 @@ type MetricType string
 
 const (
 	MetricMinecraftPlaytime MetricType = "minecraft_playtime"
-	MetricPluginPlaytime    MetricType = "plugin_playtime"
 	MetricAchievements      MetricType = "achievements"
 	MetricDistance          MetricType = "distance"
 	MetricMobKills          MetricType = "mob_kills"
@@ -24,7 +23,6 @@ const (
 
 var validMetrics = map[string]bool{
 	"minecraft_playtime": true,
-	"plugin_playtime":    true,
 	"achievements":       true,
 	"distance":           true,
 	"mob_kills":          true,
@@ -134,8 +132,6 @@ func computeMetric(uuid string, metric string) (float64, bool) {
 	switch metric {
 	case "minecraft_playtime":
 		return computeMinecraftPlaytime(uuid)
-	case "plugin_playtime":
-		return computePluginPlaytime(uuid)
 	case "achievements":
 		return computeAchievements(uuid)
 	case "distance":
@@ -156,14 +152,6 @@ func computeMinecraftPlaytime(uuid string) (float64, bool) {
 		return 0, false
 	}
 	return v, true
-}
-
-func computePluginPlaytime(uuid string) (float64, bool) {
-	info := playerdata.QueryPlaytime(uuid)
-	if info == nil {
-		return 0, false
-	}
-	return float64(info.Playtime), true
 }
 
 func computeAchievements(uuid string) (float64, bool) {
