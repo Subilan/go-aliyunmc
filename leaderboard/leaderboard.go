@@ -19,7 +19,6 @@ const (
 	MetricMobKills          MetricType = "mob_kills"
 	MetricBlocksMined       MetricType = "blocks_mined"
 	MetricAvgMoveDistance   MetricType = "avg_move_distance"
-	MetricWalkDistance      MetricType = "walk_distance"
 	MetricLoginDays         MetricType = "login_days"
 	MetricJoinStreak        MetricType = "join_streak"
 )
@@ -31,7 +30,6 @@ var validMetrics = map[string]bool{
 	"mob_kills":          true,
 	"blocks_mined":       true,
 	"avg_move_distance":  true,
-	"walk_distance":      true,
 	"login_days":         true,
 	"join_streak":        true,
 }
@@ -148,8 +146,6 @@ func computeMetric(uuid string, metric string) (float64, bool) {
 		return computeBlocksMined(uuid)
 	case "avg_move_distance":
 		return computeAvgMoveDistance(uuid)
-	case "walk_distance":
-		return computeWalkDistance(uuid)
 	case "login_days":
 		return computeLoginDays(uuid)
 	case "join_streak":
@@ -228,26 +224,6 @@ func computeBlocksMined(uuid string) (float64, bool) {
 		total += val
 	}
 	return total, true
-}
-
-func computeWalkDistance(uuid string) (float64, bool) {
-	stats, err := playerdata.ReadStats(uuid)
-	if err != nil {
-		return 0, false
-	}
-
-	var data struct {
-		Custom map[string]float64 `json:"minecraft:custom"`
-	}
-	if err := json.Unmarshal(stats, &data); err != nil {
-		return 0, false
-	}
-
-	walkCm, ok := data.Custom["minecraft:walk_one_cm"]
-	if !ok {
-		return 0, false
-	}
-	return walkCm / 100000, true // cm to km
 }
 
 func computeLoginDays(uuid string) (float64, bool) {
