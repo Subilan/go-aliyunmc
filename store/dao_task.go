@@ -53,7 +53,7 @@ func ListTasks(status *models.TaskStatus, sort, order string, limit, offset int)
 		query = query.Order("created_at DESC")
 	}
 
-	result := query.Preload("User").Limit(limit).Offset(offset).Find(&tasks)
+	result := query.Preload("User").Omit("output").Limit(limit).Offset(offset).Find(&tasks)
 	return tasks, result.Error
 }
 
