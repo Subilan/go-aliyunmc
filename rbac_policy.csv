@@ -31,6 +31,7 @@ p, basic, /server/query, GET
 p, basic, /changelogs, GET
 p, basic, /changelog/:id/like, POST
 p, basic, /server/leaderboard, GET
+p, basic, /server/stat-leaderboard, GET
 p, basic, /server/player-list, GET
 p, basic, /server/ip, GET
 p, operator, /changelog, POST

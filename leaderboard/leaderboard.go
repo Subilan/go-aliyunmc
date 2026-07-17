@@ -273,3 +273,69 @@ func computeAvgMoveDistance(uuid string) (float64, bool) {
 	playtimeHours := playtime / 3600
 	return distanceKm / float64(playtimeHours), true
 }
+
+// BuildRawLeaderboard computes a leaderboard for a single raw Minecraft stat key
+// (e.g. "minecraft:walk_one_cm", "minecraft:jump"). It reads each player's stats
+// JSON and looks up the value in minecraft:custom. Players who have opted out of
+// leaderboards are excluded.
+func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
+	uuids, err := playerdata.ListPlayerUUIDs()
+	if err != nil {
+		return nil, fmt.Errorf("列出玩家失败: %w", err)
+	}
+
+	excludeUUIDs, err := buildOptOutSet()
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []Entry
+	for _, uuid := range uuids {
+		if excludeUUIDs[uuid] {
+			continue
+		}
+
+		value, ok := computeRawStat(uuid, statKey)
+		if !ok {
+			continue
+		}
+
+		entries = append(entries, Entry{
+			UUID:       uuid,
+			PlayerName: playerdata.LookupPlayerName(uuid),
+			Value:      value,
+		})
+	}
+
+	desc := order != "asc"
+	sort.Slice(entries, func(i, j int) bool {
+		if desc {
+			return entries[i].Value > entries[j].Value
+		}
+		return entries[i].Value < entries[j].Value
+	})
+
+	if entries == nil {
+		entries = []Entry{}
+	}
+
+	return entries, nil
+}
+
+// computeRawStat reads a single stat key from the player's minecraft:custom stats.
+func computeRawStat(uuid, statKey string) (float64, bool) {
+	stats, err := playerdata.ReadStats(uuid)
+	if err != nil {
+		return 0, false
+	}
+
+	var data struct {
+		Custom map[string]float64 `json:"minecraft:custom"`
+	}
+	if err := json.Unmarshal(stats, &data); err != nil {
+		return 0, false
+	}
+
+	val, ok := data.Custom[statKey]
+	return val, ok
+}
