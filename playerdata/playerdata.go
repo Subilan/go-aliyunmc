@@ -50,7 +50,8 @@ func ReadWhitelist() ([]WhitelistEntry, error) {
 	return entries, nil
 }
 
-// LookupPlayerName finds the player name for a UUID from the whitelist
+// LookupPlayerName finds the player name for a UUID from the whitelist.
+// Prefer BuildPlayerNameMap for bulk lookups to avoid repeated file reads.
 func LookupPlayerName(uuid string) string {
 	entries, err := ReadWhitelist()
 	if err != nil {
@@ -62,6 +63,19 @@ func LookupPlayerName(uuid string) string {
 		}
 	}
 	return ""
+}
+
+// BuildPlayerNameMap reads the whitelist once and returns a UUID→name map.
+func BuildPlayerNameMap() map[string]string {
+	entries, err := ReadWhitelist()
+	if err != nil {
+		return nil
+	}
+	m := make(map[string]string, len(entries))
+	for _, e := range entries {
+		m[e.UUID] = e.Name
+	}
+	return m
 }
 
 // ReadStats reads the raw Minecraft stats JSON for a player
@@ -212,22 +226,21 @@ func QueryLastSeen(playerName string) *time.Time {
 // QueryJoinStreak returns the maximum number of consecutive days
 // the player has appeared online in their entire history.
 func QueryJoinStreak(playerName string) int {
-	dates := QueryOnlineDates(playerName)
+	return ComputeJoinStreak(QueryOnlineDates(playerName))
+}
+
+// ComputeJoinStreak computes the max consecutive day streak from sorted dates.
+func ComputeJoinStreak(dates []time.Time) int {
 	if len(dates) == 0 {
 		return 0
 	}
 
-	maxStreak := 0
-	currentStreak := 0
+	maxStreak := 1
+	currentStreak := 1
 	day := 24 * time.Hour
 
-	for i, d := range dates {
-		if i == 0 {
-			currentStreak = 1
-			continue
-		}
-
-		if d.Sub(dates[i-1]) == day {
+	for i := 1; i < len(dates); i++ {
+		if dates[i].Sub(dates[i-1]) == day {
 			currentStreak++
 		} else {
 			if currentStreak > maxStreak {
@@ -241,6 +254,60 @@ func QueryJoinStreak(playerName string) int {
 	}
 
 	return maxStreak
+}
+
+// BatchQueryOnlineDates fetches online dates for multiple player names in a single query.
+func BatchQueryOnlineDates(playerNames []string) (map[string][]time.Time, error) {
+	if len(playerNames) == 0 {
+		return map[string][]time.Time{}, nil
+	}
+
+	nameSet := make(map[string]bool, len(playerNames))
+	for _, n := range playerNames {
+		nameSet[n] = true
+	}
+
+	type row struct {
+		PlayerNames string
+		CreatedAt   time.Time
+	}
+	var rows []row
+	if err := store.DB.Raw(
+		"SELECT player_names, created_at FROM player_list_samples",
+	).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[string][]time.Time)
+	for _, r := range rows {
+		names := strings.Split(r.PlayerNames, ",")
+		for _, name := range names {
+			name = strings.TrimSpace(name)
+			if nameSet[name] {
+				d := r.CreatedAt.Truncate(24 * time.Hour)
+				result[name] = append(result[name], d)
+			}
+		}
+	}
+
+	for name, dates := range result {
+		result[name] = uniqueSortedDates(dates)
+	}
+
+	return result, nil
+}
+
+func uniqueSortedDates(dates []time.Time) []time.Time {
+	seen := make(map[time.Time]bool)
+	var unique []time.Time
+	for _, d := range dates {
+		if !seen[d] {
+			seen[d] = true
+			unique = append(unique, d)
+		}
+	}
+	sort.Slice(unique, func(i, j int) bool { return unique[i].Before(unique[j]) })
+	return unique
 }
 
 // ReadMinecraftPlaytime reads the playtime (in seconds) from the player's stats JSON

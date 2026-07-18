@@ -53,6 +53,11 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 		return nil, fmt.Errorf("无效的指标: %s", q.Metric)
 	}
 
+	// login-based metrics use a batch query path
+	if q.Metric == "login_days" || q.Metric == "join_streak" {
+		return buildLoginLeaderboard(q)
+	}
+
 	uuids, err := playerdata.ListPlayerUUIDs()
 	if err != nil {
 		return nil, fmt.Errorf("列出玩家失败: %w", err)
@@ -62,6 +67,8 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	nameMap := playerdata.BuildPlayerNameMap()
 
 	var entries []Entry
 	for _, uuid := range uuids {
@@ -74,9 +81,80 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 			continue
 		}
 
+		playerName := nameMap[uuid]
+		if playerName == "" {
+			playerName = playerdata.LookupPlayerName(uuid)
+		}
+
 		entries = append(entries, Entry{
 			UUID:       uuid,
-			PlayerName: playerdata.LookupPlayerName(uuid),
+			PlayerName: playerName,
+			Value:      value,
+		})
+	}
+
+	desc := q.Order != "asc"
+	sort.Slice(entries, func(i, j int) bool {
+		if desc {
+			return entries[i].Value > entries[j].Value
+		}
+		return entries[i].Value < entries[j].Value
+	})
+
+	if entries == nil {
+		entries = []Entry{}
+	}
+
+	return entries, nil
+}
+
+// buildLoginLeaderboard handles login_days and join_streak with a single
+// batch query instead of per-player SQL queries.
+func buildLoginLeaderboard(q Query) ([]Entry, error) {
+	uuids, err := playerdata.ListPlayerUUIDs()
+	if err != nil {
+		return nil, fmt.Errorf("列出玩家失败: %w", err)
+	}
+
+	excludeUUIDs, err := buildOptOutSet()
+	if err != nil {
+		return nil, err
+	}
+
+	nameMap := playerdata.BuildPlayerNameMap()
+
+	// Collect eligible player names for batch query
+	var playerNames []string
+	uuidToName := make(map[string]string)
+	for _, uuid := range uuids {
+		if excludeUUIDs[uuid] {
+			continue
+		}
+		name := nameMap[uuid]
+		if name == "" {
+			continue
+		}
+		playerNames = append(playerNames, name)
+		uuidToName[uuid] = name
+	}
+
+	datesByName, err := playerdata.BatchQueryOnlineDates(playerNames)
+	if err != nil {
+		return nil, fmt.Errorf("查询在线数据失败: %w", err)
+	}
+
+	var entries []Entry
+	for uuid, name := range uuidToName {
+		dates := datesByName[name]
+		var value float64
+		if q.Metric == "login_days" {
+			value = float64(len(dates))
+		} else {
+			value = float64(playerdata.ComputeJoinStreak(dates))
+		}
+		entries = append(entries, Entry{
+			UUID:       uuid,
+			PlayerName: name,
 			Value:      value,
 		})
 	}
@@ -289,6 +367,8 @@ func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
 		return nil, err
 	}
 
+	nameMap := playerdata.BuildPlayerNameMap()
+
 	var entries []Entry
 	for _, uuid := range uuids {
 		if excludeUUIDs[uuid] {
@@ -300,9 +380,14 @@ func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
 			continue
 		}
 
+		playerName := nameMap[uuid]
+		if playerName == "" {
+			playerName = playerdata.LookupPlayerName(uuid)
+		}
+
 		entries = append(entries, Entry{
 			UUID:       uuid,
-			PlayerName: playerdata.LookupPlayerName(uuid),
+			PlayerName: playerName,
 			Value:      value,
 		})
 	}
