@@ -12,6 +12,7 @@ type PlayerListEntry struct {
 	UUID                    string `json:"uuid"`
 	Name                    string `json:"name"`
 	DisallowPublicGameStats bool   `json:"disallow_public_game_stats"`
+	HasData                 bool   `json:"has_data"`
 }
 
 func HandleGetPlayerList(c *gin.Context) (any, error) {
@@ -36,12 +37,21 @@ func HandleGetPlayerList(c *gin.Context) (any, error) {
 		disallowMap[*user.WhitelistUUID] = err == nil && prefs.DisallowPublicGameStats
 	}
 
+	statsUUIDs, err := playerdata.ListPlayerUUIDs()
+	hasDataSet := make(map[string]bool, len(statsUUIDs))
+	if err == nil {
+		for _, uid := range statsUUIDs {
+			hasDataSet[uid] = true
+		}
+	}
+
 	result := make([]PlayerListEntry, 0, len(whitelist))
 	for _, entry := range whitelist {
 		result = append(result, PlayerListEntry{
 			UUID:                    entry.UUID,
 			Name:                    entry.Name,
 			DisallowPublicGameStats: disallowMap[entry.UUID],
+			HasData:                 hasDataSet[entry.UUID],
 		})
 	}
 

@@ -70,16 +70,19 @@ func CountTasks(status *models.TaskStatus) (int64, error) {
 
 // TaskStats 包含任务概览统计数据。
 type TaskStats struct {
-	Total           int64      `json:"total"`
-	SuccessCount    int64      `json:"successCount"`
-	LastCompletedAt *time.Time `json:"lastCompletedAt"`
-	LastCreatedBy   *uint      `json:"lastCreatedBy"`
-	LastCreatedUser *models.User `json:"lastCreatedUser"`
+	Total              int64                       `json:"total"`
+	SuccessCount       int64                       `json:"successCount"`
+	LastCompletedAt    *time.Time                  `json:"lastCompletedAt"`
+	LastCreatedBy      *uint                       `json:"lastCreatedBy"`
+	LastCreatedUser    *models.User                `json:"lastCreatedUser"`
+	TotalRuntimeSec    int64                       `json:"totalRuntimeSec"`
+	LastCompletedByType map[models.TaskType]*time.Time `json:"lastCompletedByType"`
 }
 
 // GetTaskStats 返回任务概览统计数据。
 func GetTaskStats() (TaskStats, error) {
 	var stats TaskStats
+	stats.LastCompletedByType = make(map[models.TaskType]*time.Time)
 
 	if err := DB.Model(&models.Task{}).Count(&stats.Total).Error; err != nil {
 		return stats, err
@@ -99,6 +102,40 @@ func GetTaskStats() (TaskStats, error) {
 	if err := DB.Preload("User").Order("created_at DESC").First(&lastCreated).Error; err == nil {
 		stats.LastCreatedBy = lastCreated.By
 		stats.LastCreatedUser = lastCreated.User
+	}
+
+	// 计算总运行时长：按 start_server—archive 配对
+	var pairedTasks []models.Task
+	DB.Where("status = ? AND type IN ?", successStatus, []models.TaskType{
+		models.TaskTypeStartServer,
+		models.TaskTypeArchive,
+	}).Order("end_at ASC").Find(&pairedTasks)
+
+	var totalRuntime time.Duration
+	var lastStartEnd *time.Time
+	for _, t := range pairedTasks {
+		if t.Type == models.TaskTypeStartServer && t.EndAt != nil {
+			lastStartEnd = t.EndAt
+		} else if t.Type == models.TaskTypeArchive && t.EndAt != nil && lastStartEnd != nil {
+			totalRuntime += t.EndAt.Sub(*lastStartEnd)
+			lastStartEnd = nil
+		}
+	}
+	stats.TotalRuntimeSec = int64(totalRuntime.Seconds())
+
+	// 按任务类别统计最近完成时间
+	type typeLastCompleted struct {
+		Type  models.TaskType
+		EndAt *time.Time
+	}
+	var typeResults []typeLastCompleted
+	DB.Model(&models.Task{}).
+		Select("type, MAX(end_at) as end_at").
+		Where("status = ?", successStatus).
+		Group("type").
+		Find(&typeResults)
+	for _, r := range typeResults {
+		stats.LastCompletedByType[r.Type] = r.EndAt
 	}
 
 	return stats, nil
