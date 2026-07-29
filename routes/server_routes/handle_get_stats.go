@@ -52,10 +52,14 @@ func HandleGetStats(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
+	playerName := playerdata.LookupPlayerName(uuid)
+	if playerName == "" {
+		return nil, h.HttpError(http.StatusNotFound, "未找到该玩家的统计数据")
+	}
+
 	advProgress := playerdata.ReadAdvancementProgress(uuid)
 
 	playtime, _ := playerdata.ReadMinecraftPlaytime(uuid)
-	playerName := playerdata.LookupPlayerName(uuid)
 
 	joinStreak := playerdata.QueryJoinStreak(playerName)
 

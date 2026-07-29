@@ -85,6 +85,9 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 		if playerName == "" {
 			playerName = playerdata.LookupPlayerName(uuid)
 		}
+		if playerName == "" {
+			continue
+		}
 
 		entries = append(entries, Entry{
 			UUID:       uuid,
@@ -383,6 +386,9 @@ func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
 		playerName := nameMap[uuid]
 		if playerName == "" {
 			playerName = playerdata.LookupPlayerName(uuid)
+		}
+		if playerName == "" {
+			continue
 		}
 
 		entries = append(entries, Entry{
