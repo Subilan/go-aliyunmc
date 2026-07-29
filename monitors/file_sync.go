@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/playerdata"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
 	"github.com/Subilan/go-aliyunmc/tasks"
 	"math/rand"
 	"os"
@@ -27,18 +29,23 @@ func initialJitter() time.Duration {
 	return time.Duration(rand.Int63n(int64(initialJitterMax)))
 }
 
+// PostSyncHook 是文件同步成功后执行的回调函数，返回 error 表示执行失败
+type PostSyncHook func() error
+
 // FileSyncPoller 是一个定时轮询器，用于定期从远端服务器同步指定文件到本地缓存目录
 type FileSyncPoller struct {
-	stopChans map[string]chan struct{}
-	mu        sync.Mutex
-	logger    *log_util.NamedLogger
+	stopChans     map[string]chan struct{}
+	postSyncHooks map[string]PostSyncHook // key 为本地文件完整路径
+	mu            sync.Mutex
+	logger        *log_util.NamedLogger
 }
 
 // newFileSyncPoller 创建一个新的 FileSyncPoller 实例
 func newFileSyncPoller() *FileSyncPoller {
 	return &FileSyncPoller{
-		stopChans: make(map[string]chan struct{}),
-		logger:    log_util.NewNamedLogger("[monitor/file-sync] ", "file-sync-monitor"),
+		stopChans:     make(map[string]chan struct{}),
+		postSyncHooks: make(map[string]PostSyncHook),
+		logger:        log_util.NewNamedLogger("[monitor/file-sync] ", "file-sync-monitor"),
 	}
 }
 
@@ -48,6 +55,14 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	if err := p.ensureCacheDir(); err != nil {
 		p.logger.Error("检查缓存目录失败: %v", err)
 	}
+
+	// 注册白名单同步后钩子：当 whitelist.json 同步完成后，校验并清理失效的绑定关系
+	whitelistLocalPath := filepath.Join(FileSyncC.LocalCacheRoot, "whitelist.json")
+	p.mu.Lock()
+	p.postSyncHooks[whitelistLocalPath] = func() error {
+		return validateAndCleanWhitelistBindings(p.logger)
+	}
+	p.mu.Unlock()
 
 	// 为每个文件创建独立的轮询 goroutine
 	for _, fileConfig := range FileSyncC.Files {
@@ -143,6 +158,16 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 		return
 	}
 	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
+
+	// 执行该文件注册的同步后钩子
+	p.mu.Lock()
+	hook, hasHook := p.postSyncHooks[localFullPath]
+	p.mu.Unlock()
+	if hasHook {
+		if err := hook(); err != nil {
+			p.logger.Error("同步后钩子执行失败 (%s): %v", fileConfig.LocalPath, err)
+		}
+	}
 }
 
 // pollDir 为单个目录执行定时轮询
@@ -219,6 +244,46 @@ func ensureDirectory(path string) error {
 	// 创建目录
 	if err := os.MkdirAll(path, 0755); err != nil {
 		return fmt.Errorf("创建目录失败 %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// validateAndCleanWhitelistBindings 读取当前 whitelist.json 并清理所有已失效的用户绑定。
+// 若某用户的 WhitelistUUID 在当前白名单中已不存在，则将其置为 nil（解绑）。
+func validateAndCleanWhitelistBindings(logger *log_util.NamedLogger) error {
+	entries, err := playerdata.ReadWhitelist()
+	if err != nil {
+		return fmt.Errorf("读取白名单失败: %w", err)
+	}
+
+	// 构建当前白名单 UUID 集合
+	validUUIDs := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		validUUIDs[e.UUID] = true
+	}
+
+	// 查询所有已绑定的用户
+	var users []models.User
+	if err := store.DB.Where("whitelist_uuid IS NOT NULL").Find(&users).Error; err != nil {
+		return fmt.Errorf("查询已绑定用户失败: %w", err)
+	}
+
+	cleared := 0
+	for _, u := range users {
+		if u.WhitelistUUID != nil && !validUUIDs[*u.WhitelistUUID] {
+			logger.Info("用户 %s 的白名单绑定已失效 (UUID: %s)，自动解绑", u.Username, *u.WhitelistUUID)
+			u.WhitelistUUID = nil
+			if err := store.DB.Save(&u).Error; err != nil {
+				logger.Error("解绑用户 %s 失败: %v", u.Username, err)
+				continue
+			}
+			cleared++
+		}
+	}
+
+	if cleared > 0 {
+		logger.Info("白名单绑定校验完成，已自动解绑 %d 个失效绑定", cleared)
 	}
 
 	return nil
