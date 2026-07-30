@@ -15,9 +15,6 @@ type Config struct {
 
 	// TLS 是 HTTPS 配置，使用本地证书文件
 	TLS TLSConfig `toml:"tls" validate:"required" comment:""`
-
-	// BotKey 是用于识别Bot的预共享密钥，留空则禁用Bot功能
-	BotKey string `toml:"bot_key" comment:"Bot预共享密钥，留空则禁用Bot功能"`
 }
 
 // CorsConfig 是对 gin CORS 中间件的配置，字段解释见 https://pkg.go.dev/github.com/gin-contrib/cors#Config

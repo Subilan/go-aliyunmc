@@ -9,7 +9,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/log_util"
-	"github.com/Subilan/go-aliyunmc/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/routes/bss_routes"
@@ -70,8 +69,6 @@ func main() {
 }
 
 func runServer() {
-	mid.InitBotAuth(C.BotKey, user_routes.C.BotToken.Secret)
-
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
 			log_util.Fatal("初始化DEV用户失败: %v", err)
