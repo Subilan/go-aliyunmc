@@ -42,6 +42,7 @@ func Bind(router *gin.Engine) {
 			authorized.PUT("/preferences", h.B(HandleSetPreferences))
 			authorized.GET("/permissions", h.G(HandleGetPermissions))
 			authorized.GET("/chat-token", mid.Whitelisted(), h.G(HandleGetChatToken))
+			authorized.GET("/s", h.Q(HandleListUsers))
 			authorized.POST("/ban", h.B(HandleBanUser))
 			authorized.POST("/unban", h.B(HandleUnbanUser))
 		}

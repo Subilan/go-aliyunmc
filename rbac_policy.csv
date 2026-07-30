@@ -10,6 +10,7 @@ p, basic, /user/preferences, GET
 p, basic, /user/preferences, PUT
 p, basic, /user/permissions, GET
 p, basic, /user/chat-token, GET
+p, operator, /user/s, GET
 p, operator, /user/ban, POST
 p, operator, /user/unban, POST
 p, basic, /server/advancements/:uuid, GET
