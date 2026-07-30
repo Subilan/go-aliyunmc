@@ -31,6 +31,10 @@ func HandleBotToken(req botTokenRequest, c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusUnauthorized, "用户名或密码错误")
 	}
 
+	if user.Banned {
+		return nil, h.HttpError(http.StatusForbidden, "账号已被封禁")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		return nil, h.HttpError(http.StatusUnauthorized, "用户名或密码错误")
 	}
