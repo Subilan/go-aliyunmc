@@ -38,6 +38,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    environment: default
     env:
       DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
     steps:
