@@ -15,7 +15,7 @@ jobs:
           submodules: recursive
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -35,13 +35,14 @@ jobs:
           retention-days: 30
 
   notify-production:
-    if: github.ref == 'refs/heads/main' && secrets.DEPLOY_PAT != ''
     needs: build
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    env:
+      DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
     steps:
       - name: Notify production repo
-        env:
-          DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
+        if: env.DEPLOY_PAT != ''
         run: |
           curl -fsS -X POST \
             -H "Authorization: Bearer ${DEPLOY_PAT}" \

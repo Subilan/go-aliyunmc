@@ -19,10 +19,11 @@ cp "$ROOT/deploy/remote-install.sh" "$OUT/remote-install.sh"
 printf '{"app_ref":"%s","built_at":"%s"}\n' "$REF" "$(date -u +%FT%TZ)" > "$OUT/deploy-manifest.json"
 
 echo "==> Writing checksums"
-(cd "$OUT" && sha256sum \
-  go-aliyunmc rbac_model.conf rbac_policy.csv \
-  minecraft_en_us.json minecraft_zh_cn.json \
-  go-aliyunmc.service remote-install.sh \
-  $(find scripts -type f | sort) > SHA256SUMS)
+(cd "$OUT" && {
+  sha256sum go-aliyunmc rbac_model.conf rbac_policy.csv \
+    minecraft_en_us.json minecraft_zh_cn.json \
+    go-aliyunmc.service remote-install.sh
+  find scripts -type f | sort | xargs sha256sum
+} > SHA256SUMS)
 
 echo "==> Public bundle ready: $OUT"
