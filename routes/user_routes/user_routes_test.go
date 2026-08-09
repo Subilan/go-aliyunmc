@@ -3,6 +3,7 @@ package user_routes
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/Subilan/go-aliyunmc/internal/testutil"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/session"
 	"github.com/Subilan/go-aliyunmc/store"
@@ -19,6 +20,9 @@ import (
 const testDBPath = "user_routes_test.db"
 
 func TestMain(m *testing.M) {
+	if err := testutil.ChdirProjectRoot(); err != nil {
+		panic(err)
+	}
 	store.C = store.Config{
 		Driver: "sqlite",
 		DBName: "user_routes_test",
@@ -26,9 +30,13 @@ func TestMain(m *testing.M) {
 	}
 
 	_ = os.Remove(testDBPath)
+	perms.C = perms.Config{
+		ModelPath:  "rbac_model.conf",
+		PolicyPath: "rbac_policy.csv",
+	}
+	perms.MustInitialize()
 	store.MustInitialize()
 	store.AutoMigrate()
-	perms.MustInitialize()
 
 	code := m.Run()
 

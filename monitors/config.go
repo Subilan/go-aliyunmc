@@ -66,7 +66,7 @@ type InstanceChargeFilters struct {
 // PlayerListSamplerConfig 定义了玩家列表采样器的配置。
 type PlayerListSamplerConfig struct {
 	// MaxDataPoints 表示玩家列表采样器在内存中最多存储的数据点数量。
-	MaxDataPoints     int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	MaxDataPoints int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
 	// SampleIntervalSec 采样间隔，单位为秒。
 	SampleIntervalSec int `toml:"sample_interval_sec" validate:"required,min=1" comment:"采样间隔（秒）"`
 }
@@ -74,7 +74,7 @@ type PlayerListSamplerConfig struct {
 // BalanceSamplerConfig 定义了余额采样器的配置。
 type BalanceSamplerConfig struct {
 	// MaxDataPoints 表示余额采样器在内存中最多存储的数据点数量。
-	MaxDataPoints     int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
+	MaxDataPoints int `toml:"max_data_points" validate:"required,min=1" comment:"内存中最多存储的数据点数量"`
 	// SampleIntervalSec 采样间隔，单位为秒。
 	SampleIntervalSec int `toml:"sample_interval_sec" validate:"required,min=1" comment:"采样间隔（秒）"`
 }
@@ -88,7 +88,7 @@ var BestEcsCandidateC BestEcsCandidateMonitorConfig
 var PlayerCountSamplerC PlayerListSamplerConfig
 var BalanceSamplerC BalanceSamplerConfig
 
-func init() {
+func MustLoadConfig() {
 	utils.MustBindConfigToml(&ServerStatusC, "monitor-server")
 	utils.MustBindConfigToml(&InstanceStatusC, "monitor-instance")
 	utils.MustBindConfigToml(&FileSyncC, "monitor-file-sync")

@@ -5,7 +5,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/pelletier/go-toml/v2"
@@ -13,12 +12,16 @@ import (
 
 const ConfigDir = "configs/"
 
+func configDir() string {
+	if dir := os.Getenv("GO_ALIYUNMC_CONFIG_DIR"); dir != "" {
+		return dir
+	}
+	return ConfigDir
+}
+
 // MustBindConfigToml 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
 func MustBindConfigToml[T any](obj *T, name string) {
-	if os.Getenv("CONFIGGEN_SKIP_CONFIG") == "1" {
-		return
-	}
-	path := ConfigDir + name + ".toml"
+	path := filepath.Join(configDir(), name+".toml")
 	fileContent, err := os.ReadFile(path)
 
 	if err != nil {
@@ -62,13 +65,4 @@ func ProjectRoot() string {
 
 	log_util.Fatal("无法定位项目根目录")
 	return ""
-}
-
-func init() {
-	testing := strings.HasSuffix(os.Args[0], ".test")
-	if testing {
-		if err := os.Chdir(ProjectRoot()); err != nil {
-			log_util.Fatal("切换到项目根目录失败: %v", err)
-		}
-	}
 }

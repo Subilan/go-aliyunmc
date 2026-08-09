@@ -20,8 +20,8 @@ type Advancement struct {
 	IsChallenge bool `json:"isChallenge"`
 }
 
-// Advancements 是一个映射，键是成就的资源位置，值是对应的 Advancement 结构体实例，包含了 Minecraft Java Edition 26.1 中所有成就的信息。
-var Advancements = make(map[string]Advancement)
+// advancements 保存成就翻译表，由 LoadData 填充。
+var advancements map[string]Advancement
 
 var advancementRe = regexp.MustCompile(`advancements\.(story|nether|end|husbandry|adventure)\.([A-Za-z_0-9]+)\.(title|description)`)
 
@@ -108,7 +108,7 @@ func buildAdvancements(langEn, langZh map[string]string) {
 			zhDesc = enDesc
 		}
 
-		Advancements[resourceLocation] = Advancement{
+		advancements[resourceLocation] = Advancement{
 			ResourceLocation: resourceLocation,
 			enOrZh: enOrZh{
 				EnglishName: enTitle,

@@ -6,7 +6,8 @@ type Entity struct {
 	enOrZh
 }
 
-var Entities = make(map[string]Entity)
+// entities 保存实体翻译表，由 LoadData 填充。
+var entities map[string]Entity
 
 var entityRe = regexp.MustCompile(`entity\.minecraft\.([A-Za-z_0-9]+).*`)
 
@@ -30,7 +31,7 @@ func buildEntities(langEn, langZh map[string]string) {
 			zhName = value
 		}
 
-		Entities[entityIdentifier] = Entity{
+		entities[entityIdentifier] = Entity{
 			enOrZh: enOrZh{
 				EnglishName: value,
 				ChineseName: zhName,

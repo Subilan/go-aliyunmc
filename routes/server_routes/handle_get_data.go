@@ -13,24 +13,21 @@ import (
 )
 
 var supportedFileSuffix = [...]string{"json", "yml", "yaml"}
-var supportedFileHandlers map[string]func([]byte) (map[string]any, error)
 
-func init() {
-	jsonHandler := func(data []byte) (result map[string]any, err error) {
-		err = json.Unmarshal(data, &result)
-		return
-	}
+func unmarshalJSON(data []byte) (result map[string]any, err error) {
+	err = json.Unmarshal(data, &result)
+	return
+}
 
-	yamlHandler := func(data []byte) (result map[string]any, err error) {
-		err = yaml.Unmarshal(data, &result)
-		return
-	}
+func unmarshalYAML(data []byte) (result map[string]any, err error) {
+	err = yaml.Unmarshal(data, &result)
+	return
+}
 
-	supportedFileHandlers = map[string]func([]byte) (map[string]any, error){
-		"json": jsonHandler,
-		"yaml": yamlHandler,
-		"yml":  yamlHandler,
-	}
+var supportedFileHandlers = map[string]func([]byte) (map[string]any, error){
+	"json": unmarshalJSON,
+	"yaml": unmarshalYAML,
+	"yml":  unmarshalYAML,
 }
 
 func HandleGetData(c *gin.Context) (any, error) {

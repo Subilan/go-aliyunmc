@@ -1,17 +1,11 @@
-.PHONY: gen-config test test-ci build dev run
+.PHONY: gen-config test build dev run
 
 # 生成配置文件
 gen-config:
-	@CONFIGGEN_SKIP_CONFIG=1 go run ./cmd/configgen
+	@go run ./cmd/configgen
 
 # 运行测试
-test: gen-config
-	@go test -v ./...
-	
-test-ci: gen-config
-	@mkdir -p configs casbin
-	@cp -n example_configs/*.toml configs/ 2>/dev/null || true
-	@cp rbac_model.conf rbac_policy.csv casbin 2>/dev/null || true
+test:
 	@go test -v ./...
 
 # 构建项目

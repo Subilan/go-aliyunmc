@@ -54,7 +54,8 @@ func TryGetTaskDefinition(taskType string) (*TaskDefinition, bool) {
 	return def, ok
 }
 
-func init() {
+// RegisterTaskDefinitions 注册内置任务定义，需要在 tasks.MustLoadConfig() 之后调用。
+func RegisterTaskDefinitions() {
 	TaskDefinitions[models.TaskTypeTest] = &TaskDefinition{
 		Exclusive: true,
 		Type:      models.TaskTypeTest,

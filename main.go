@@ -9,6 +9,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/mc"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/routes/bss_routes"
@@ -21,6 +22,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/routes/state_routes"
 	"github.com/Subilan/go-aliyunmc/routes/task_routes"
 	"github.com/Subilan/go-aliyunmc/routes/user_routes"
+	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/session"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
@@ -37,17 +39,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
-
-func init() {
-	utils.MustBindConfigToml(&C, "main")
-	store.MustInitialize()
-	if err := session.InitStore(store.DB); err != nil {
-		log_util.Fatal("初始化 session 存储失败: %v", err)
-	}
-	perms.MustInitialize()
-	aliyun.MustInitialize()
-	env.MustInitialize()
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -72,6 +63,24 @@ func main() {
 }
 
 func runServer() {
+	env.MustInitialize()
+	utils.MustBindConfigToml(&C, "main")
+	store.MustLoadConfig()
+	store.MustInitialize()
+	if err := session.InitStore(store.DB); err != nil {
+		log_util.Fatal("初始化 session 存储失败: %v", err)
+	}
+	perms.MustLoadConfig()
+	perms.MustInitialize()
+	aliyun.MustLoadConfig()
+	aliyun.MustInitialize()
+	tasks.MustLoadConfig()
+	tasks.RegisterTaskDefinitions()
+	server.MustLoadConfig()
+	user_routes.MustLoadConfig()
+	monitors.MustLoadConfig()
+	mc.MustLoadData()
+
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
 			log_util.Fatal("初始化DEV用户失败: %v", err)
@@ -148,11 +157,16 @@ func runServer() {
 }
 
 func runMigrate() {
+	store.MustLoadConfig()
+	store.MustInitialize()
 	store.AutoMigrate()
 	log_util.Info("数据库迁移完成")
 }
 
 func runCreateUser() {
+	store.MustLoadConfig()
+	store.MustInitialize()
+
 	fs := flag.NewFlagSet("create_user", flag.ExitOnError)
 	username := fs.String("username", "", "用户名")
 	password := fs.String("password", "", "密码")

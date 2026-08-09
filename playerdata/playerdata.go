@@ -104,14 +104,16 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 		Done bool `json:"done"`
 	}
 
+	advancements := mc.Advancements()
+
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", AdvancementsDir, uuid))
 	if err != nil {
-		return AdvancementProgress{Total: len(mc.Advancements)}
+		return AdvancementProgress{Total: len(advancements)}
 	}
 
 	var rawData map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawData); err != nil {
-		return AdvancementProgress{Total: len(mc.Advancements)}
+		return AdvancementProgress{Total: len(advancements)}
 	}
 
 	completed := 0
@@ -126,7 +128,7 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 		if !raw.Done {
 			continue
 		}
-		if _, known := mc.Advancements[key]; !known {
+		if _, known := advancements[key]; !known {
 			continue
 		}
 		completed++
@@ -134,7 +136,7 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 		categoryCompleted[category]++
 	}
 
-	for key := range mc.Advancements {
+	for key := range advancements {
 		category := AdvancementCategory(key)
 		categoryTotal[category]++
 	}
@@ -153,7 +155,7 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 	}
 
 	return AdvancementProgress{
-		Total:      len(mc.Advancements),
+		Total:      len(advancements),
 		Completed:  completed,
 		Categories: categories,
 	}

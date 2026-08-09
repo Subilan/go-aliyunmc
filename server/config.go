@@ -4,7 +4,7 @@ import "github.com/Subilan/go-aliyunmc/utils"
 
 var C ServerConfig
 
-func init() {
+func MustLoadConfig() {
 	utils.MustBindConfigToml(&C, "server")
 }
 

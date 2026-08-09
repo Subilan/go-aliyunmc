@@ -3,13 +3,13 @@ package tasks
 import "github.com/Subilan/go-aliyunmc/utils"
 
 type DeployTemplateVars struct {
-	SSHAccessPublicKey string `toml:"ssh_access_public_key" validate:"required" comment:"用于SSH访问的公钥"`
-	SSHGomcPublicKey   string `toml:"ssh_gomc_public_key" validate:"required" comment:"gomc服务所在主机的公钥"`
-	JavaVersion    int      `toml:"java_version" validate:"required,min=1" comment:"JRE版本号，建议使用当前服务端要求的最低版本"`
-	Packages       []string `toml:"packages" validate:"omitempty,dive,min=1" comment:"额外安装的软件包列表"`
-	ArchiveOSSPath string   `toml:"archive_oss_path" validate:"required" comment:"用于部署恢复的OSS归档路径"`
-	WssCertSrc     string   `toml:"wss_cert_src" comment:"WSS证书文件路径（.p12格式），留空则跳过证书上传"`
-	WssCertDst     string   `toml:"wss_cert_dst" comment:"WSS证书在远程服务器上的目标路径，留空则跳过证书上传"`
+	SSHAccessPublicKey string   `toml:"ssh_access_public_key" validate:"required" comment:"用于SSH访问的公钥"`
+	SSHGomcPublicKey   string   `toml:"ssh_gomc_public_key" validate:"required" comment:"gomc服务所在主机的公钥"`
+	JavaVersion        int      `toml:"java_version" validate:"required,min=1" comment:"JRE版本号，建议使用当前服务端要求的最低版本"`
+	Packages           []string `toml:"packages" validate:"omitempty,dive,min=1" comment:"额外安装的软件包列表"`
+	ArchiveOSSPath     string   `toml:"archive_oss_path" validate:"required" comment:"用于部署恢复的OSS归档路径"`
+	WssCertSrc         string   `toml:"wss_cert_src" comment:"WSS证书文件路径（.p12格式），留空则跳过证书上传"`
+	WssCertDst         string   `toml:"wss_cert_dst" comment:"WSS证书在远程服务器上的目标路径，留空则跳过证书上传"`
 }
 
 type DeployTaskConfig struct {
@@ -46,7 +46,7 @@ var DeployC DeployTaskConfig
 var BackupC BackupTaskConfig
 var ArchiveC ArchiveTaskConfig
 
-func init() {
+func MustLoadConfig() {
 	utils.MustBindConfigToml(&DeployC, "task-deploy")
 	utils.MustBindConfigToml(&BackupC, "task-backup")
 	utils.MustBindConfigToml(&ArchiveC, "task-archive")

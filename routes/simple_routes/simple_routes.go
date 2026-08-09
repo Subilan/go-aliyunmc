@@ -16,10 +16,10 @@ func Bind(engine *gin.Engine) {
 	{
 		authorized.GET("/mc-translations", h.V(func() map[string]any {
 			return map[string]any{
-				"biomes":         mc.Biomes,
-				"blocksAndItems": mc.BlocksAndItems,
-				"entities":       mc.Entities,
-				"stats":          mc.Stats,
+				"biomes":         mc.Biomes(),
+				"blocksAndItems": mc.BlocksAndItems(),
+				"entities":       mc.Entities(),
+				"stats":          mc.Stats(),
 			}
 		}))
 	}

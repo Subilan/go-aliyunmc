@@ -21,7 +21,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Test
-        run: make test-ci
+        run: make test
 
       - name: Package public release
         run: bash deploy/package-public.sh dist

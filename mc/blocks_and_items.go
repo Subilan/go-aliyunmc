@@ -9,7 +9,8 @@ type BlockOrItem struct {
 	enOrZh
 }
 
-var BlocksAndItems = make(map[string]BlockOrItem)
+// blocksAndItems 保存方块和物品翻译表，由 LoadData 填充。
+var blocksAndItems map[string]BlockOrItem
 
 var blockAndItemsRe = regexp.MustCompile(`(block|item)\.minecraft\.([A-Za-z_0-9]+).*`)
 
@@ -32,7 +33,7 @@ func buildBlocksAndItems(langEn, langZh map[string]string) {
 			zhName = value
 		}
 
-		BlocksAndItems[blockOrItemIdentifier] = BlockOrItem{
+		blocksAndItems[blockOrItemIdentifier] = BlockOrItem{
 			enOrZh: enOrZh{
 				EnglishName: value,
 				ChineseName: zhName,

@@ -6,7 +6,8 @@ type Biome struct {
 	enOrZh
 }
 
-var Biomes = make(map[string]Biome)
+// biomes 保存生物群系翻译表，由 LoadData 填充。
+var biomes map[string]Biome
 
 var biomesRe = regexp.MustCompile(`biome\.minecraft\.([A-Za-z_0-9]+).*`)
 
@@ -30,7 +31,7 @@ func buildBiomes(langEn, langZh map[string]string) {
 			zhName = value
 		}
 
-		Biomes[biomeIdentifier] = Biome{
+		biomes[biomeIdentifier] = Biome{
 			enOrZh: enOrZh{
 				EnglishName: value,
 				ChineseName: zhName,

@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 make gen-config   # Generate example configs into example_configs/
 make test         # Run all tests (go test -v ./...)
+go test ./...     # 直接运行即可，不需要先生成或复制配置文件
 make build        # Build binary as aliyunmc
 make dev          # Run in dev mode (sets GO_ALIYUNMC_DEV=1)
 make run          # Run without dev mode
@@ -53,14 +54,21 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 
 ## Initialization Order
 
-`main.go`'s `init()` runs modules in this order, which is load-bearing:
-1. `utils.MustBindConfigToml(&C, "main")` — main config (`config.go` at repo root, struct `Config`)
-2. `store.MustInitialize()` — DB connection
-3. `perms.MustInitialize()` — Casbin enforcer
-4. `aliyun.MustInitialize()` — Alibaba Cloud clients
-5. `env.MustInitialize()` — DEV flag
+初始化是显式发生的，不再依赖 `init()`：
 
-After `init()`, each package's own `init()` loads its TOML config from `configs/<name>.toml` via `utils.MustBindConfigToml`. Config structs use `validate` tags (go-playground/validator) that are enforced at startup — invalid config causes a fatal exit.
+- `runServer` 按以下顺序装配：
+  1. `env.MustInitialize()` — DEV flag
+  2. `utils.MustBindConfigToml(&C, "main")` — main config
+  3. `store.MustLoadConfig()` + `store.MustInitialize()` — DB 配置和连接
+  4. `session.InitStore(store.DB)` — session 存储
+  5. `perms.MustLoadConfig()` + `perms.MustInitialize()` — Casbin enforcer
+  6. `aliyun.MustLoadConfig()` + `aliyun.MustInitialize()` — 阿里云 clients
+  7. `tasks.MustLoadConfig()` + `tasks.RegisterTaskDefinitions()` — 任务配置和定义注册
+  8. `server.MustLoadConfig()`、`user_routes.MustLoadConfig()`、`monitors.MustLoadConfig()`
+  9. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
+- `migrate` 和 `create_user` 只加载 `store` 配置并初始化 DB，不加载其他模块。
+
+各包只提供显式的 `MustLoadConfig()`/`MustInitialize()`，不再在包初始化阶段读 TOML。Config structs 使用 `validate` tags（go-playground/validator），无效配置会在启动时直接终止。
 
 Dev mode (`env.DEV == true`): auto-migrates DB schema, auto-creates a dev user, and runs Gin in debug mode.
 
@@ -122,7 +130,7 @@ SSH always uses port 22. User `root` with password from `aliyun.C.Ecs.RootPasswo
 
 ## Config System
 
-All config files live in `configs/*.toml` and are loaded via `utils.MustBindConfigToml[T any](ptr, name)`, which reads, unmarshals, and validates. `cmd/configgen/main.go` generates example configs into `example_configs/`. When changing config structs/tags, keep `configgen` and `example_configs/` aligned.
+All config files live in `configs/*.toml` and are loaded via `utils.MustBindConfigToml[T any](ptr, name)`, which reads, unmarshals, and validates. `cmd/configgen/main.go` generates example configs into `example_configs/`. When changing config structs/tags, keep `configgen` and `example_configs/` aligned. 默认配置目录是 `configs/`，也可以通过 `GO_ALIYUNMC_CONFIG_DIR` 覆盖。
 
 Runtime `configs/` files are user-managed — never auto-generate them.
 
@@ -147,7 +155,7 @@ The file-sync monitor (`monitors/file_sync.go`) periodically downloads files fro
 - Task config types live in `tasks/config.go`; template vars structs use `toml` + `validate` tags.
 - `configs/` holds runtime config; `example_configs/` holds generated defaults.
 - Dev mode (`GO_ALIYUNMC_DEV=1`): enables auto-migration, auto-creates dev user, runs in debug mode.
-- Tests that rely on `store.DB` must run from the project root (handled by `utils.init()` which detects `go test` and chdirs).
+- Tests that need project-root relative files explicitly call `testutil.ChdirProjectRoot()` in `TestMain`; production code no longer changes the working directory.
 - Script templates use `{{.VarName}}` Go template syntax and live under `scripts/`.
 - DB unique constraints are preferred over application-level checks for enforcing uniqueness (e.g. `WhitelistUUID` unique index).
 - Every newly-created or just-updated API route should be configured correctly in `rbac_policy.csv` to prevent access control issues.

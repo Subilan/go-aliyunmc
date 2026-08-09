@@ -7,7 +7,7 @@ import (
 
 var C Config
 
-func init() {
+func MustLoadConfig() {
 	utils.MustBindConfigToml(&C, "store")
 }
 

@@ -11,21 +11,22 @@ import (
 	"gorm.io/gorm"
 )
 
-var manager *scs.SessionManager
-
 const (
 	KeyUserId   = "user_id"
 	KeyUsername = "username"
 )
 
-func init() {
-	manager = scs.New()
+func newDefaultManager() *scs.SessionManager {
+	manager := scs.New()
 	manager.Lifetime = 1 * time.Hour
 	manager.Cookie.HttpOnly = true
 	manager.Cookie.SameSite = http.SameSiteLaxMode
 	manager.Cookie.Secure = false
 	manager.Cookie.Path = "/"
+	return manager
 }
+
+var manager = newDefaultManager()
 
 // InitStore 将 session 存储切换到数据库，使服务重启后登录态仍然保留。
 // 需要在 store.MustInitialize() 之后调用。

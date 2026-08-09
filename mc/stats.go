@@ -9,7 +9,8 @@ type Stat struct {
 	enOrZh
 }
 
-var Stats = make(map[string]Stat)
+// stats 保存统计信息翻译表，由 LoadData 填充。
+var stats map[string]Stat
 
 var statRe = regexp.MustCompile(`stat\.minecraft\.([A-Za-z_0-9]+).*`)
 
@@ -33,7 +34,7 @@ func buildStats(langEn, langZh map[string]string) {
 			zhName = value
 		}
 
-		Stats[statIdentifier] = Stat{
+		stats[statIdentifier] = Stat{
 			enOrZh: enOrZh{
 				EnglishName: value,
 				ChineseName: zhName,

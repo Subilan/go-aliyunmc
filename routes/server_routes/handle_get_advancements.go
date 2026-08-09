@@ -64,6 +64,7 @@ func HandleGetAdvancements(c *gin.Context) (any, error) {
 
 	const timeLayout = "2006-01-02 15:04:05 -0700"
 
+	advancements := mc.Advancements()
 	playerAdvs := make(map[string]*AdvancementEntry)
 
 	for key, rawValue := range rawData {
@@ -76,7 +77,7 @@ func HandleGetAdvancements(c *gin.Context) (any, error) {
 			continue
 		}
 
-		adv, known := mc.Advancements[key]
+		adv, known := advancements[key]
 		if !known {
 			continue
 		}
@@ -97,8 +98,8 @@ func HandleGetAdvancements(c *gin.Context) (any, error) {
 		}
 	}
 
-	result := make([]AdvancementEntry, 0, len(mc.Advancements))
-	for key, adv := range mc.Advancements {
+	result := make([]AdvancementEntry, 0, len(advancements))
+	for key, adv := range advancements {
 		if existing, ok := playerAdvs[key]; ok {
 			result = append(result, *existing)
 		} else {
