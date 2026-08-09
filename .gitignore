@@ -3,6 +3,7 @@ config.toml
 
 *.drawio.bkp
 /go-aliyunmc*
+/dist/
 upload.sh
 *.pem
 playerprofiles
