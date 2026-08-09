@@ -1,0 +1,1 @@
+gomc ALL=(root) NOPASSWD: /usr/bin/systemctl daemon-reload, /usr/bin/systemctl restart go-aliyunmc.service, /usr/bin/install -m 0644 /home/gomc/prod/releases/*/go-aliyunmc.service /etc/systemd/system/go-aliyunmc.service

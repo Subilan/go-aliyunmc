@@ -4,8 +4,11 @@
 
 - `systemd/go-aliyunmc.service`：远端 systemd 服务的唯一事实源。
 - `package-public.sh`：主仓库 CI 用来打包“公共发布物”（二进制、RBAC、Minecraft 语言文件、脚本模板、systemd unit），不含生产配置。
-- `remote-install.sh`：在远端以 root 执行；校验、安装 release、切换 `current`、重启 systemd、健康检查、失败回滚。
+- `remote-install.sh`：在远端执行（root 或具备白名单 sudo 的 `gomc`）；校验、安装 release、切换 `current`、重启 systemd、健康检查、失败回滚。
 - `migrate-remote-layout.sh`：一次性把远端从平铺布局迁移到 `releases/<version> + current` 布局。
+- `sudoers/go-aliyunmc` + `install-gomc-sudoers.sh`：允许 `gomc` 通过白名单 sudo 安装 unit 和重启服务，因此 `DEPLOY_USER` 可以配置为 `gomc` 而不是 root。
+
+如果 `DEPLOY_USER=gomc`，需要先执行一次 `deploy/install-gomc-sudoers.sh`。
 
 ## 远端目标布局
 

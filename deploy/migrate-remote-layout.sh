@@ -9,7 +9,7 @@ if [ -e "$PROD/current" ] || [ -L "$PROD/current" ]; then
 fi
 
 echo "==> Creating initial release from current flat layout"
-mkdir -p "$PROD/releases/initial"
+mkdir -p "$PROD/releases/initial" "$PROD/.deploy"
 
 for item in configs rbac_model.conf rbac_policy.csv minecraft_en_us.json minecraft_zh_cn.json scripts go-aliyunmc; do
   if [ -e "$PROD/$item" ] && [ ! -L "$PROD/$item" ]; then
@@ -30,4 +30,5 @@ ln -sfn current/scripts "$PROD/scripts"
 ln -sfn current/go-aliyunmc "$PROD/go-aliyunmc"
 
 chown -R gomc:gomc "$PROD/releases/initial"
+chown gomc:gomc "$PROD/releases" "$PROD/.deploy"
 echo "==> Migration done"
