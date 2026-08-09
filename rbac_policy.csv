@@ -30,6 +30,7 @@ p, basic, /instance/active, GET
 p, basic, /instance/best-candidate, GET
 p, basic, /samples/player-list-history, GET
 p, basic, /samples/account-balance-history, GET
+p, basic, /samples/player-online-ranges, GET
 p, basic, /server/query, GET
 p, basic, /changelogs, GET
 p, basic, /changelog/:id/like, POST
