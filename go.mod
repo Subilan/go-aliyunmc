@@ -3,6 +3,7 @@ module github.com/Subilan/go-aliyunmc
 go 1.25.0
 
 require (
+	github.com/alexedwards/scs/gormstore v0.0.0-20251002162104-209de6e426de
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/golang-jwt/jwt/v5 v5.3.1

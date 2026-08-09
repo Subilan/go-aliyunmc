@@ -41,6 +41,9 @@ import (
 func init() {
 	utils.MustBindConfigToml(&C, "main")
 	store.MustInitialize()
+	if err := session.InitStore(store.DB); err != nil {
+		log_util.Fatal("初始化 session 存储失败: %v", err)
+	}
 	perms.MustInitialize()
 	aliyun.MustInitialize()
 	env.MustInitialize()

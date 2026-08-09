@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/alexedwards/scs/gormstore"
 	"github.com/alexedwards/scs/v2"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 var manager *scs.SessionManager
@@ -23,6 +25,17 @@ func init() {
 	manager.Cookie.SameSite = http.SameSiteLaxMode
 	manager.Cookie.Secure = false
 	manager.Cookie.Path = "/"
+}
+
+// InitStore 将 session 存储切换到数据库，使服务重启后登录态仍然保留。
+// 需要在 store.MustInitialize() 之后调用。
+func InitStore(db *gorm.DB) error {
+	s, err := gormstore.New(db)
+	if err != nil {
+		return err
+	}
+	manager.Store = s
+	return nil
 }
 
 func LoadAndSave(next http.Handler) http.Handler {
