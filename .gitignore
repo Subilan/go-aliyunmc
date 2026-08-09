@@ -2,7 +2,7 @@ config.toml
 .idea
 
 *.drawio.bkp
-go-aliyunmc*
+/go-aliyunmc*
 upload.sh
 *.pem
 playerprofiles

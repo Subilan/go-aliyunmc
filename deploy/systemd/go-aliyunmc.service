@@ -1,0 +1,16 @@
+[Unit]
+Description=go-aliyunmc backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gomc
+Group=gomc
+WorkingDirectory=/home/gomc/prod
+ExecStart=/home/gomc/prod/go-aliyunmc run
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
