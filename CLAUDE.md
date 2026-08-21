@@ -44,7 +44,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `states/` | Generic pub/sub state hub (`Hub[T]`) for broadcasting state snapshots to SSE clients. |
 | `aliyun/` | Alibaba Cloud SDK clients (ECS, VPC, OSS, BSS). Initialized once at startup. |
 | `perms/` | Casbin RBAC. Three roles: `basic` (empty string), `operator`, `superuser` — with inheritance (superuser > operator > basic). |
-| `monitors/` | Background goroutines: server/instance status polling, file sync, auto-archive idle, scheduled backup, best ECS candidate, player count / balance sampling. |
+| `monitors/` | Background goroutines: server/instance status polling, file sync, auto-archive idle, scheduled backup, spot instance interruption detection, best ECS candidate, player count / balance sampling. |
 | `remote_util/` | SSH connection, script template rendering (`text/template`), and remote command execution. Used by tasks and monitors. |
 | `global_states/` | Atomic global flags (e.g. `IsArchiving`) shared across packages to coordinate monitors and tasks. |
 | `log_util/` | Structured logging with named loggers, file rotation, and ANSI-stripped file output. |

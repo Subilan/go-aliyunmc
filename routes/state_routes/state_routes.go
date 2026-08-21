@@ -3,6 +3,7 @@ package state_routes
 import (
 	"net/http"
 
+	"github.com/Subilan/go-aliyunmc/global_states"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/mid"
 	"github.com/Subilan/go-aliyunmc/monitors"
@@ -37,6 +38,16 @@ func Bind(router *gin.Engine) {
 		authorized.GET("/watch/instance-status", newWatchHandler(
 			func() stateProvider[string] { return monitors.GetInstanceStatusMonitor() },
 			"instance_status_snapshot", "instance_status_update",
+		))
+
+		authorized.GET("/snapshot/spot-interruption", h.G(func(c *gin.Context) (any, error) {
+			return global_states.SpotInterruptionStore().Snapshot(), nil
+		}))
+		authorized.GET("/watch/spot-interruption", newWatchHandler(
+			func() stateProvider[global_states.SpotInterruptionState] {
+				return global_states.SpotInterruptionStore()
+			},
+			"spot_interruption_snapshot", "spot_interruption_update",
 		))
 	}
 }

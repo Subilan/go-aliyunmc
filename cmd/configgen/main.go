@@ -136,6 +136,13 @@ func main() {
 		PollIntervalSec: 600,
 	}
 
+	monitorSpotInterruptionConfig := monitors.SpotInterruptionMonitorConfig{
+		Enabled:                 false,
+		PollIntervalSec:         30,
+		StopWaitTimeoutSec:      90,
+		OfflineCheckIntervalSec: 3,
+	}
+
 	playerListSamplerConfig := monitors.PlayerListSamplerConfig{
 		MaxDataPoints:     100,
 		SampleIntervalSec: 5,
@@ -161,9 +168,9 @@ func main() {
 		Vars: tasks.DeployTemplateVars{
 			SSHAccessPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
 			SSHGomcPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
-			JavaVersion:    21,
-			Packages:       []string{"zip", "unzip"},
-			ArchiveOSSPath: "oss://your-bucket/archive",
+			JavaVersion:        21,
+			Packages:           []string{"zip", "unzip"},
+			ArchiveOSSPath:     "oss://your-bucket/archive",
 		},
 	}
 
@@ -255,6 +262,11 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/monitor-backup.toml", monitorBackupConfig); err != nil {
 		fmt.Printf("Error writing monitor-backup.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := writeConfigFile(configDir+"/monitor-spot-interruption.toml", monitorSpotInterruptionConfig); err != nil {
+		fmt.Printf("Error writing monitor-spot-interruption.toml: %v\n", err)
 		os.Exit(1)
 	}
 

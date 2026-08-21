@@ -44,4 +44,8 @@ p, operator, /changelog/:id, PATCH
 p, operator, /server/stop, GET
 p, operator, /server/data, GET
 p, operator, /instance/active, DELETE
+p, operator, /instance/start, POST
+p, basic, /state/snapshot/spot-interruption, GET
+p, operator, /instance/spot-interruption, DELETE
+p, basic, /state/watch/spot-interruption, GET
 p, operator, create-custom-instance, execute

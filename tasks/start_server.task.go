@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Subilan/go-aliyunmc/global_states"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
@@ -75,6 +76,11 @@ outer:
 }
 
 func checkStartServerTask(_ map[string]any) error {
+	// 抢占式实例回收保护期间不允许启动服务器：实例即将被回收，即使启动成功也会因强制断电而回档。
+	if global_states.IsSpotInterruptionActive() {
+		return h.HttpError(http.StatusConflict, "实例即将被回收，服务器已被保护性停机，请等待实例恢复运行后再启动")
+	}
+
 	if err := checkMustHaveActiveDeployedRunningInstance(nil); err != nil {
 		return err
 	}

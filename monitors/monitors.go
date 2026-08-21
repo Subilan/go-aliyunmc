@@ -16,6 +16,7 @@ var (
 	fileSyncPoller          *FileSyncPoller
 	autoArchiveIdle         *AutoArchiveIdleMonitor
 	backupMonitor           *BackupMonitor
+	spotInterruptionMonitor *SpotInterruptionMonitor
 	bestEcsCandidateMonitor *BestEcsCandidateMonitor
 	playerListSampler       *PlayerListSampler
 	balanceSampler          *BalanceSampler
@@ -47,6 +48,11 @@ func GetBestEcsCandidateMonitor() *BestEcsCandidateMonitor {
 	return bestEcsCandidateMonitor
 }
 
+// GetSpotInterruptionMonitor 返回抢占式实例回收监控器实例。
+func GetSpotInterruptionMonitor() *SpotInterruptionMonitor {
+	return spotInterruptionMonitor
+}
+
 // MustInitialize 启动所有常驻 monitor 和 sampler。
 func MustInitialize(ctx context.Context) {
 	initializeOnce.Do(func() {
@@ -55,6 +61,7 @@ func MustInitialize(ctx context.Context) {
 		fileSyncPoller = newFileSyncPoller()
 		autoArchiveIdle = newAutoArchiveIdleMonitor()
 		backupMonitor = newBackupMonitor()
+		spotInterruptionMonitor = newSpotInterruptionMonitor()
 		bestEcsCandidateMonitor = newBestEcsCandidateMonitor()
 		playerListSampler = newPlayerListSampler()
 		balanceSampler = newBalanceSampler()
@@ -68,6 +75,7 @@ func MustInitialize(ctx context.Context) {
 		go fileSyncPoller.run(ctx)
 		go autoArchiveIdle.run(ctx)
 		go backupMonitor.run(ctx)
+		go spotInterruptionMonitor.run(ctx)
 		go bestEcsCandidateMonitor.run(ctx)
 		go playerListSampler.run(ctx)
 		go balanceSampler.run(ctx)

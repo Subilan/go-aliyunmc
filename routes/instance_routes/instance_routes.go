@@ -18,6 +18,8 @@ func Bind(router *gin.Engine) {
 	{
 		authorized.DELETE("/active", h.G(HandleDeleteActiveInstance))
 		authorized.GET("/active", h.G(HandleGetActiveInstance))
+		authorized.POST("/start", h.G(HandleStartInstance))
+		authorized.DELETE("/spot-interruption", h.G(HandleClearSpotInterruption))
 		authorized.GET("/candidates", h.V(global_states.GetCurrentEcsCandidates))
 		authorized.GET("/best-candidate", h.VB(func() (states.EcsCandidate, bool) {
 			snap := monitors.GetBestEcsCandidateMonitor().Snapshot()

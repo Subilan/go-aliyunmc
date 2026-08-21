@@ -42,6 +42,13 @@ type BackupMonitorConfig struct {
 	PollIntervalSec int  `toml:"poll_interval_sec" validate:"required,min=1" comment:"自动触发备份任务的轮询间隔（秒）"`
 }
 
+type SpotInterruptionMonitorConfig struct {
+	Enabled                 bool `toml:"enabled" comment:"是否启用抢占式实例回收监控"`
+	PollIntervalSec         int  `toml:"poll_interval_sec" validate:"required,min=1" comment:"回收状态轮询间隔（秒）"`
+	StopWaitTimeoutSec      int  `toml:"stop_wait_timeout_sec" validate:"required,min=1" comment:"发送stop后等待离线的最长时间（秒）"`
+	OfflineCheckIntervalSec int  `toml:"offline_check_interval_sec" validate:"required,min=1" comment:"等待离线时的状态检查间隔（秒）"`
+}
+
 type BestEcsCandidateMonitorConfig struct {
 	PollIntervalSec     int                   `toml:"poll_interval_sec" validate:"required,min=1" comment:"最佳ECS候选监控的轮询间隔（秒）"`
 	MemChoices          []int                 `toml:"mem_choices" validate:"required,dive,gte=1" comment:"实例可接受的内存大小列表，单位GiB，请使用常见内存大小，如4、8、16"`
@@ -84,6 +91,7 @@ var InstanceStatusC InstanceStatusMonitorConfig
 var FileSyncC FileSyncMonitorConfig
 var AutoArchiveIdleC AutoArchiveIdleMonitorConfig
 var BackupC BackupMonitorConfig
+var SpotInterruptionC SpotInterruptionMonitorConfig
 var BestEcsCandidateC BestEcsCandidateMonitorConfig
 var PlayerCountSamplerC PlayerListSamplerConfig
 var BalanceSamplerC BalanceSamplerConfig
@@ -94,6 +102,7 @@ func MustLoadConfig() {
 	utils.MustBindConfigToml(&FileSyncC, "monitor-file-sync")
 	utils.MustBindConfigToml(&AutoArchiveIdleC, "monitor-auto-archive-idle")
 	utils.MustBindConfigToml(&BackupC, "monitor-backup")
+	utils.MustBindConfigToml(&SpotInterruptionC, "monitor-spot-interruption")
 	utils.MustBindConfigToml(&BestEcsCandidateC, "monitor-best-ecs-candidate")
 	utils.MustBindConfigToml(&PlayerCountSamplerC, "sampler-player-count")
 	utils.MustBindConfigToml(&BalanceSamplerC, "sampler-balance")

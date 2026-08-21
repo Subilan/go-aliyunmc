@@ -178,7 +178,7 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 		if _, err := server.RunSingleCommand(instance.Ip, "stop"); err != nil {
 			return fmt.Errorf("send stop command failed: %w", err)
 		}
-		if err := m.waitServerOffline(ctx); err != nil {
+		if err := waitServerOffline(ctx, m.stopWaitTimeout, m.offlineCheckInterval); err != nil {
 			return err
 		}
 		m.logger.Info("服务器已关闭")
@@ -212,14 +212,14 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 }
 
 // waitServerOffline 等待服务器离线，期间会定期检查服务器状态快照并监听服务器状态变化，以尽早发现服务器已离线的情况。
-func (m *AutoArchiveIdleMonitor) waitServerOffline(ctx context.Context) error {
-	waitCtx, cancel := context.WithTimeout(ctx, m.stopWaitTimeout)
+func waitServerOffline(ctx context.Context, stopWaitTimeout time.Duration, offlineCheckInterval time.Duration) error {
+	waitCtx, cancel := context.WithTimeout(ctx, stopWaitTimeout)
 	defer cancel()
 
 	updates, unsubscribe := serverMonitor.Subscribe()
 	defer unsubscribe()
 
-	ticker := time.NewTicker(m.offlineCheckInterval)
+	ticker := time.NewTicker(offlineCheckInterval)
 	defer ticker.Stop()
 
 	if snap := serverMonitor.Snapshot(); snap.IsValid() && !snap.Value.Online {
