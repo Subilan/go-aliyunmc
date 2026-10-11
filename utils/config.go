@@ -25,7 +25,7 @@ func MustBindConfigToml[T any](obj *T, name string) {
 	fileContent, err := os.ReadFile(path)
 
 	if err != nil {
-		log_util.Fatal("无法读取配置文件" + path)
+		log_util.Fatal("无法读取配置文件 %s", path)
 	}
 
 	err = toml.Unmarshal(fileContent, obj)
@@ -38,7 +38,7 @@ func MustBindConfigToml[T any](obj *T, name string) {
 	err = validator.Struct(obj)
 
 	if err != nil {
-		log_util.Fatal("配置文件不合要求：" + err.Error())
+		log_util.Fatal("配置文件不合要求：%s", err.Error())
 	}
 }
 

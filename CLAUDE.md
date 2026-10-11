@@ -47,7 +47,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `monitors/` | Background goroutines: server/instance status polling, file sync, auto-archive idle, scheduled backup, spot instance interruption detection, best ECS candidate, player count / balance sampling. |
 | `remote_util/` | SSH connection, script template rendering (`text/template`), and remote command execution. Used by tasks and monitors. |
 | `global_states/` | Atomic global flags (e.g. `IsArchiving`) shared across packages to coordinate monitors and tasks. |
-| `log_util/` | Structured logging with named loggers, file rotation, and ANSI-stripped file output. |
+| `log_util/` | `log/slog` based logging with named loggers, tint-colorized console output, and lumberjack file rotation. |
 | `env/` | Exposes `env.DEV` bool (set by `GO_ALIYUNMC_DEV=1`). |
 | `context_util/` | Helpers to extract `user`, `user_id`, and `role` from Gin context (set by `mid.Auth`). |
 | `utils/` | Config loading (`MustBindConfigToml`) and project-root resolution for tests. |

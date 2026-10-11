@@ -7,7 +7,9 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/lmittmann/tint v1.2.1
 	github.com/mcstatus-io/mcutil/v4 v4.0.1
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require golang.org/x/time v0.15.0 // indirect

@@ -8,39 +8,53 @@ import (
 	"testing"
 )
 
-func TestColorizePrefix(t *testing.T) {
-	got := colorizePrefix(InfoLevel, colorGreen)
-	want := colorGreen + "[INFO]" + colorReset + " "
-	if got != want {
-		t.Fatalf("unexpected colorized prefix, got %q want %q", got, want)
+func newTestLogger(t *testing.T, dir string, logName string, maxSizeMB int) (*Logger, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+
+	out := &bytes.Buffer{}
+	errOut := &bytes.Buffer{}
+	logger := newLogger(loggerOptions{
+		logPath:    filepath.Join(dir, logName),
+		maxSizeMB:  maxSizeMB,
+		console:    out,
+		consoleErr: errOut,
+		color:      true,
+	})
+	return logger, out, errOut
+}
+
+func TestLoggerFileHasNoAnsi(t *testing.T) {
+	dir := t.TempDir()
+	logger, out, _ := newTestLogger(t, dir, "monitor-file-sync-latest.log", defaultRotateMaxMB)
+
+	logger.Info("test message")
+
+	file, err := os.ReadFile(filepath.Join(dir, "monitor-file-sync-latest.log"))
+	if err != nil {
+		t.Fatalf("read log file failed: %v", err)
+	}
+	if bytes.Contains(file, []byte("\x1b[")) {
+		t.Fatalf("file log should not contain ANSI color codes: %q", string(file))
+	}
+	if !strings.Contains(string(file), "test message") {
+		t.Fatalf("file log should contain the message, got %q", string(file))
+	}
+	if !bytes.Contains(out.Bytes(), []byte("\x1b[")) {
+		t.Fatalf("console log should be colorized, got %q", out.String())
 	}
 }
 
-func TestRotatingFileWriterRotateBySize(t *testing.T) {
+func TestLoggerRotatesBySize(t *testing.T) {
 	dir := t.TempDir()
-	w := &rotatingFileWriter{
-		dir:      dir,
-		baseName: "monitor-server",
-		maxBytes: 64,
-	}
+	logger, _, _ := newTestLogger(t, dir, "monitor-server-latest.log", 1)
 
-	first := []byte(strings.Repeat("a", 40))
-	second := []byte(strings.Repeat("b", 40))
+	payload := strings.Repeat("a", 700*1024)
+	logger.Info("first")
+	logger.Info("%s", payload)
+	logger.Info("%s", payload)
 
-	if _, err := w.Write(first); err != nil {
-		t.Fatalf("first write failed: %v", err)
-	}
-	if _, err := w.Write(second); err != nil {
-		t.Fatalf("second write failed: %v", err)
-	}
-
-	latest := filepath.Join(dir, "monitor-server-latest.log")
-	latestContent, err := os.ReadFile(latest)
-	if err != nil {
-		t.Fatalf("read latest failed: %v", err)
-	}
-	if string(latestContent) != string(second) {
-		t.Fatalf("latest content mismatch, got %q", string(latestContent))
+	if _, err := os.Stat(filepath.Join(dir, "monitor-server-latest.log")); err != nil {
+		t.Fatalf("latest log missing: %v", err)
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -51,54 +65,59 @@ func TestRotatingFileWriterRotateBySize(t *testing.T) {
 	hasArchive := false
 	for _, entry := range entries {
 		name := entry.Name()
-		if strings.HasPrefix(name, "monitor-server-") && strings.HasSuffix(name, ".log") && name != "monitor-server-latest.log" {
+		if strings.HasPrefix(name, "monitor-server-latest-") && strings.HasSuffix(name, ".log") {
 			hasArchive = true
 			break
 		}
 	}
-
 	if !hasArchive {
 		t.Fatalf("expected at least one rotated archive file in %s", dir)
 	}
 }
 
-func TestAppendFileWriterNoRotate(t *testing.T) {
+func TestFatalGoesToStderrAndFile(t *testing.T) {
 	dir := t.TempDir()
-	w := &appendFileWriter{dir: dir, filename: "main.log"}
+	logger, out, errOut := newTestLogger(t, dir, "fatal-latest.log", defaultRotateMaxMB)
 
-	if _, err := w.Write([]byte(strings.Repeat("x", 1024))); err != nil {
-		t.Fatalf("first write failed: %v", err)
-	}
-	if _, err := w.Write([]byte(strings.Repeat("y", 1024))); err != nil {
-		t.Fatalf("second write failed: %v", err)
-	}
+	logger.log(LevelFatal, "boom")
 
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read dir failed: %v", err)
+	if out.Len() != 0 {
+		t.Fatalf("fatal should not write to stdout, got %q", out.String())
 	}
-	if len(entries) != 1 || entries[0].Name() != "main.log" {
-		t.Fatalf("expected only main.log, got entries: %v", entries)
-	}
-}
-
-func TestPrefixedWriterFileHasNoAnsi(t *testing.T) {
-	dir := t.TempDir()
-	fileOut := &rotatingFileWriter{
-		dir:      dir,
-		baseName: "monitor-file-sync",
-		maxBytes: 1024 * 1024,
+	if !strings.Contains(errOut.String(), "FATAL") || !strings.Contains(errOut.String(), "boom") {
+		t.Fatalf("unexpected stderr output %q", errOut.String())
 	}
 
-	logger := newDoubleLogger(bytes.NewBuffer(nil), fileOut, InfoLevel, colorBlue)
-	logger.Printf("test message")
-
-	data, err := os.ReadFile(filepath.Join(dir, "monitor-file-sync-latest.log"))
+	file, err := os.ReadFile(filepath.Join(dir, "fatal-latest.log"))
 	if err != nil {
 		t.Fatalf("read log file failed: %v", err)
 	}
+	if !strings.Contains(string(file), "level=FATAL") {
+		t.Fatalf("file log should carry FATAL level, got %q", string(file))
+	}
+}
 
-	if bytes.Contains(data, []byte("\x1b[")) {
-		t.Fatalf("file log should not contain ANSI color codes: %q", string(data))
+func TestFormatMessage(t *testing.T) {
+	if got := formatMessage("value=%d", 1); got != "value=1" {
+		t.Fatalf("unexpected formatted message %q", got)
+	}
+	if got := formatMessage("plain message"); got != "plain message" {
+		t.Fatalf("unexpected plain message %q", got)
+	}
+}
+
+func TestSanitizeBaseName(t *testing.T) {
+	if got := sanitizeBaseName("[monitor] file/sync"); got != "monitor_file_sync" {
+		t.Fatalf("unexpected sanitized name %q", got)
+	}
+	if got := sanitizeBaseName("   "); got != "prefixed_" {
+		t.Fatalf("unexpected fallback name %q", got)
+	}
+}
+
+func TestResolveDefaultLogsDirUsesEnv(t *testing.T) {
+	t.Setenv("GO_ALIYUNMC_LOG_DIR", "/tmp/aliyunmc-custom-logs")
+	if got := resolveDefaultLogsDir(); got != "/tmp/aliyunmc-custom-logs" {
+		t.Fatalf("unexpected logs dir %q", got)
 	}
 }
