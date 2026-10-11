@@ -1,0 +1,206 @@
+package leaderboard
+
+import (
+	"sync"
+	"fmt"
+	"os"
+	"sort"
+	"testing"
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/internal/testutil"
+	"github.com/Subilan/go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
+)
+
+const benchRuns = 20
+
+var benchMetrics = []string{
+	"minecraft_playtime",
+	"achievements",
+	"distance",
+	"mob_kills",
+	"blocks_mined",
+	"avg_move_distance",
+	"login_days",
+	"join_streak",
+}
+
+const benchRawStat = "minecraft:walk_one_cm"
+
+func seedSamples(t *testing.T, names []string) {
+	t.Helper()
+
+	var count int64
+	if err := store.DB.Model(&models.PlayerListSample{}).Count(&count).Error; err != nil {
+		t.Fatalf("count samples failed: %v", err)
+	}
+	if count > 0 {
+		return
+	}
+
+	base := time.Now().AddDate(0, 0, -30)
+	for day := range 30 {
+		batch := make([]models.PlayerListSample, 0, len(names))
+		for _, name := range names {
+			batch = append(batch, models.PlayerListSample{
+				CreatedAt:   base.AddDate(0, 0, day),
+				PlayerNames: name,
+			})
+		}
+		if err := store.DB.CreateInBatches(batch, 200).Error; err != nil {
+			t.Fatalf("seed samples failed: %v", err)
+		}
+	}
+}
+
+func percentile(samples []time.Duration, p float64) time.Duration {
+	sorted := make([]time.Duration, len(samples))
+	copy(sorted, samples)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+
+	index := int(float64(len(sorted)-1) * p)
+	return sorted[index]
+}
+
+func timeCall(fn func() error) (time.Duration, error) {
+	start := time.Now()
+	err := fn()
+	return time.Since(start), err
+}
+
+func TestBench(t *testing.T) {
+	if err := testutil.ChdirProjectRoot(); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	store.C = store.Config{Driver: "sqlite", DBName: "bench", Path: "bench.db"}
+	store.MustInitialize()
+	store.AutoMigrate()
+	defer os.Remove("bench.db")
+
+	whitelist, err := playerdata.ReadWhitelist()
+	if err != nil {
+		t.Fatalf("read whitelist failed: %v", err)
+	}
+	names := make([]string, 0, len(whitelist))
+	for _, entry := range whitelist {
+		names = append(names, entry.Name)
+	}
+	seedSamples(t, names)
+
+	uuids, err := playerdata.ListPlayerUUIDs()
+	if err != nil {
+		t.Fatalf("list players failed: %v", err)
+	}
+
+	fmt.Printf("BENCH_CORPUS whitelist=%d stats_files=%d\n", len(whitelist), len(uuids))
+
+	var coldTotal, warmTotal time.Duration
+
+	for _, metric := range benchMetrics {
+		cold, err := timeCall(func() error {
+			_, err := BuildLeaderboard(Query{Metric: metric})
+			return err
+		})
+		if err != nil {
+			t.Fatalf("cold %s failed: %v", metric, err)
+		}
+
+		samples := make([]time.Duration, 0, benchRuns)
+		for range benchRuns {
+			d, err := timeCall(func() error {
+				_, err := BuildLeaderboard(Query{Metric: metric})
+				return err
+			})
+			if err != nil {
+				t.Fatalf("warm %s failed: %v", metric, err)
+			}
+			samples = append(samples, d)
+		}
+
+		coldTotal += cold
+		for _, d := range samples {
+			warmTotal += d
+		}
+
+		fmt.Printf("BENCH metric=%s cold=%s warm_p50=%s warm_max=%s\n",
+			metric, cold, percentile(samples, 0.5), percentile(samples, 1))
+	}
+
+	cold, err := timeCall(func() error {
+		_, err := BuildRawLeaderboard(benchRawStat, "")
+		return err
+	})
+	if err != nil {
+		t.Fatalf("cold raw failed: %v", err)
+	}
+	samples := make([]time.Duration, 0, benchRuns)
+	for range benchRuns {
+		d, err := timeCall(func() error {
+			_, err := BuildRawLeaderboard(benchRawStat, "")
+			return err
+		})
+		if err != nil {
+			t.Fatalf("warm raw failed: %v", err)
+		}
+		samples = append(samples, d)
+	}
+	fmt.Printf("BENCH metric=raw:%s cold=%s warm_p50=%s warm_max=%s\n",
+		benchRawStat, cold, percentile(samples, 0.5), percentile(samples, 1))
+
+	coldTotal += cold
+	var rawWarm time.Duration
+	for _, d := range samples {
+		rawWarm += d
+	}
+
+	fmt.Printf("BENCH_PAGE all_metrics_cold=%s all_metrics_warm_total=%s\n", coldTotal, warmTotal+rawWarm)
+
+	ascCold, err := timeCall(func() error {
+		_, err := BuildLeaderboard(Query{Metric: "achievements", Order: "asc"})
+		return err
+	})
+	if err != nil {
+		t.Fatalf("asc failed: %v", err)
+	}
+	fmt.Printf("BENCH_RESORT metric=achievements order=asc=%s\n", ascCold)
+}
+
+func TestConcurrentBurst(t *testing.T) {
+	if err := testutil.ChdirProjectRoot(); err != nil {
+		t.Fatalf("chdir failed: %v", err)
+	}
+
+	store.C = store.Config{Driver: "sqlite", DBName: "bench", Path: "bench.db"}
+	store.MustInitialize()
+	store.AutoMigrate()
+	defer os.Remove("bench.db")
+
+	whitelist, err := playerdata.ReadWhitelist()
+	if err != nil {
+		t.Fatalf("read whitelist failed: %v", err)
+	}
+	names := make([]string, 0, len(whitelist))
+	for _, entry := range whitelist {
+		names = append(names, entry.Name)
+	}
+	seedSamples(t, names)
+
+	const clients = 20
+	var wg sync.WaitGroup
+	start := time.Now()
+	for range clients {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := BuildLeaderboard(Query{Metric: "achievements"}); err != nil {
+				t.Errorf("request failed: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+
+	fmt.Printf("BENCH_CONCURRENT clients=%d wall=%s\n", clients, time.Since(start))
+}

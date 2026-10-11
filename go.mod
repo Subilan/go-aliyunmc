@@ -7,6 +7,7 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/mcstatus-io/mcutil/v4 v4.0.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -68,7 +69,7 @@ require (
 	golang.org/x/arch v0.27.0 // indirect
 	golang.org/x/crypto v0.51.0
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect

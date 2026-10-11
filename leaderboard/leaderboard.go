@@ -1,13 +1,17 @@
 package leaderboard
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/internal/cache"
 	"github.com/Subilan/go-aliyunmc/playerdata"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
-	"sort"
-	"strings"
 )
 
 type MetricType string
@@ -47,15 +51,31 @@ type Query struct {
 	Order  string
 }
 
+// entriesCacheTTL 是榜单结果缓存的有效期，需短于远端数据同步的轮询间隔。
+const entriesCacheTTL = 30 * time.Second
+
+var entriesCache = cache.New[[]Entry](entriesCacheTTL, 64)
+
 // BuildLeaderboard computes the leaderboard for the given query
 func BuildLeaderboard(q Query) ([]Entry, error) {
 	if !validMetrics[q.Metric] {
 		return nil, fmt.Errorf("无效的指标: %s", q.Metric)
 	}
 
+	entries, err := entriesCache.GetOrLoad("metric:"+q.Metric, func() ([]Entry, error) {
+		return computeLeaderboard(q.Metric)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return sortEntries(entries, q.Order), nil
+}
+
+func computeLeaderboard(metric string) ([]Entry, error) {
 	// login-based metrics use a batch query path
-	if q.Metric == "login_days" || q.Metric == "join_streak" {
-		return buildLoginLeaderboard(q)
+	if metric == "login_days" || metric == "join_streak" {
+		return computeLoginLeaderboard(metric)
 	}
 
 	uuids, err := playerdata.ListPlayerUUIDs()
@@ -76,15 +96,12 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 			continue
 		}
 
-		value, ok := computeMetric(uuid, q.Metric)
+		value, ok := computeMetric(uuid, metric)
 		if !ok {
 			continue
 		}
 
 		playerName := nameMap[uuid]
-		if playerName == "" {
-			playerName = playerdata.LookupPlayerName(uuid)
-		}
 		if playerName == "" {
 			continue
 		}
@@ -96,14 +113,6 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 		})
 	}
 
-	desc := q.Order != "asc"
-	sort.Slice(entries, func(i, j int) bool {
-		if desc {
-			return entries[i].Value > entries[j].Value
-		}
-		return entries[i].Value < entries[j].Value
-	})
-
 	if entries == nil {
 		entries = []Entry{}
 	}
@@ -111,9 +120,28 @@ func BuildLeaderboard(q Query) ([]Entry, error) {
 	return entries, nil
 }
 
-// buildLoginLeaderboard handles login_days and join_streak with a single
+// sortEntries 返回按 order 排序的副本，不修改传入的缓存值。
+func sortEntries(entries []Entry, order string) []Entry {
+	sorted := make([]Entry, len(entries))
+	copy(sorted, entries)
+
+	desc := order != "asc"
+	slices.SortStableFunc(sorted, func(a, b Entry) int {
+		if c := cmp.Compare(a.Value, b.Value); c != 0 {
+			if desc {
+				return -c
+			}
+			return c
+		}
+		return cmp.Compare(a.UUID, b.UUID)
+	})
+
+	return sorted
+}
+
+// computeLoginLeaderboard handles login_days and join_streak with a single
 // batch query instead of per-player SQL queries.
-func buildLoginLeaderboard(q Query) ([]Entry, error) {
+func computeLoginLeaderboard(metric string) ([]Entry, error) {
 	uuids, err := playerdata.ListPlayerUUIDs()
 	if err != nil {
 		return nil, fmt.Errorf("列出玩家失败: %w", err)
@@ -150,7 +178,7 @@ func buildLoginLeaderboard(q Query) ([]Entry, error) {
 	for uuid, name := range uuidToName {
 		dates := datesByName[name]
 		var value float64
-		if q.Metric == "login_days" {
+		if metric == "login_days" {
 			value = float64(len(dates))
 		} else {
 			value = float64(playerdata.ComputeJoinStreak(dates))
@@ -161,14 +189,6 @@ func buildLoginLeaderboard(q Query) ([]Entry, error) {
 			Value:      value,
 		})
 	}
-
-	desc := q.Order != "asc"
-	sort.Slice(entries, func(i, j int) bool {
-		if desc {
-			return entries[i].Value > entries[j].Value
-		}
-		return entries[i].Value < entries[j].Value
-	})
 
 	if entries == nil {
 		entries = []Entry{}
@@ -360,6 +380,17 @@ func computeAvgMoveDistance(uuid string) (float64, bool) {
 // JSON and looks up the value in minecraft:custom. Players who have opted out of
 // leaderboards are excluded.
 func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
+	entries, err := entriesCache.GetOrLoad("raw:"+statKey, func() ([]Entry, error) {
+		return computeRawLeaderboard(statKey)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return sortEntries(entries, order), nil
+}
+
+func computeRawLeaderboard(statKey string) ([]Entry, error) {
 	uuids, err := playerdata.ListPlayerUUIDs()
 	if err != nil {
 		return nil, fmt.Errorf("列出玩家失败: %w", err)
@@ -385,9 +416,6 @@ func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
 
 		playerName := nameMap[uuid]
 		if playerName == "" {
-			playerName = playerdata.LookupPlayerName(uuid)
-		}
-		if playerName == "" {
 			continue
 		}
 
@@ -397,14 +425,6 @@ func BuildRawLeaderboard(statKey, order string) ([]Entry, error) {
 			Value:      value,
 		})
 	}
-
-	desc := order != "asc"
-	sort.Slice(entries, func(i, j int) bool {
-		if desc {
-			return entries[i].Value > entries[j].Value
-		}
-		return entries[i].Value < entries[j].Value
-	})
 
 	if entries == nil {
 		entries = []Entry{}

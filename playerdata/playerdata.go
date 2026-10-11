@@ -3,6 +3,7 @@ package playerdata
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Subilan/go-aliyunmc/internal/cache"
 	"github.com/Subilan/go-aliyunmc/mc"
 	"github.com/Subilan/go-aliyunmc/store"
 	"os"
@@ -15,6 +16,16 @@ const (
 	StatsDir        = "remote_data_cache/player_stats"
 	AdvancementsDir = "remote_data_cache/player_advancements"
 	WhitelistPath   = "remote_data_cache/whitelist.json"
+
+	// dataCacheTTL 是远端数据缓存的有效期，需短于文件同步的轮询间隔。
+	dataCacheTTL = 30 * time.Second
+)
+
+var (
+	uuidCache     = cache.New[[]string](dataCacheTTL, 1)
+	nameCache     = cache.New[map[string]string](dataCacheTTL, 1)
+	statsCache    = cache.New[json.RawMessage](dataCacheTTL, 1024)
+	progressCache = cache.New[AdvancementProgress](dataCacheTTL, 1024)
 )
 
 // WhitelistEntry represents a single whitelist entry
@@ -51,55 +62,61 @@ func ReadWhitelist() ([]WhitelistEntry, error) {
 }
 
 // LookupPlayerName finds the player name for a UUID from the whitelist.
-// Prefer BuildPlayerNameMap for bulk lookups to avoid repeated file reads.
 func LookupPlayerName(uuid string) string {
-	entries, err := ReadWhitelist()
-	if err != nil {
-		return ""
-	}
-	for i := range entries {
-		if entries[i].UUID == uuid {
-			return entries[i].Name
-		}
-	}
-	return ""
+	return BuildPlayerNameMap()[uuid]
 }
 
-// BuildPlayerNameMap reads the whitelist once and returns a UUID→name map.
+// BuildPlayerNameMap returns a UUID→name map built from the whitelist.
 func BuildPlayerNameMap() map[string]string {
-	entries, err := ReadWhitelist()
-	if err != nil {
-		return nil
-	}
-	m := make(map[string]string, len(entries))
-	for _, e := range entries {
-		m[e.UUID] = e.Name
-	}
-	return m
+	names, _ := nameCache.GetOrLoad("names", func() (map[string]string, error) {
+		entries, err := ReadWhitelist()
+		if err != nil {
+			return nil, err
+		}
+
+		m := make(map[string]string, len(entries))
+		for _, e := range entries {
+			m[e.UUID] = e.Name
+		}
+		return m, nil
+	})
+	return names
 }
 
 // ReadStats reads the raw Minecraft stats JSON for a player
 func ReadStats(uuid string) (json.RawMessage, error) {
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", StatsDir, uuid))
+	return statsCache.GetOrLoad(uuid, func() (json.RawMessage, error) {
+		data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", StatsDir, uuid))
 
-	if err != nil {
-		return nil, err
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	var wrapper struct {
-		Stats       json.RawMessage `json:"stats"`
-		DataVersion int             `json:"DataVersion"`
-	}
+		var wrapper struct {
+			Stats       json.RawMessage `json:"stats"`
+			DataVersion int             `json:"DataVersion"`
+		}
 
-	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return nil, err
-	}
+		if err := json.Unmarshal(data, &wrapper); err != nil {
+			return nil, err
+		}
 
-	return wrapper.Stats, nil
+		return wrapper.Stats, nil
+	})
 }
 
 // ReadAdvancementProgress computes advancement completion for a player
 func ReadAdvancementProgress(uuid string) AdvancementProgress {
+	progress, err := progressCache.GetOrLoad(uuid, func() (AdvancementProgress, error) {
+		return computeAdvancementProgress(uuid)
+	})
+	if err != nil {
+		return AdvancementProgress{Total: len(mc.Advancements())}
+	}
+	return progress
+}
+
+func computeAdvancementProgress(uuid string) (AdvancementProgress, error) {
 	type rawAchievement struct {
 		Done bool `json:"done"`
 	}
@@ -108,12 +125,12 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 
 	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", AdvancementsDir, uuid))
 	if err != nil {
-		return AdvancementProgress{Total: len(advancements)}
+		return AdvancementProgress{}, err
 	}
 
 	var rawData map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawData); err != nil {
-		return AdvancementProgress{Total: len(advancements)}
+		return AdvancementProgress{}, err
 	}
 
 	completed := 0
@@ -158,7 +175,7 @@ func ReadAdvancementProgress(uuid string) AdvancementProgress {
 		Total:      len(advancements),
 		Completed:  completed,
 		Categories: categories,
-	}
+	}, nil
 }
 
 // AdvancementCategory extracts the category from an advancement key
@@ -331,22 +348,24 @@ func ReadMinecraftPlaytime(uuid string) (float64, error) {
 
 // ListPlayerUUIDs returns all UUIDs that have stats files
 func ListPlayerUUIDs() ([]string, error) {
-	entries, err := os.ReadDir(StatsDir)
-	if err != nil {
-		return nil, err
-	}
+	return uuidCache.GetOrLoad("uuids", func() ([]string, error) {
+		entries, err := os.ReadDir(StatsDir)
+		if err != nil {
+			return nil, err
+		}
 
-	var uuids []string
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
+		var uuids []string
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := entry.Name()
+			if !strings.HasSuffix(name, ".json") {
+				continue
+			}
+			uuid := strings.TrimSuffix(name, ".json")
+			uuids = append(uuids, uuid)
 		}
-		name := entry.Name()
-		if !strings.HasSuffix(name, ".json") {
-			continue
-		}
-		uuid := strings.TrimSuffix(name, ".json")
-		uuids = append(uuids, uuid)
-	}
-	return uuids, nil
+		return uuids, nil
+	})
 }
