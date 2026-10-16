@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/global_states"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/server"
@@ -33,11 +34,11 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	logger := log_util.NewNamedLogger("[monitor/auto-archive-idle] ", "auto-archive-idle-monitor")
 
 	return &AutoArchiveIdleMonitor{
-		enabled:               AutoArchiveIdleC.Enabled,
-		idleCountdown:         time.Duration(AutoArchiveIdleC.IdleCountdownSec) * time.Second,
-		stopWaitTimeout:       time.Duration(AutoArchiveIdleC.StopWaitTimeoutSec) * time.Second,
-		offlineCheckInterval:  time.Duration(AutoArchiveIdleC.OfflineCheckIntervalSec) * time.Second,
-		ignoreMissingOnDelete: AutoArchiveIdleC.DeleteIgnoreNonExistent,
+		enabled:               config.Get().Monitors.AutoArchiveIdle.Enabled,
+		idleCountdown:         time.Duration(config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec) * time.Second,
+		stopWaitTimeout:       time.Duration(config.Get().Monitors.AutoArchiveIdle.StopWaitTimeoutSec) * time.Second,
+		offlineCheckInterval:  time.Duration(config.Get().Monitors.AutoArchiveIdle.OfflineCheckIntervalSec) * time.Second,
+		ignoreMissingOnDelete: config.Get().Monitors.AutoArchiveIdle.DeleteIgnoreNonExistent,
 		logger:                logger,
 	}
 }

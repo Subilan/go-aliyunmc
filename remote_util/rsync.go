@@ -11,11 +11,12 @@ import (
 )
 
 // rsyncSSHCommand 返回 rsync 的远端 shell 命令。身份由 -i 与 IdentitiesOnly=yes 显式指定，
-// 避免回落到服务账号家目录或 agent 中的任意密钥。
-func rsyncSSHCommand() string {
+// 避免回落到服务账号家目录或 agent 中的任意密钥。密钥路径由调用方（Target）传入，
+// 因此本函数与传输层不依赖任何全局状态。
+func rsyncSSHCommand(privateKeyPath string) string {
 	return fmt.Sprintf(
 		"ssh -i %s -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o BatchMode=yes",
-		strconv.Quote(C.SSHPrivateKeyPath),
+		strconv.Quote(privateKeyPath),
 	)
 }
 
@@ -78,14 +79,14 @@ func (w *rsyncOutputWriter) detail() string {
 	return buf.String()
 }
 
-func runRsync(ctx context.Context, src, dst string, onLine func(string)) error {
+func runRsync(ctx context.Context, privateKeyPath, src, dst string, onLine func(string)) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 
 	writer := &rsyncOutputWriter{tailLimit: 20, onLine: onLine}
 
-	cmd := exec.CommandContext(ctx, "rsync", "-avz", "-e", rsyncSSHCommand(), src, dst)
+	cmd := exec.CommandContext(ctx, "rsync", "-avz", "-e", rsyncSSHCommand(privateKeyPath), src, dst)
 	cmd.WaitDelay = 5 * time.Second
 	cmd.Stdout = writer
 	cmd.Stderr = writer

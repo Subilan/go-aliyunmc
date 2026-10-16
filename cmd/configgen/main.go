@@ -1,321 +1,55 @@
+// Command configgen 依据 config 包里的结构体与它们的 tag 生成示例配置。
+//
+// 示例完全由 tag 驱动：comment tag 变成注释，default tag 变成默认值，
+// commented 选项把必须自行填写的字段（凭证、密钥路径、资源 ID 等）注释掉。
+// 因此新增字段会自动出现在示例里，不需要在这里补任何东西。
 package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/Subilan/go-aliyunmc/aliyun"
-	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/perms"
-	"github.com/Subilan/go-aliyunmc/remote_util"
-	"github.com/Subilan/go-aliyunmc/routes/user_routes"
-	"github.com/Subilan/go-aliyunmc/server"
-	"github.com/Subilan/go-aliyunmc/store"
-	"github.com/Subilan/go-aliyunmc/tasks"
-
+	"github.com/creasty/defaults"
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/Subilan/go-aliyunmc/config"
 )
 
 func main() {
-	// 创建configs目录
-	configDir := "example_configs"
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		fmt.Printf("Error creating configs directory: %v\n", err)
+	const dir = "example_configs"
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		fmt.Printf("创建 %s 失败: %v\n", dir, err)
 		os.Exit(1)
 	}
 
-	// 生成main.toml - 系统基础配置
-	mainConfig := map[string]interface{}{
-		"expose": 45678,
-		"cors": map[string]interface{}{
-			"allow_origins":     []string{"*"},
-			"allow_credentials": true,
-			"allow_headers":     []string{"Content-Length", "Content-Type", "Authorization", "Last-Event-Id"},
-			"allow_methods":     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
-		},
-		"tls": map[string]interface{}{
-			"enabled":   false,
-			"cert_file": "",
-			"key_file":  "",
-			"http_port": 80,
-		},
-		"session": map[string]interface{}{
-			"key_pairs": []map[string]string{
-				{
-					"auth_key": "your-authentication-key-here",
-					"enc_key":  "your-encryption-key-here",
-				},
-			},
-		},
-	}
-
-	// 生成store.toml - 数据库配置
-	storeConfig := store.Config{
-		Driver:   "mysql",
-		Host:     "localhost",
-		Port:     3306,
-		User:     "root",
-		Password: "",
-		DBName:   "aliyunmc",
-		Charset:  "utf8mb4",
-		SSLMode:  "disable",
-		Path:     "",
-	}
-
-	// 生成perms.toml - Casbin配置
-	casbinConfig := perms.Config{
-		ModelPath:  "casbin/rbac_model.conf",
-		PolicyPath: "casbin/rbac_policy.csv",
-	}
-
-	// 生成aliyun.toml - 阿里云配置
-	aliyunConfig := aliyun.Config{
-		RegionId:        "cn-hangzhou",
-		AccessKeyId:     "your-access-key-id",
-		AccessKeySecret: "your-access-key-secret",
-		Ecs: aliyun.AliyunEcsConfig{
-			InternetMaxBandwidthOut: 5,
-			ImageId:                 "centos_7_9_x64_20G_alibase_20230619.vhd",
-			SystemDisk: aliyun.EcsDiskConfig{
-				Category: "cloud_essd",
-				Size:     40,
-			},
-			DataDisk: aliyun.EcsDiskConfig{
-				Category: "cloud_essd",
-				Size:     100,
-			},
-			HostName:                 "aliyunmc-server",
-			RootPassword:             "your-root-password",
-			ProdPassword:             "your-prod-password",
-			SpotInterruptionBehavior: "Stop",
-			SecurityGroupId:          "your-security-group-id",
-		},
-	}
-
-	serverConfig := server.ServerConfig{
-		Port:         25565,
-		RconPort:     25575,
-		RconPassword: "your-rcon-password",
-	}
-
-	monitorServerConfig := monitors.ServerStatusMonitorConfig{
-		PollIntervalSec: 5,
-	}
-
-	monitorInstanceConfig := monitors.InstanceStatusMonitorConfig{
-		PollIntervalSec: 5,
-	}
-
-	monitorFileSyncConfig := monitors.FileSyncMonitorConfig{
-		LocalCacheRoot: "remote_data_cache",
-		Files: []monitors.FileConfig{
-			{
-				RemotePath:      "/path/to/remote/file1.log",
-				LocalPath:       "logs/file1.log",
-				PollIntervalSec: 10,
-			},
-		},
-		Dirs: []monitors.DirConfig{
-			{
-				RemotePath:      "/path/to/remote/dir",
-				LocalPath:       "dir",
-				PollIntervalSec: 300,
-			},
-		},
-	}
-
-	monitorAutoArchiveIdleConfig := monitors.AutoArchiveIdleMonitorConfig{
-		Enabled:                 false,
-		IdleCountdownSec:        1200,
-		StopWaitTimeoutSec:      60,
-		OfflineCheckIntervalSec: 3,
-		DeleteIgnoreNonExistent: true,
-	}
-
-	monitorBackupConfig := monitors.BackupMonitorConfig{
-		Enabled:         false,
-		PollIntervalSec: 600,
-	}
-
-	monitorSpotInterruptionConfig := monitors.SpotInterruptionMonitorConfig{
-		Enabled:                 false,
-		PollIntervalSec:         30,
-		StopWaitTimeoutSec:      90,
-		OfflineCheckIntervalSec: 3,
-	}
-
-	playerListSamplerConfig := monitors.PlayerListSamplerConfig{
-		MaxDataPoints:     100,
-		SampleIntervalSec: 5,
-	}
-
-	balanceSamplerConfig := monitors.BalanceSamplerConfig{
-		MaxDataPoints:     100,
-		SampleIntervalSec: 300,
-	}
-
-	monitorBestEcsCandidateConfig := monitors.BestEcsCandidateMonitorConfig{
-		PollIntervalSec:     600,
-		MemChoices:          []int{8, 16},
-		CpuCoreCountChoices: []int{4, 8},
-		CacheFile:           "ecs_candidates.json",
-		Filters: monitors.InstanceChargeFilters{
-			MaxTradePrice:         0.6,
-			InstanceTypeExclusion: "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$",
-		},
-	}
-
-	deployTaskConfig := tasks.DeployTaskConfig{
-		Vars: tasks.DeployTemplateVars{
-			SSHAccessPublicKey: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
-			SSHGomcPublicKey:   "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ...",
-			JavaVersion:        21,
-			Packages:           []string{"zip", "unzip"},
-			ArchiveOSSPath:     "oss://your-bucket/archive",
-		},
-	}
-
-	backupTaskConfig := tasks.BackupTaskConfig{
-		TemplatePath: "scripts/backup.tmpl.sh",
-		TimeoutSec:   1800,
-		Exclusive:    true,
-		Vars: tasks.BackupTemplateVars{
-			BackupOSSPath: "oss://your-bucket/backup",
-			MaxKeepCount:  5,
-			BaseDir:       "/home/mc/server/archive",
-			TargetDirs:    []string{"world", "world_nether", "world_the_end"},
-		},
-	}
-
-	archiveTaskConfig := tasks.ArchiveTaskConfig{
-		TemplatePath: "scripts/archive.tmpl.sh",
-		TimeoutSec:   600,
-		Vars: tasks.ArchiveTemplateVars{
-			OSSRoot:          "oss://your-bucket",
-			ArchiveName:      "archive",
-			RemoteArchiveDir: "/home/mc/server/archive",
-		},
-	}
-
-	// 写入main.toml
-	if err := writeConfigFile(configDir+"/main.toml", mainConfig); err != nil {
-		fmt.Printf("Error writing main.toml: %v\n", err)
+	var cfg config.Config
+	if err := defaults.Set(&cfg); err != nil {
+		fmt.Printf("填充默认值失败: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 写入store.toml
-	if err := writeConfigFile(configDir+"/store.toml", storeConfig); err != nil {
-		fmt.Printf("Error writing store.toml: %v\n", err)
+	// store 单独一个文件：run / migrate / create_user 三个入口都需要它，
+	// 而另外两个不该被云凭证之类的配置牵着走。Config.Store 标了 toml:"-"，
+	// 所以写 config.toml 时它不会出现。
+	if err := write(dir+"/store.toml", cfg.Store); err != nil {
+		fmt.Printf("写入 store.toml 失败: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 写入perms.toml
-	if err := writeConfigFile(configDir+"/perms.toml", casbinConfig); err != nil {
-		fmt.Printf("Error writing casbin.toml: %v\n", err)
+	if err := write(dir+"/config.toml", cfg); err != nil {
+		fmt.Printf("写入 config.toml 失败: %v\n", err)
 		os.Exit(1)
 	}
 
-	// 写入aliyun.toml
-	if err := writeConfigFile(configDir+"/aliyun.toml", aliyunConfig); err != nil {
-		fmt.Printf("Error writing aliyun.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/server.toml", serverConfig); err != nil {
-		fmt.Printf("Error writing server.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-server.toml", monitorServerConfig); err != nil {
-		fmt.Printf("Error writing monitor-server.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-instance.toml", monitorInstanceConfig); err != nil {
-		fmt.Printf("Error writing monitor-instance.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/task-deploy.toml", deployTaskConfig); err != nil {
-		fmt.Printf("Error writing task-deploy.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/task-backup.toml", backupTaskConfig); err != nil {
-		fmt.Printf("Error writing task-backup.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/task-archive.toml", archiveTaskConfig); err != nil {
-		fmt.Printf("Error writing task-archive.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-file-sync.toml", monitorFileSyncConfig); err != nil {
-		fmt.Printf("Error writing monitor-file-sync.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-auto-archive-idle.toml", monitorAutoArchiveIdleConfig); err != nil {
-		fmt.Printf("Error writing monitor-auto-archive-idle.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-backup.toml", monitorBackupConfig); err != nil {
-		fmt.Printf("Error writing monitor-backup.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-spot-interruption.toml", monitorSpotInterruptionConfig); err != nil {
-		fmt.Printf("Error writing monitor-spot-interruption.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/monitor-best-ecs-candidate.toml", monitorBestEcsCandidateConfig); err != nil {
-		fmt.Printf("Error writing monitor-best-ecs-candidate.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/sampler-player-count.toml", playerListSamplerConfig); err != nil {
-		fmt.Printf("Error writing sampler-player-count.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := writeConfigFile(configDir+"/sampler-balance.toml", balanceSamplerConfig); err != nil {
-		fmt.Printf("Error writing sampler-balance.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	remoteUtilConfig := remote_util.Config{
-		SSHPrivateKeyPath: "/home/gomc/.ssh/id_gomc",
-	}
-
-	if err := writeConfigFile(configDir+"/remote-util.toml", remoteUtilConfig); err != nil {
-		fmt.Printf("Error writing remote-util.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	userRoutesConfig := user_routes.Config{
-		ChatToken: user_routes.ChatTokenConfig{
-			Secret:        "your-chat-token-secret-here",
-			ExpireSeconds: 3600,
-		},
-	}
-
-	if err := writeConfigFile(configDir+"/user-routes.toml", userRoutesConfig); err != nil {
-		fmt.Printf("Error writing user-routes.toml: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Println("Configuration files generated successfully in configs directory!")
+	fmt.Println("示例配置已生成到 " + dir)
 }
 
-// writeConfigFile 写入配置文件
-func writeConfigFile(filePath string, config interface{}) error {
-	out, err := toml.Marshal(config)
+func write(path string, obj any) error {
+	out, err := toml.Marshal(obj)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(filePath, out, 0644)
+	return os.WriteFile(path, out, 0644)
 }

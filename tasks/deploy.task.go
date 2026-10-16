@@ -7,21 +7,24 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
 )
 
-// deployTaskVars 表示部署任务实际所需要的模板变量，包含了DeployTemplateVars中的字段以及从aliyun.C读取的相关字段。
+// deployTaskVars 表示部署任务实际所需要的模板变量，包含了 config.TasksDeployVars 中的字段，
+// 以及从配置其他节读取或推导出来的字段。
 type deployTaskVars struct {
-	DeployTemplateVars
-	Username        string
-	Password        string
-	RegionId        string
-	AccessKeyId     string
-	AccessKeySecret string
-	DataDiskSize    int
+	config.TasksDeployVars
+	// SSHGomcPublicKey 由 remote_util 从 mc 私钥推导，不来自配置。
+	SSHGomcPublicKey string
+	Username         string
+	Password         string
+	RegionId         string
+	AccessKeyId      string
+	AccessKeySecret  string
+	DataDiskSize     int
 }
 
 type deployStepType int
@@ -55,16 +58,16 @@ var deploySteps = []deployStep{
 }
 
 func deployCopyWssCert(tc *TaskContext, conn *remote_util.Conn, ctx context.Context) error {
-	if DeployC.Vars.WssCertSrc == "" || DeployC.Vars.WssCertDst == "" {
+	if config.Get().Tasks.Deploy.Vars.WssCertSrc == "" || config.Get().Tasks.Deploy.Vars.WssCertDst == "" {
 		tc.println("[deploy] WSS证书路径未配置，跳过证书上传步骤")
 		return nil
 	}
 
-	tc.println(fmt.Sprintf("[deploy] 上传WSS证书: %s", DeployC.Vars.WssCertSrc))
-	remotePath := DeployC.Vars.WssCertDst
+	tc.println(fmt.Sprintf("[deploy] 上传WSS证书: %s", config.Get().Tasks.Deploy.Vars.WssCertSrc))
+	remotePath := config.Get().Tasks.Deploy.Vars.WssCertDst
 
 	// 证书上传走 rsync，身份固定为 mc，与 root 连接无关。
-	if err := remote_util.Mc(conn.Target().IP).Upload(ctx, DeployC.Vars.WssCertSrc, remotePath, tc.println); err != nil {
+	if err := remote_util.Mc(conn.Target().IP).Upload(ctx, config.Get().Tasks.Deploy.Vars.WssCertSrc, remotePath, tc.println); err != nil {
 		return fmt.Errorf("上传WSS证书失败: %w", err)
 	}
 
@@ -87,15 +90,22 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
-	// 构建扩展的模板变量，包含从aliyun.C读取的值
+	// 授权公钥从 mc 私钥推导，避免配置里同时存在私钥与公钥两份、两者还可能失配。
+	authorizedKey, err := remote_util.AuthorizedKeyLine()
+	if err != nil {
+		return err
+	}
+
+	// 构建扩展的模板变量：包含配置里的部署变量，以及从其他配置节读取或推导出来的值。
 	expandedVars := deployTaskVars{
-		DeployTemplateVars: DeployC.Vars,
-		Username:           "mc",
-		Password:           aliyun.C.Ecs.ProdPassword,
-		RegionId:           aliyun.C.RegionId,
-		AccessKeyId:        aliyun.C.AccessKeyId,
-		AccessKeySecret:    aliyun.C.AccessKeySecret,
-		DataDiskSize:       aliyun.C.Ecs.DataDisk.Size,
+		TasksDeployVars:  config.Get().Tasks.Deploy.Vars,
+		SSHGomcPublicKey: authorizedKey,
+		Username:         "mc",
+		Password:         config.Get().Aliyun.Ecs.ProdPassword,
+		RegionId:         config.Get().Aliyun.RegionId,
+		AccessKeyId:      config.Get().Aliyun.AccessKeyId,
+		AccessKeySecret:  config.Get().Aliyun.AccessKeySecret,
+		DataDiskSize:     config.Get().Aliyun.Ecs.DataDisk.Size,
 	}
 
 	// 整个部署过程复用同一条 root 连接。连接中途失效时 Conn 会自行重新拨号，因此不必每一步重连。

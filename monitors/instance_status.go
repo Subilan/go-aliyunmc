@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/states"
@@ -24,7 +25,7 @@ type InstanceStatusMonitor struct {
 
 func newInstanceStatusMonitor() *InstanceStatusMonitor {
 	monitor := &InstanceStatusMonitor{
-		interval: time.Duration(InstanceStatusC.PollIntervalSec) * time.Second,
+		interval: time.Duration(config.Get().Monitors.Instance.PollIntervalSec) * time.Second,
 		store:    states.NewHubbedStore[string](),
 		logger:   log_util.NewNamedLogger("[monitor/instance] ", "instance-status-monitor"),
 	}
@@ -78,7 +79,7 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 	}
 
 	resp, err := aliyun.EcsClient.DescribeInstanceStatusWithContext(ctx, &ecs20140526.DescribeInstanceStatusRequest{
-		RegionId:   tea.String(aliyun.C.RegionId),
+		RegionId:   tea.String(config.Get().Aliyun.RegionId),
 		InstanceId: []*string{tea.String(instance.InstanceId)},
 	}, &dara.RuntimeOptions{})
 

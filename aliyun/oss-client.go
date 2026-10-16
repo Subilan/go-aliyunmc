@@ -1,6 +1,7 @@
 package aliyun
 
 import (
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss/credentials"
 )
@@ -14,12 +15,12 @@ func GetOssClient() *oss.Client {
 		oss.LoadDefaultConfig().
 			WithCredentialsProvider(
 				credentials.NewStaticCredentialsProvider(
-					C.AccessKeyId,
-					C.AccessKeySecret,
+					config.Get().Aliyun.AccessKeyId,
+					config.Get().Aliyun.AccessKeySecret,
 				),
 			).
-			WithRegion(C.RegionId).
-			WithEndpoint(C.OssEndpoint()),
+			WithRegion(config.Get().Aliyun.RegionId).
+			WithEndpoint(config.Get().Aliyun.OssEndpoint()),
 	)
 	return client
 }

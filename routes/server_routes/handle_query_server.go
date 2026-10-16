@@ -1,11 +1,12 @@
 package server_routes
 
 import (
+	"net/http"
+
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/monitors"
-	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/store"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mcstatus-io/mcutil/v4/query"
@@ -32,7 +33,7 @@ func HandleQueryServer(c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusServiceUnavailable, "服务器离线")
 	}
 
-	result, err := query.Full(c.Request.Context(), instance.Ip, server.C.PortOrDefault())
+	result, err := query.Full(c.Request.Context(), instance.Ip, config.Get().Server.Port)
 
 	if err != nil {
 		return nil, err

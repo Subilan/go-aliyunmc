@@ -1,9 +1,11 @@
 package server
 
 import (
-	"github.com/Subilan/go-aliyunmc/h"
 	"net/http"
 	"strings"
+
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/h"
 
 	"github.com/mcstatus-io/mcutil/v4/rcon"
 )
@@ -17,7 +19,7 @@ func RunSingleCommand(ip string, command string) (string, error) {
 //  - ip: 服务器IP地址。注意：服务器的端口由配置文件内容指定。
 //  - commands: 要执行的指令列表
 func RunCommand(ip string, commands []string) (string, error) {
-	rconClient, err := rcon.Dial(ip, C.RconPort)
+	rconClient, err := rcon.Dial(ip, config.Get().Server.RconPort)
 
 	if err != nil {
 		return "", h.HttpError(http.StatusServiceUnavailable, "无法连接到服务器")
@@ -25,7 +27,7 @@ func RunCommand(ip string, commands []string) (string, error) {
 
 	defer rconClient.Close()
 
-	if err := rconClient.Login(C.RconPassword); err != nil {
+	if err := rconClient.Login(config.Get().Server.RconPassword); err != nil {
 		return "", h.HttpError(http.StatusServiceUnavailable, "无法登录到服务器")
 	}
 

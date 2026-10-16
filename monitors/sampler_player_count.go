@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
-	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
 
@@ -31,9 +31,9 @@ type PlayerListSampler struct {
 
 func newPlayerListSampler() *PlayerListSampler {
 	s := &PlayerListSampler{
-		interval:      time.Duration(PlayerCountSamplerC.SampleIntervalSec) * time.Second,
-		maxDataPoints: PlayerCountSamplerC.MaxDataPoints,
-		dataPoints:    make([]PlayerListDataPoint, 0, PlayerCountSamplerC.MaxDataPoints),
+		interval:      time.Duration(config.Get().Samplers.PlayerCount.SampleIntervalSec) * time.Second,
+		maxDataPoints: config.Get().Samplers.PlayerCount.MaxDataPoints,
+		dataPoints:    make([]PlayerListDataPoint, 0, config.Get().Samplers.PlayerCount.MaxDataPoints),
 		logger:        log_util.NewNamedLogger("[sampler/player-list] ", "player-list-sampler"),
 	}
 	s.loadFromDB()
@@ -88,7 +88,7 @@ func (s *PlayerListSampler) sampleAndStore(ctx context.Context) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	result, err := query.Full(queryCtx, ip, server.C.PortOrDefault())
+	result, err := query.Full(queryCtx, ip, config.Get().Server.Port)
 	if err != nil {
 		return
 	}

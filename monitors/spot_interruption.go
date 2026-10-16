@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/global_states"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/server"
@@ -41,10 +42,10 @@ type SpotInterruptionMonitor struct {
 
 func newSpotInterruptionMonitor() *SpotInterruptionMonitor {
 	return &SpotInterruptionMonitor{
-		enabled:              SpotInterruptionC.Enabled,
-		interval:             time.Duration(SpotInterruptionC.PollIntervalSec) * time.Second,
-		stopWaitTimeout:      time.Duration(SpotInterruptionC.StopWaitTimeoutSec) * time.Second,
-		offlineCheckInterval: time.Duration(SpotInterruptionC.OfflineCheckIntervalSec) * time.Second,
+		enabled:              config.Get().Monitors.SpotInterruption.Enabled,
+		interval:             time.Duration(config.Get().Monitors.SpotInterruption.PollIntervalSec) * time.Second,
+		stopWaitTimeout:      time.Duration(config.Get().Monitors.SpotInterruption.StopWaitTimeoutSec) * time.Second,
+		offlineCheckInterval: time.Duration(config.Get().Monitors.SpotInterruption.OfflineCheckIntervalSec) * time.Second,
 		logger:               log_util.NewNamedLogger("[monitor/spot-interruption] ", "spot-interruption-monitor"),
 	}
 }
@@ -93,7 +94,7 @@ func (m *SpotInterruptionMonitor) pollOnce(ctx context.Context) {
 	}
 
 	resp, err := aliyun.EcsClient.DescribeInstancesWithContext(ctx, &ecs20140526.DescribeInstancesRequest{
-		RegionId:    tea.String(aliyun.C.RegionId),
+		RegionId:    tea.String(config.Get().Aliyun.RegionId),
 		InstanceIds: tea.String(instance.InstanceId),
 	}, &dara.RuntimeOptions{})
 

@@ -6,8 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/aliyun"
-
+	"github.com/Subilan/go-aliyunmc/config"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -38,10 +37,10 @@ func (r Role) authMethod() (ssh.AuthMethod, error) {
 		}
 		return ssh.PublicKeys(sshKey), nil
 	case RoleRoot:
-		if aliyun.C.Ecs.RootPassword == "" {
+		if config.Get().Aliyun.Ecs.RootPassword == "" {
 			return nil, fmt.Errorf("未配置 root 用户的密码")
 		}
-		return ssh.Password(aliyun.C.Ecs.RootPassword), nil
+		return ssh.Password(config.Get().Aliyun.Ecs.RootPassword), nil
 	}
 	return nil, fmt.Errorf("未知的 SSH 用户角色: %d", int(r))
 }
@@ -152,7 +151,7 @@ func (t Target) Upload(ctx context.Context, localPath, remotePath string, onLine
 	if err != nil {
 		return err
 	}
-	return runRsync(ctx, localPath, endpoint, onLine)
+	return runRsync(ctx, config.Get().SSH.PrivateKeyPath, localPath, endpoint, onLine)
 }
 
 // DownloadFile 将远端文件下载到本地。
@@ -161,7 +160,7 @@ func (t Target) DownloadFile(ctx context.Context, remotePath, localPath string, 
 	if err != nil {
 		return err
 	}
-	return runRsync(ctx, endpoint, localPath, onLine)
+	return runRsync(ctx, config.Get().SSH.PrivateKeyPath, endpoint, localPath, onLine)
 }
 
 // DownloadDir 将远端目录同步到本地，远端与本地路径都按目录语义处理。
@@ -170,7 +169,7 @@ func (t Target) DownloadDir(ctx context.Context, remoteDir, localDir string, onL
 	if err != nil {
 		return err
 	}
-	return runRsync(ctx, endpoint, localDir+"/", onLine)
+	return runRsync(ctx, config.Get().SSH.PrivateKeyPath, endpoint, localDir+"/", onLine)
 }
 
 func (t Target) transferEndpoint(remotePath string) (string, error) {

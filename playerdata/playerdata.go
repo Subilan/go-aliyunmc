@@ -3,13 +3,15 @@ package playerdata
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Subilan/go-aliyunmc/internal/cache"
-	"github.com/Subilan/go-aliyunmc/mc"
-	"github.com/Subilan/go-aliyunmc/store"
 	"os"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/internal/cache"
+	"github.com/Subilan/go-aliyunmc/mc"
+	"github.com/Subilan/go-aliyunmc/store"
 )
 
 const (
@@ -194,7 +196,7 @@ func AdvancementCategory(key string) string {
 // playerNameMatchExpr returns a SQL expression that matches playerName
 // within the comma-separated player_names column.
 func playerNameMatchExpr() string {
-	switch store.C.Driver {
+	switch config.Get().Store.Driver {
 	case "mysql":
 		return "CONCAT(',', player_names, ',') LIKE CONCAT('%,', ?, ',%')"
 	default:

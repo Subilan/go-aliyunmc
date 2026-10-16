@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
 )
@@ -11,7 +12,7 @@ func archiveTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
-	script, err := remote_util.RenderScriptTemplate(ArchiveC.TemplatePath, ArchiveC.Vars)
+	script, err := remote_util.RenderScriptTemplate(config.Get().Tasks.Archive.TemplatePath, config.Get().Tasks.Archive.Vars)
 	if err != nil {
 		return err
 	}

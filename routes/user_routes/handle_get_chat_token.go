@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/context_util"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/monitors"
@@ -20,7 +21,7 @@ func HandleGetChatToken(c *gin.Context) (any, error) {
 	if !exists {
 		return nil, h.HttpError(http.StatusNotFound, "用户信息不存在")
 	}
-	
+
 	serverStatus := monitors.GetServerStatusMonitor().Snapshot()
 
 	if serverStatus.Error != nil {
@@ -38,13 +39,13 @@ func HandleGetChatToken(c *gin.Context) (any, error) {
 	}
 
 	claims := jwt.MapClaims{
-		"uuid": user.WhitelistUUID,
+		"uuid":       user.WhitelistUUID,
 		"playername": gameName,
-		"exp":  time.Now().Add(time.Duration(C.ChatToken.ExpireSeconds) * time.Second).Unix(),
+		"exp":        time.Now().Add(time.Duration(config.Get().UserRoutes.ChatToken.ExpireSeconds) * time.Second).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(C.ChatToken.Secret))
+	tokenString, err := token.SignedString([]byte(config.Get().UserRoutes.ChatToken.Secret))
 	if err != nil {
 		return nil, fmt.Errorf("生成聊天令牌失败：%v", err)
 	}

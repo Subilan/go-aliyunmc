@@ -1,9 +1,11 @@
 package tasks
 
 import (
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/store/models"
-	"time"
 )
 
 type TaskDefinition struct {
@@ -72,9 +74,9 @@ func RegisterTaskDefinitions() {
 	}
 
 	TaskDefinitions[models.TaskTypeBackup] = &TaskDefinition{
-		Exclusive: BackupC.Exclusive,
+		Exclusive: config.Get().Tasks.Backup.Exclusive,
 		Type:      models.TaskTypeBackup,
-		Timeout:   time.Duration(BackupC.TimeoutSec) * time.Second,
+		Timeout:   time.Duration(config.Get().Tasks.Backup.TimeoutSec) * time.Second,
 		F:         backupTask,
 		C:         checkBackupTask,
 		Role:      perms.RoleOperator,
@@ -83,7 +85,7 @@ func RegisterTaskDefinitions() {
 	TaskDefinitions[models.TaskTypeArchive] = &TaskDefinition{
 		Exclusive: true,
 		Type:      models.TaskTypeArchive,
-		Timeout:   time.Duration(ArchiveC.TimeoutSec) * time.Second,
+		Timeout:   time.Duration(config.Get().Tasks.Archive.TimeoutSec) * time.Second,
 		F:         archiveTask,
 		C:         checkArchiveTask,
 		Role:      perms.RoleOperator,

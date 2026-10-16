@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
-	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/states"
 	"github.com/Subilan/go-aliyunmc/store"
 
@@ -20,7 +20,7 @@ type ServerStatusMonitor struct {
 
 func newServerStatusMonitor() *ServerStatusMonitor {
 	return &ServerStatusMonitor{
-		interval: time.Duration(ServerStatusC.PollIntervalSec) * time.Second,
+		interval: time.Duration(config.Get().Monitors.Server.PollIntervalSec) * time.Second,
 		store:    states.NewHubbedStore[states.ServerStatusState](),
 		logger:   log_util.NewNamedLogger("[monitor/server] ", "server-status-monitor"),
 	}
@@ -59,7 +59,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	}
 
 	statusCtx, statusCtxCancel := context.WithTimeout(ctx, 5*time.Second)
-	statusValue, err := status.Modern(statusCtx, ip, server.C.PortOrDefault())
+	statusValue, err := status.Modern(statusCtx, ip, config.Get().Server.Port)
 	statusCtxCancel()
 
 	next := states.ServerStatusState{}

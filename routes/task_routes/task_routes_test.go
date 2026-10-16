@@ -4,17 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/internal/testutil"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/session"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
 	"github.com/Subilan/go-aliyunmc/tasks"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -25,15 +27,17 @@ func TestMain(m *testing.M) {
 	if err := testutil.ChdirProjectRoot(); err != nil {
 		panic(err)
 	}
-	store.C = store.Config{
-		Driver: "sqlite",
-		DBName: "task_routes_test",
-		Path:   testDBPath,
-	}
-	perms.C = perms.Config{
-		ModelPath:  "rbac_model.conf",
-		PolicyPath: "rbac_policy.csv",
-	}
+	config.Set(&config.Config{
+		Store: config.Store{
+			Driver: "sqlite",
+			DBName: "task_routes_test",
+			Path:   testDBPath,
+		},
+		Perms: config.Perms{
+			ModelPath:  "rbac_model.conf",
+			PolicyPath: "rbac_policy.csv",
+		},
+	})
 	tasks.RegisterTaskDefinitions()
 	perms.MustInitialize()
 	store.MustInitialize()

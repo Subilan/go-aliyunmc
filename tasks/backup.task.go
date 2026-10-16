@@ -1,10 +1,12 @@
 package tasks
 
 import (
+	"net/http"
+
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
-	"net/http"
 )
 
 func backupTask(tc *TaskContext, _ map[string]any) error {
@@ -13,7 +15,7 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 		return err
 	}
 
-	script, err := remote_util.RenderScriptTemplate(BackupC.TemplatePath, BackupC.Vars)
+	script, err := remote_util.RenderScriptTemplate(config.Get().Tasks.Backup.TemplatePath, config.Get().Tasks.Backup.Vars)
 	if err != nil {
 		return err
 	}

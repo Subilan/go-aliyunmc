@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/store/models"
 	"github.com/Subilan/go-aliyunmc/tasks"
@@ -19,8 +20,8 @@ type BackupMonitor struct {
 
 func newBackupMonitor() *BackupMonitor {
 	return &BackupMonitor{
-		enabled:  BackupC.Enabled,
-		interval: time.Duration(BackupC.PollIntervalSec) * time.Second,
+		enabled:  config.Get().Monitors.Backup.Enabled,
+		interval: time.Duration(config.Get().Monitors.Backup.PollIntervalSec) * time.Second,
 		logger:   log_util.NewNamedLogger("[monitor/backup] ", "backup-monitor"),
 	}
 }

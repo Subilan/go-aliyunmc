@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/playerdata"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
 	"github.com/Subilan/go-aliyunmc/tasks"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
 )
 
 const (
@@ -57,7 +59,7 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	}
 
 	// 注册白名单同步后钩子：当 whitelist.json 同步完成后，校验并清理失效的绑定关系
-	whitelistLocalPath := filepath.Join(FileSyncC.LocalCacheRoot, "whitelist.json")
+	whitelistLocalPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, "whitelist.json")
 	p.mu.Lock()
 	p.postSyncHooks[whitelistLocalPath] = func() error {
 		return validateAndCleanWhitelistBindings(p.logger)
@@ -65,7 +67,7 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	p.mu.Unlock()
 
 	// 为每个文件创建独立的轮询 goroutine
-	for _, fileConfig := range FileSyncC.Files {
+	for _, fileConfig := range config.Get().Monitors.FileSync.Files {
 		stopCh := make(chan struct{})
 		p.mu.Lock()
 		p.stopChans[fileConfig.RemotePath] = stopCh
@@ -75,7 +77,7 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	}
 
 	// 为每个目录创建独立的轮询 goroutine
-	for _, dirConfig := range FileSyncC.Dirs {
+	for _, dirConfig := range config.Get().Monitors.FileSync.Dirs {
 		stopCh := make(chan struct{})
 		p.mu.Lock()
 		p.stopChans[dirConfig.RemotePath] = stopCh
@@ -86,7 +88,7 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 }
 
 // pollFile 为单个文件执行定时轮询
-func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig FileConfig, stopCh chan struct{}) {
+func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig config.MonitorsFileSyncFile, stopCh chan struct{}) {
 	ticker := time.NewTicker(time.Duration(fileConfig.PollIntervalSec) * time.Second)
 	defer ticker.Stop()
 
@@ -129,13 +131,13 @@ func (p *FileSyncPoller) syncTarget(name string) string {
 }
 
 // syncFile 执行单次文件同步
-func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
+func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig config.MonitorsFileSyncFile) {
 	ip := p.syncTarget("文件")
 	if ip == "" {
 		return
 	}
 
-	localFullPath := filepath.Join(FileSyncC.LocalCacheRoot, fileConfig.LocalPath)
+	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, fileConfig.LocalPath)
 	if err := os.MkdirAll(filepath.Dir(localFullPath), 0755); err != nil {
 		p.logger.Error("无法创建本地目录: %v", err)
 		return
@@ -171,7 +173,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 }
 
 // pollDir 为单个目录执行定时轮询
-func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopCh chan struct{}) {
+func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig config.MonitorsFileSyncDir, stopCh chan struct{}) {
 	ticker := time.NewTicker(time.Duration(dirConfig.PollIntervalSec) * time.Second)
 	defer ticker.Stop()
 
@@ -191,13 +193,13 @@ func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig DirConfig, stopC
 }
 
 // syncDir 执行单次目录同步
-func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
+func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig config.MonitorsFileSyncDir) {
 	ip := p.syncTarget("目录")
 	if ip == "" {
 		return
 	}
 
-	localFullPath := filepath.Join(FileSyncC.LocalCacheRoot, dirConfig.LocalPath)
+	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, dirConfig.LocalPath)
 	if err := os.MkdirAll(localFullPath, 0755); err != nil {
 		p.logger.Error("无法创建本地目录: %v", err)
 		return
@@ -224,7 +226,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 
 // ensureCacheDir 确保本地缓存目录存在
 func (p *FileSyncPoller) ensureCacheDir() error {
-	return ensureDirectory(FileSyncC.LocalCacheRoot)
+	return ensureDirectory(config.Get().Monitors.FileSync.LocalCacheRoot)
 }
 
 // ensureDirectory 确保目录存在，不存在则创建

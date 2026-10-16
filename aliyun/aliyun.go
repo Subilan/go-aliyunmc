@@ -1,6 +1,7 @@
 package aliyun
 
 import (
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
 
 	"github.com/aliyun/credentials-go/credentials"
@@ -30,8 +31,8 @@ func MustInitialize() {
 func MustGetAKCredential() credentials.Credential {
 	crConfig := new(credentials.Config).
 		SetType("access_key").
-		SetAccessKeyId(C.AccessKeyId).
-		SetAccessKeySecret(C.AccessKeySecret)
+		SetAccessKeyId(config.Get().Aliyun.AccessKeyId).
+		SetAccessKeySecret(config.Get().Aliyun.AccessKeySecret)
 	cr, err := credentials.NewCredential(crConfig)
 
 	if err != nil {

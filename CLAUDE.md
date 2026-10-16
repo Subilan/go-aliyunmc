@@ -16,7 +16,7 @@ make run          # Run without dev mode
 Run a single package test:
 ```bash
 go test -v ./routes/user_routes/
-go test -v ./store/ -run TestStoreConfig
+go test -v ./config/ -run TestStoreDSN
 ```
 
 API integration tests (requires running server + [hurl](https://hurl.dev)):
@@ -46,30 +46,32 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `perms/` | Casbin RBAC. Three roles: `basic` (empty string), `operator`, `superuser` — with inheritance (superuser > operator > basic). |
 | `monitors/` | Background goroutines: server/instance status polling, file sync, auto-archive idle, scheduled backup, spot instance interruption detection, best ECS candidate, player count / balance sampling. |
 | `remote_util/` | SSH connection, script template rendering (`text/template`), and remote command execution. Used by tasks and monitors. |
+| `config/` | 全部配置结构体、加载（严格解码 + 默认值 + 校验）与运行期 registry。不 import 任何项目内的其他包，其余包一律从 `config.Get()` 读取。 |
 | `global_states/` | Atomic global flags (e.g. `IsArchiving`) shared across packages to coordinate monitors and tasks. |
 | `log_util/` | `log/slog` based logging with named loggers, tint-colorized console output, and lumberjack file rotation. |
 | `env/` | Exposes `env.DEV` bool (set by `GO_ALIYUNMC_DEV=1`). |
 | `context_util/` | Helpers to extract `user`, `user_id`, and `role` from Gin context (set by `mid.Auth`). |
-| `utils/` | Config loading (`MustBindConfigToml`) and project-root resolution for tests. |
+| `utils/` | Project-root resolution for tests. |
 
 ## Initialization Order
 
 初始化是显式发生的，不再依赖 `init()`：
 
+- `config.MustLoad()` 一次性读入 `configs/store.toml` + `configs/config.toml`（严格解码 → 填默认值 → 校验）并安装进 registry。此后全程序通过 `config.Get()` 读取。
 - `runServer` 按以下顺序装配：
   1. `env.MustInitialize()` — DEV flag
-  2. `utils.MustBindConfigToml(&C, "main")` — main config
-  3. `store.MustLoadConfig()` + `store.MustInitialize()` — DB 配置和连接
+  2. `config.MustLoad()` — 全部配置
+  3. `store.MustInitialize()` — 用 `config.Get().Store` 连接 DB
   4. `session.InitStore(store.DB)` — session 存储
-  5. `perms.MustLoadConfig()` + `perms.MustInitialize()` — Casbin enforcer
-  6. `aliyun.MustLoadConfig()` + `aliyun.MustInitialize()` — 阿里云 clients
-  7. `remote_util.MustLoadConfig()` + `remote_util.MustInitialize()` — SSH 私钥
-  8. `tasks.MustLoadConfig()` + `tasks.RegisterTaskDefinitions()` — 任务配置和定义注册
-  9. `server.MustLoadConfig()`、`user_routes.MustLoadConfig()`、`monitors.MustLoadConfig()`
-  10. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
-- `migrate` 和 `create_user` 只加载 `store` 配置并初始化 DB，不加载其他模块。
+  5. `perms.MustInitialize()` — Casbin enforcer
+  6. `aliyun.MustInitialize()` — 阿里云 clients
+  7. `remote_util.MustInitialize()` — 加载 `config.Get().SSH.PrivateKeyPath` 指向的私钥
+  8. `tasks.RegisterTaskDefinitions()` — 任务定义注册
+  9. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
+  10. `monitors.MustInitialize(ctx)` — 启动各 monitor/sampler，需在路由注册之后
+- `migrate` 和 `create_user` 只调用 `config.MustLoadStore()`（仅读 `store.toml`），因此不会被云凭证、私钥路径等其余各节挡住。
 
-各包只提供显式的 `MustLoadConfig()`/`MustInitialize()`，不再在包初始化阶段读 TOML。Config structs 使用 `validate` tags（go-playground/validator），无效配置会在启动时直接终止。
+各功能包只提供显式的 `MustInitialize()`，且只做副作用（连库、建 client、载 Casbin、读私钥）：配置由 `config.Get()` 自取，不再有包级配置全局，也没有 `MustLoadConfig()`。结构体上的 `validate` tags 会在加载时统一校验，无效配置直接终止进程。
 
 Dev mode (`env.DEV == true`): auto-migrates DB schema, auto-creates a dev user, and runs Gin in debug mode.
 
@@ -117,7 +119,7 @@ Task execution lifecycle:
 4. `done()` → task marked success; `throw(err)` → task marked failed; timeout → `__TIMEOUT__`; interrupt → `__INTERRUPTED__`
 5. On shutdown, `main()` calls `RangeExecutors` to interrupt all running tasks and waits for them to finish
 
-Deploy tasks use a step-driven model via `[[steps]]` arrays in `task-deploy.toml` (each step: `name`, `script_path`, `timeout_sec`). Backup/archive tasks are single-template based (`template_path`). Scripts are rendered from `.tmpl.sh` templates and executed over `remote_util`; the deploy task runs all of its steps on a single reused `remote_util.Conn`, while the single-template tasks use the one-shot `remote_util.Root(ip).ExecScript`.
+Deploy steps are defined by the `deploySteps` slice in `tasks/deploy.task.go` (each step names a script template or a local Go function, plus a per-step timeout). Backup/archive tasks are single-template based. Scripts are rendered from `.tmpl.sh` templates and executed over `remote_util`; the deploy task runs all of its steps on a single reused `remote_util.Conn`, while the single-template tasks use the one-shot `remote_util.Root(ip).ExecScript`.
 
 ## SSH Remote Execution
 
@@ -130,18 +132,33 @@ Deploy tasks use a step-driven model via `[[steps]]` arrays in `task-deploy.toml
 `RenderScriptTemplate(templatePath, vars)` renders `.tmpl.sh` files with Go `text/template` and is transport-independent.
 
 SSH always uses port 22. Authentication is role-based:
-- `mc` uses the private key at `remote_util.C.SSHPrivateKeyPath` (`configs/remote-util.toml`). Its public half must equal `task-deploy.toml`'s `ssh_gomc_public_key`, which the deploy task writes into `/home/mc/.ssh/authorized_keys`; `tasks.MustVerifyDeploySSHKey` enforces that at startup, because a mismatch shows up only later as unexplained auth failures. The key must be passphrase-less because the service runs under systemd with no agent. rsync passes the same path via `-i` plus `-o IdentitiesOnly=yes`, so it can never fall back to an ambient key.
-- `root` uses the password from `aliyun.C.Ecs.RootPassword`. This is needed only during deployment, before any key is authorized; root never gets an authorized key.
+- `mc` uses the private key at `config.Get().SSH.PrivateKeyPath` (`[ssh]` in `configs/config.toml`). The deploy task derives the matching public key from it via `remote_util.AuthorizedKeyLine()` and writes that into `/home/mc/.ssh/authorized_keys`, so the key material exists in exactly one place and cannot drift out of sync. The key must be passphrase-less because the service runs under systemd with no agent. rsync passes the same path via `-i` plus `-o IdentitiesOnly=yes`, so it can never fall back to an ambient key.
+- `root` uses the password from `config.Get().Aliyun.Ecs.RootPassword`. This is needed only during deployment, before any key is authorized; root never gets an authorized key.
 
-`aliyun.C.Ecs.ProdPassword` is still used to create the `mc` account, but no longer for SSH authentication.
+`config.Get().Aliyun.Ecs.ProdPassword` is still used to create the `mc` account, but no longer for SSH authentication.
 
 ## Config System
 
-All config files live in `configs/*.toml` and are loaded via `utils.MustBindConfigToml[T any](ptr, name)`, which reads, unmarshals, and validates. `cmd/configgen/main.go` generates example configs into `example_configs/`. When changing config structs/tags, keep `configgen` and `example_configs/` aligned. 默认配置目录是 `configs/`，也可以通过 `GO_ALIYUNMC_CONFIG_DIR` 覆盖。
+全部配置结构体定义在 `config` 包里，运行期通过 `config.Get()` 读取。默认目录是 `configs/`，可由 `GO_ALIYUNMC_CONFIG_DIR` 覆盖。只有两个文件：
+
+| 文件 | 内容 | 读取者 |
+|---|---|---|
+| `configs/store.toml` | 数据库配置 | `run`、`migrate`、`create_user` |
+| `configs/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[perms]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run` |
+
+`store` 单独成文件，是因为另外两个子命令只需要它。`Config.Store` 标了 `toml:"-"`，所以 `config.toml` 里若出现 `[store]` 会被严格解码直接报错，不会形成第二条真相。
+
+加载顺序不可颠倒：严格解码（`DisallowUnknownFields`，未知或拼错的键直接报错）→ `creasty/defaults` 填默认值（只填零值）→ `go-playground/validator` 校验。字段 tag 的用法：
+
+- `default:"..."` — 有合理默认值、且"零值即未设置"的字段
+- `toml:"...,commented"` — 必填且没有合理默认值的字段（凭证、密钥路径、资源 ID 等），在示例里会被注释掉
+- 数组与 `bool` 开关一律不给 `default`：显式的空列表会被静默替换、显式的 `false` 会被翻转
+- `commented` 只能用在叶子字段上（用在表上会把整节连同子键一起注释掉），由 `config/schema_test.go` 守护
+- 分节路径与类型名严格对应（`[monitors.file_sync]` ↔ `MonitorsFileSync`），由 `TestSectionPaths` 守护
+
+`cmd/configgen/main.go` 从这些 tag 生成 `example_configs/`（`make gen-config`）：comment 变注释、default 变默认值、commented 变注释掉的键。它不手写任何字面量，所以新增字段会自动出现在示例里。
 
 Runtime `configs/` files are user-managed — never auto-generate them.
-
-The main config struct is `Config` in `config.go` (package main): port, CORS, AutoTLS, session keys. Other packages define their own config structs in `config.go` files within the package directory.
 
 ## SSE Streaming
 
@@ -155,11 +172,11 @@ State watch endpoints (`/state/watch/*`) use a similar pattern but with `states.
 
 ## Synced Remote Data
 
-The file-sync monitor (`monitors/file_sync.go`) periodically downloads files from the active ECS instance into `remote_data_cache/`. Handlers that need this data (e.g. whitelist binding) read these JSON files directly at request time. The cache directory and sync schedule are configured in `configs/monitor-file-sync.toml`.
+The file-sync monitor (`monitors/file_sync.go`) periodically downloads files from the active ECS instance into `remote_data_cache/`. Handlers that need this data (e.g. whitelist binding) read these JSON files directly at request time. The cache directory and sync schedule are configured in `[monitors.file_sync]` of `configs/config.toml`.
 
 ## Conventions
 
-- Task config types live in `tasks/config.go`; template vars structs use `toml` + `validate` tags.
+- 配置结构体一律放在 `config` 包（`config/tasks.go`、`config/monitors.go` …），一个域一个文件；字段用 `toml` + `validate` + `comment` + `default` tags。功能包不得再定义自己的配置结构体或包级配置全局。
 - `configs/` holds runtime config; `example_configs/` holds generated defaults.
 - Dev mode (`GO_ALIYUNMC_DEV=1`): enables auto-migration, auto-creates dev user, runs in debug mode.
 - Tests that need project-root relative files explicitly call `testutil.ChdirProjectRoot()` in `TestMain`; production code no longer changes the working directory.

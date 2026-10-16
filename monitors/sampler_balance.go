@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
@@ -29,9 +30,9 @@ type BalanceSampler struct {
 
 func newBalanceSampler() *BalanceSampler {
 	s := &BalanceSampler{
-		interval:      time.Duration(BalanceSamplerC.SampleIntervalSec) * time.Second,
-		maxDataPoints: BalanceSamplerC.MaxDataPoints,
-		dataPoints:    make([]BalanceDataPoint, 0, BalanceSamplerC.MaxDataPoints),
+		interval:      time.Duration(config.Get().Samplers.Balance.SampleIntervalSec) * time.Second,
+		maxDataPoints: config.Get().Samplers.Balance.MaxDataPoints,
+		dataPoints:    make([]BalanceDataPoint, 0, config.Get().Samplers.Balance.MaxDataPoints),
 		logger:        log_util.NewNamedLogger("[sampler/balance] ", "balance-sampler"),
 	}
 	s.loadFromDB()

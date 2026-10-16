@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/perms"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
-	"net/http"
-	"time"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/tea"
@@ -101,7 +103,7 @@ func getDefaultVSwitchId(tc *TaskContext, zoneId string) (string, error) {
 
 	createDefaultVSwitchRequest := &vpc20160428.CreateDefaultVSwitchRequest{
 		ZoneId:   tea.String(zoneId),
-		RegionId: tea.String(aliyun.C.RegionId),
+		RegionId: tea.String(config.Get().Aliyun.RegionId),
 	}
 	createDefaultVSwitchResponse, err := aliyun.VpcClient.CreateDefaultVSwitch(createDefaultVSwitchRequest)
 
@@ -187,10 +189,10 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 	}
 	tc.println("开始创建实例")
 
-	ecsConfig := aliyun.C.Ecs
+	ecsConfig := config.Get().Aliyun.Ecs
 
 	createInstanceRequest := &ecs20140526.CreateInstanceRequest{
-		RegionId:     tea.String(aliyun.C.RegionId),
+		RegionId:     tea.String(config.Get().Aliyun.RegionId),
 		ZoneId:       tea.String(params.ZoneId),
 		InstanceType: tea.String(params.InstanceType),
 		SystemDisk: &ecs20140526.CreateInstanceRequestSystemDisk{
@@ -228,7 +230,7 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 		InstanceType: params.InstanceType,
 		ZoneId:       params.ZoneId,
 		VSwitchId:    vswitchId,
-		RegionId:     aliyun.C.RegionId,
+		RegionId:     config.Get().Aliyun.RegionId,
 	}
 
 	if err := store.DB.Save(instance).Error; err != nil {

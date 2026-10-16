@@ -38,9 +38,13 @@ func mustSigner(t *testing.T) ssh.Signer {
 	return signer
 }
 
-// authorizedKeyLine 返回 signer 对应的 authorized_keys 行。
-func authorizedKeyLine(signer ssh.Signer) string {
-	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
+// withSSHKey 将包级私钥临时替换为 signer，测试结束后恢复。
+func withSSHKey(t *testing.T, signer ssh.Signer) {
+	t.Helper()
+
+	original := sshKey
+	sshKey = signer
+	t.Cleanup(func() { sshKey = original })
 }
 
 func TestLoadPrivateKey(t *testing.T) {
@@ -89,65 +93,42 @@ func TestLoadPrivateKeyMissingFile(t *testing.T) {
 	}
 }
 
-func TestRsyncSSHCommandPinsIdentity(t *testing.T) {
-	original := C.SSHPrivateKeyPath
-	C.SSHPrivateKeyPath = "/home/gomc/.ssh/id_gomc"
-	t.Cleanup(func() { C.SSHPrivateKeyPath = original })
+func TestAuthorizedKeyLine(t *testing.T) {
+	signer := mustSigner(t)
+	withSSHKey(t, signer)
 
-	command := rsyncSSHCommand()
+	line, err := AuthorizedKeyLine()
+	if err != nil {
+		t.Fatalf("应当返回公钥行: %v", err)
+	}
+
+	// 部署任务把这一行原样写进 authorized_keys，所以它必须能被解析回来，
+	// 且与私钥配对——这正是删掉配置里那份公钥后需要守住的唯一不变量。
+	parsed, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
+	if err != nil {
+		t.Fatalf("推导出的公钥行无法解析: %v", err)
+	}
+	if got, want := ssh.FingerprintSHA256(parsed), ssh.FingerprintSHA256(signer.PublicKey()); got != want {
+		t.Fatalf("推导出的公钥与私钥不配对: %s != %s", got, want)
+	}
+}
+
+func TestAuthorizedKeyLineWithoutLoadedKey(t *testing.T) {
+	withSSHKey(t, nil)
+
+	if _, err := AuthorizedKeyLine(); err == nil {
+		t.Fatal("未加载私钥时应当报错")
+	}
+}
+
+// 密钥路径由参数传入，因此这个用例不需要碰任何全局状态。
+func TestRsyncSSHCommandPinsIdentity(t *testing.T) {
+	command := rsyncSSHCommand("/home/gomc/.ssh/id_gomc")
+
 	if !strings.Contains(command, `-i "/home/gomc/.ssh/id_gomc"`) {
 		t.Fatalf("未显式指定身份: %s", command)
 	}
 	if !strings.Contains(command, "IdentitiesOnly=yes") {
 		t.Fatalf("未禁止回落其他身份: %s", command)
-	}
-}
-
-// withSSHKey 将包级私钥临时替换为 signer，测试结束后恢复。
-func withSSHKey(t *testing.T, signer ssh.Signer) {
-	t.Helper()
-
-	original := sshKey
-	sshKey = signer
-	t.Cleanup(func() { sshKey = original })
-}
-
-func TestVerifyAuthorizedKey(t *testing.T) {
-	signer := mustSigner(t)
-	withSSHKey(t, signer)
-
-	line := authorizedKeyLine(signer)
-	if err := VerifyAuthorizedKey(line); err != nil {
-		t.Fatalf("配对的公钥应当通过: %v", err)
-	}
-
-	// authorized_keys 行尾的注释不参与比对
-	if err := VerifyAuthorizedKey(line + " gomc@controller"); err != nil {
-		t.Fatalf("仅注释不同的公钥应当通过: %v", err)
-	}
-
-	err := VerifyAuthorizedKey(authorizedKeyLine(mustSigner(t)))
-	if err == nil {
-		t.Fatal("不配对的公钥应当被拒绝")
-	}
-	if !strings.Contains(err.Error(), "指纹") {
-		t.Fatalf("错误信息未提示指纹差异: %v", err)
-	}
-}
-
-func TestVerifyAuthorizedKeyRejectsMalformed(t *testing.T) {
-	withSSHKey(t, mustSigner(t))
-
-	// configgen 生成的示例公钥就是这种截断形式
-	if err := VerifyAuthorizedKey("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQ..."); err == nil {
-		t.Fatal("无法解析的公钥应当报错")
-	}
-}
-
-func TestVerifyAuthorizedKeyWithoutLoadedKey(t *testing.T) {
-	withSSHKey(t, nil)
-
-	if err := VerifyAuthorizedKey(authorizedKeyLine(mustSigner(t))); err == nil {
-		t.Fatal("未加载私钥时应当报错")
 	}
 }

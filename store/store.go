@@ -2,8 +2,10 @@ package store
 
 import (
 	"fmt"
-	"github.com/Subilan/go-aliyunmc/store/models"
 	"log"
+
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -25,15 +27,15 @@ func MustInitialize() {
 	var dialector gorm.Dialector
 
 	// 根据驱动类型选择对应的dialector
-	switch C.Driver {
+	switch config.Get().Store.Driver {
 	case "mysql":
-		dialector = mysql.Open(C.DSN())
+		dialector = mysql.Open(config.Get().Store.DSN())
 	case "postgres":
-		dialector = postgres.Open(C.DSN())
+		dialector = postgres.Open(config.Get().Store.DSN())
 	case "sqlite":
-		dialector = sqlite.Open(C.DSN())
+		dialector = sqlite.Open(config.Get().Store.DSN())
 	default:
-		log.Fatalf("不支持的数据库驱动: %s", C.Driver)
+		log.Fatalf("不支持的数据库驱动: %s", config.Get().Store.Driver)
 	}
 
 	// 配置GORM

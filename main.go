@@ -5,7 +5,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/log_util"
@@ -23,18 +31,10 @@ import (
 	"github.com/Subilan/go-aliyunmc/routes/state_routes"
 	"github.com/Subilan/go-aliyunmc/routes/task_routes"
 	"github.com/Subilan/go-aliyunmc/routes/user_routes"
-	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/session"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
 	"github.com/Subilan/go-aliyunmc/tasks"
-	"github.com/Subilan/go-aliyunmc/utils"
-	"log"
-	"net/http"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -65,24 +65,19 @@ func main() {
 
 func runServer() {
 	env.MustInitialize()
-	utils.MustBindConfigToml(&C, "main")
-	store.MustLoadConfig()
+
+	// 一次性读入、填默认值并校验全部配置。此后各功能包从 config.Get() 自行读取，
+	// 自己只负责副作用（连库、建 client、载 Casbin、读私钥等）。
+	config.MustLoad()
+
 	store.MustInitialize()
 	if err := session.InitStore(store.DB); err != nil {
 		log_util.Fatal("初始化 session 存储失败: %v", err)
 	}
-	perms.MustLoadConfig()
 	perms.MustInitialize()
-	aliyun.MustLoadConfig()
 	aliyun.MustInitialize()
-	remote_util.MustLoadConfig()
 	remote_util.MustInitialize()
-	tasks.MustLoadConfig()
-	tasks.MustVerifyDeploySSHKey()
 	tasks.RegisterTaskDefinitions()
-	server.MustLoadConfig()
-	user_routes.MustLoadConfig()
-	monitors.MustLoadConfig()
 	mc.MustLoadData()
 
 	if env.DEV {
@@ -95,7 +90,7 @@ func runServer() {
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
 
-	engine.Use(cors.New(C.Cors.GinCorsConfig()))
+	engine.Use(cors.New(config.Get().Base.Cors.GinCorsConfig()))
 
 	engine.GET("/", h.V(func() string { return "Hello, World!" }))
 
@@ -138,11 +133,11 @@ func runServer() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	if env.DEV || !C.TLS.Enabled {
-		run(engine, C.Expose, stop)
+	if env.DEV || !config.Get().Base.TLS.Enabled {
+		run(engine, config.Get().Base.Expose, stop)
 	} else {
 		runTLS(engine, stop)
-		run(engine, C.TLS.HttpPort, stop)
+		run(engine, config.Get().Base.TLS.HttpPort, stop)
 	}
 
 	<-ctx.Done()
@@ -161,14 +156,15 @@ func runServer() {
 }
 
 func runMigrate() {
-	store.MustLoadConfig()
+	// 只需要数据库配置，因此不读 config.toml，也不会被云凭证等其余各节挡住。
+	config.MustLoadStore()
 	store.MustInitialize()
 	store.AutoMigrate()
 	log_util.Info("数据库迁移完成")
 }
 
 func runCreateUser() {
-	store.MustLoadConfig()
+	config.MustLoadStore()
 	store.MustInitialize()
 
 	fs := flag.NewFlagSet("create_user", flag.ExitOnError)
@@ -220,7 +216,8 @@ func runCreateUser() {
 
 func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
 	go func() {
-		if err := http.ListenAndServeTLS(":443", C.TLS.CertFile, C.TLS.KeyFile, session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		tlsCfg := config.Get().Base.TLS
+		if err := http.ListenAndServeTLS(":443", tlsCfg.CertFile, tlsCfg.KeyFile, session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}

@@ -2,45 +2,11 @@
 package utils
 
 import (
-	"github.com/Subilan/go-aliyunmc/log_util"
 	"os"
 	"path/filepath"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/pelletier/go-toml/v2"
+	"github.com/Subilan/go-aliyunmc/log_util"
 )
-
-const ConfigDir = "configs/"
-
-func configDir() string {
-	if dir := os.Getenv("GO_ALIYUNMC_CONFIG_DIR"); dir != "" {
-		return dir
-	}
-	return ConfigDir
-}
-
-// MustBindConfigToml 读取并绑定 ConfigDir 下的 toml 格式配置文件到指定对象，遇到任何错误都会导致程序终止。
-func MustBindConfigToml[T any](obj *T, name string) {
-	path := filepath.Join(configDir(), name+".toml")
-	fileContent, err := os.ReadFile(path)
-
-	if err != nil {
-		log_util.Fatal("无法读取配置文件 %s", path)
-	}
-
-	err = toml.Unmarshal(fileContent, obj)
-
-	if err != nil {
-		log_util.Fatal("无法解析配置文件")
-	}
-
-	validator := validator.New()
-	err = validator.Struct(obj)
-
-	if err != nil {
-		log_util.Fatal("配置文件不合要求：%s", err.Error())
-	}
-}
 
 // ProjectRoot 返回项目根目录的绝对路径，依赖于 go.mod 文件的存在。如果无法找到 go.mod 文件，程序将会终止。
 // 这个函数只能用于开发环境。

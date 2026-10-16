@@ -2,11 +2,12 @@ package server_routes
 
 import (
 	"encoding/json"
-	"github.com/Subilan/go-aliyunmc/h"
-	"github.com/Subilan/go-aliyunmc/monitors"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/h"
 
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-yaml"
@@ -37,7 +38,7 @@ func HandleGetData(c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusBadRequest, "请提供文件名")
 	}
 
-	for _, file := range monitors.FileSyncC.Files {
+	for _, file := range config.Get().Monitors.FileSync.Files {
 		fileSuffix := ""
 		for _, suffix := range supportedFileSuffix {
 			if strings.HasSuffix(file.LocalPath, "."+suffix) {
@@ -51,7 +52,7 @@ func HandleGetData(c *gin.Context) (any, error) {
 		}
 
 		if file.Id != "" && file.Id == name || file.LocalPath == name {
-			filePath := monitors.FileSyncC.LocalCacheRoot + file.LocalPath
+			filePath := config.Get().Monitors.FileSync.LocalCacheRoot + file.LocalPath
 			content, err := os.ReadFile(filePath)
 
 			if err != nil {

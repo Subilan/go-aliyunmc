@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Subilan/go-aliyunmc/aliyun"
-	"github.com/Subilan/go-aliyunmc/env"
-	"github.com/Subilan/go-aliyunmc/global_states"
-	"github.com/Subilan/go-aliyunmc/log_util"
-	"github.com/Subilan/go-aliyunmc/states"
 	"os"
 	"regexp"
 	"sort"
 	"time"
+
+	"github.com/Subilan/go-aliyunmc/aliyun"
+	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/env"
+	"github.com/Subilan/go-aliyunmc/global_states"
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/states"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
 	"github.com/alibabacloud-go/tea/dara"
@@ -29,7 +31,7 @@ func newBestEcsCandidateMonitor() *BestEcsCandidateMonitor {
 	return &BestEcsCandidateMonitor{
 		store:    states.NewHubbedStore[states.EcsCandidate](),
 		logger:   log_util.NewNamedLogger("[monitor/ecs-candidate] ", "best-ecs-candidate-monitor"),
-		interval: time.Duration(BestEcsCandidateC.PollIntervalSec) * time.Second,
+		interval: time.Duration(config.Get().Monitors.BestEcsCandidate.PollIntervalSec) * time.Second,
 	}
 }
 
@@ -45,7 +47,7 @@ func (m *BestEcsCandidateMonitor) run(ctx context.Context) {
 	ticker := time.NewTicker(m.interval)
 	defer ticker.Stop()
 
-	cacheFileContent, err := os.ReadFile(BestEcsCandidateC.CacheFile)
+	cacheFileContent, err := os.ReadFile(config.Get().Monitors.BestEcsCandidate.CacheFile)
 	if err == nil {
 		var cacheFileData []states.EcsCandidate
 		err = json.Unmarshal(cacheFileContent, &cacheFileData)
@@ -95,7 +97,7 @@ func (m *BestEcsCandidateMonitor) pollAndStore(ctx context.Context) {
 			if err != nil {
 				m.logger.Error("无法序列化缓存数据：%s", err.Error())
 			} else {
-				err = os.WriteFile(BestEcsCandidateC.CacheFile, cacheData, 0644)
+				err = os.WriteFile(config.Get().Monitors.BestEcsCandidate.CacheFile, cacheData, 0644)
 				if err != nil {
 					m.logger.Error("无法写入缓存数据：%s", err.Error())
 				} else {
@@ -113,13 +115,13 @@ func (m *BestEcsCandidateMonitor) pollAndStore(ctx context.Context) {
 
 // getInstanceCharge 调用阿里云 ECS API 获取符合配置要求的实例规格列表，并按照价格升序排序返回
 func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]states.EcsCandidate, error) {
-	ecsConfig := aliyun.C.Ecs
-	regionId := aliyun.C.RegionId
+	ecsConfig := config.Get().Aliyun.Ecs
+	regionId := config.Get().Aliyun.RegionId
 
-	memChoices := BestEcsCandidateC.MemChoices
-	cpuCoreCountChoices := BestEcsCandidateC.CpuCoreCountChoices
+	memChoices := config.Get().Monitors.BestEcsCandidate.MemChoices
+	cpuCoreCountChoices := config.Get().Monitors.BestEcsCandidate.CpuCoreCountChoices
 
-	typeExRegex, regexErr := regexp.Compile(BestEcsCandidateC.Filters.InstanceTypeExclusion)
+	typeExRegex, regexErr := regexp.Compile(config.Get().Monitors.BestEcsCandidate.Filters.InstanceTypeExclusion)
 
 	var result = make([]states.EcsCandidate, 0, 10)
 
@@ -184,7 +186,7 @@ func (m *BestEcsCandidateMonitor) getInstanceCharge(ctx context.Context) ([]stat
 							tradePrice = *describePriceResponse.Body.PriceInfo.Price.TradePrice
 						}
 
-						filters := BestEcsCandidateC.Filters
+						filters := config.Get().Monitors.BestEcsCandidate.Filters
 
 						if tradePrice > filters.MaxTradePrice || tradePrice == -1 {
 							continue
