@@ -293,7 +293,10 @@ outer:
 			return fmt.Errorf("等待实例SSH可用超时")
 		case <-waitSSHTicker.C:
 			tc.println("尝试连接...")
-			if remote_util.TryDialRoot(instance.Ip, 5*time.Second) {
+			probeCtx, probeCancel := context.WithTimeout(tc.Context(), 5*time.Second)
+			probeErr := remote_util.Root(instance.Ip).Probe(probeCtx)
+			probeCancel()
+			if probeErr == nil {
 				tc.println("连接成功")
 				break outer
 			}

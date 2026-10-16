@@ -1,6 +1,10 @@
 package tasks
 
-import "github.com/Subilan/go-aliyunmc/utils"
+import (
+	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/remote_util"
+	"github.com/Subilan/go-aliyunmc/utils"
+)
 
 type DeployTemplateVars struct {
 	SSHAccessPublicKey string   `toml:"ssh_access_public_key" validate:"required" comment:"用于SSH访问的公钥"`
@@ -50,4 +54,14 @@ func MustLoadConfig() {
 	utils.MustBindConfigToml(&DeployC, "task-deploy")
 	utils.MustBindConfigToml(&BackupC, "task-backup")
 	utils.MustBindConfigToml(&ArchiveC, "task-archive")
+}
+
+// MustVerifyDeploySSHKey 校验 remote-util.toml 加载的 mc 私钥与 task-deploy.toml 中的
+// ssh_gomc_public_key 是否配对。部署脚本只是把该公钥原样写进 authorized_keys，两者不配对时
+// 部署会照常"成功"，直到文件同步、启动服务器等后续操作才逐个认证失败，根因很难定位，
+// 所以在启动时直接挡住。两个配置都加载完之后调用。
+func MustVerifyDeploySSHKey() {
+	if err := remote_util.VerifyAuthorizedKey(DeployC.Vars.SSHGomcPublicKey); err != nil {
+		log_util.Fatal("task-deploy.toml 的 ssh_gomc_public_key 校验失败: %v", err)
+	}
 }

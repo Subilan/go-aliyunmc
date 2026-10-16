@@ -12,6 +12,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/mc"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/Subilan/go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/routes/bss_routes"
 	"github.com/Subilan/go-aliyunmc/routes/changelog_routes"
 	"github.com/Subilan/go-aliyunmc/routes/instance_routes"
@@ -74,7 +75,10 @@ func runServer() {
 	perms.MustInitialize()
 	aliyun.MustLoadConfig()
 	aliyun.MustInitialize()
+	remote_util.MustLoadConfig()
+	remote_util.MustInitialize()
 	tasks.MustLoadConfig()
+	tasks.MustVerifyDeploySSHKey()
 	tasks.RegisterTaskDefinitions()
 	server.MustLoadConfig()
 	user_routes.MustLoadConfig()

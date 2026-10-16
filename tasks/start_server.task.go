@@ -24,10 +24,10 @@ func startServerTask(tc *TaskContext, _ map[string]any) error {
 
 	ctx, cancel := context.WithTimeout(tc.Context(), 5*time.Second)
 	defer cancel()
-	err = remote_util.ExecuteRemoteCommand(fmt.Sprintf(
+	err = remote_util.Mc(ip).Exec(ctx, fmt.Sprintf(
 		"cd /home/%s/server/archive && ./start.sh && sleep 0.5 && screen -S server -Q select . >/dev/null || exit 1",
 		"mc",
-	), ip, ctx, tc.println, false)
+	), tc.println)
 
 	if err != nil {
 		return fmt.Errorf("启动脚本执行失败: %w", err)

@@ -63,9 +63,10 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
   4. `session.InitStore(store.DB)` — session 存储
   5. `perms.MustLoadConfig()` + `perms.MustInitialize()` — Casbin enforcer
   6. `aliyun.MustLoadConfig()` + `aliyun.MustInitialize()` — 阿里云 clients
-  7. `tasks.MustLoadConfig()` + `tasks.RegisterTaskDefinitions()` — 任务配置和定义注册
-  8. `server.MustLoadConfig()`、`user_routes.MustLoadConfig()`、`monitors.MustLoadConfig()`
-  9. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
+  7. `remote_util.MustLoadConfig()` + `remote_util.MustInitialize()` — SSH 私钥
+  8. `tasks.MustLoadConfig()` + `tasks.RegisterTaskDefinitions()` — 任务配置和定义注册
+  9. `server.MustLoadConfig()`、`user_routes.MustLoadConfig()`、`monitors.MustLoadConfig()`
+  10. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
 - `migrate` 和 `create_user` 只加载 `store` 配置并初始化 DB，不加载其他模块。
 
 各包只提供显式的 `MustLoadConfig()`/`MustInitialize()`，不再在包初始化阶段读 TOML。Config structs 使用 `validate` tags（go-playground/validator），无效配置会在启动时直接终止。
@@ -116,17 +117,23 @@ Task execution lifecycle:
 4. `done()` → task marked success; `throw(err)` → task marked failed; timeout → `__TIMEOUT__`; interrupt → `__INTERRUPTED__`
 5. On shutdown, `main()` calls `RangeExecutors` to interrupt all running tasks and waits for them to finish
 
-Deploy tasks use a step-driven model via `[[steps]]` arrays in `task-deploy.toml` (each step: `name`, `script_path`, `timeout_sec`). Backup/archive tasks are single-template based (`template_path`). Scripts are rendered from `.tmpl.sh` templates and executed via `remote_util.ExecuteScriptRemote`.
+Deploy tasks use a step-driven model via `[[steps]]` arrays in `task-deploy.toml` (each step: `name`, `script_path`, `timeout_sec`). Backup/archive tasks are single-template based (`template_path`). Scripts are rendered from `.tmpl.sh` templates and executed over `remote_util`; the deploy task runs all of its steps on a single reused `remote_util.Conn`, while the single-template tasks use the one-shot `remote_util.Root(ip).ExecScript`.
 
 ## SSH Remote Execution
 
-`remote_util/` provides the SSH layer used by tasks and monitors:
-- `TryDialRoot(host, timeout)` — verify SSH connectivity
-- `RenderScriptTemplate(templatePath, vars)` — render a `.tmpl.sh` file with Go `text/template`
-- `ExecuteScriptRemote(scriptPath, ip, ctx, onLine, root)` — execute a local script on remote via SSH
-- `ExecuteRemoteCommand(cmd, ip, ctx, onLine, root)` — execute a shell command remotely
+`remote_util.Target` is the single entry point for every remote operation. Build one with `Root(ip)` or `Mc(ip)`, then use `Exec`, `ExecScript`, `Upload`, `DownloadFile`, `DownloadDir`, or `Probe`. The Target is what resolves credentials, timeouts, and retries; callers never choose a transport. Two transports live behind it:
+- commands and scripts run through in-process `golang.org/x/crypto/ssh` with a line-by-line output callback
+- file transfer runs a local `rsync -avz` subprocess
 
-SSH always uses port 22. User `root` with password from `aliyun.C.Ecs.RootPassword`, or user `mc` with `aliyun.C.Ecs.ProdPassword`.
+`Target.Connect` hands back a reusable `*remote_util.Conn`; multi-step callers (the deploy task) open one connection up front and run every step on it, while the one-shot `Exec`/`ExecScript` are connect-execute-close conveniences. The connection layer retries dialing (2s/4s backoff, honoring `ctx`) but returns immediately on errors that retrying cannot fix, such as authentication or algorithm-negotiation failures. A `Conn` whose transport dies is dropped, so the next operation re-dials instead of failing every remaining step.
+
+`RenderScriptTemplate(templatePath, vars)` renders `.tmpl.sh` files with Go `text/template` and is transport-independent.
+
+SSH always uses port 22. Authentication is role-based:
+- `mc` uses the private key at `remote_util.C.SSHPrivateKeyPath` (`configs/remote-util.toml`). Its public half must equal `task-deploy.toml`'s `ssh_gomc_public_key`, which the deploy task writes into `/home/mc/.ssh/authorized_keys`; `tasks.MustVerifyDeploySSHKey` enforces that at startup, because a mismatch shows up only later as unexplained auth failures. The key must be passphrase-less because the service runs under systemd with no agent. rsync passes the same path via `-i` plus `-o IdentitiesOnly=yes`, so it can never fall back to an ambient key.
+- `root` uses the password from `aliyun.C.Ecs.RootPassword`. This is needed only during deployment, before any key is authorized; root never gets an authorized key.
+
+`aliyun.C.Ecs.ProdPassword` is still used to create the `mc` account, but no longer for SSH authentication.
 
 ## Config System
 

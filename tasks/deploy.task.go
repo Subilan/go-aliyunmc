@@ -34,8 +34,8 @@ const (
 // deployStep 表示部署任务的一个步骤
 type deployStep struct {
 	stepType   deployStepType
-	script     string                                            // 脚本步骤：模板路径
-	localFn    func(*TaskContext, string, context.Context) error // 本地步骤：执行函数
+	script     string                                                       // 脚本步骤：模板路径
+	localFn    func(*TaskContext, *remote_util.Conn, context.Context) error // 本地步骤：执行函数
 	timeoutSec int
 }
 
@@ -54,7 +54,7 @@ var deploySteps = []deployStep{
 	{stepType: deployStepLocal, localFn: deployCopyWssCert, timeoutSec: 30},
 }
 
-func deployCopyWssCert(tc *TaskContext, ip string, ctx context.Context) error {
+func deployCopyWssCert(tc *TaskContext, conn *remote_util.Conn, ctx context.Context) error {
 	if DeployC.Vars.WssCertSrc == "" || DeployC.Vars.WssCertDst == "" {
 		tc.println("[deploy] WSS证书路径未配置，跳过证书上传步骤")
 		return nil
@@ -63,12 +63,13 @@ func deployCopyWssCert(tc *TaskContext, ip string, ctx context.Context) error {
 	tc.println(fmt.Sprintf("[deploy] 上传WSS证书: %s", DeployC.Vars.WssCertSrc))
 	remotePath := DeployC.Vars.WssCertDst
 
-	if err := remote_util.RsyncUpload(ctx, DeployC.Vars.WssCertSrc, remotePath, ip); err != nil {
+	// 证书上传走 rsync，身份固定为 mc，与 root 连接无关。
+	if err := remote_util.Mc(conn.Target().IP).Upload(ctx, DeployC.Vars.WssCertSrc, remotePath, tc.println); err != nil {
 		return fmt.Errorf("上传WSS证书失败: %w", err)
 	}
 
 	chownCmd := fmt.Sprintf("chown mc:mc %s && chmod 600 %s", remotePath, remotePath)
-	if err := remote_util.ExecuteRemoteCommand(chownCmd, ip, ctx, tc.println, true); err != nil {
+	if err := conn.Exec(ctx, chownCmd, tc.println); err != nil {
 		return fmt.Errorf("设置WSS证书权限失败: %w", err)
 	}
 
@@ -97,6 +98,13 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		DataDiskSize:       aliyun.C.Ecs.DataDisk.Size,
 	}
 
+	// 整个部署过程复用同一条 root 连接。连接中途失效时 Conn 会自行重新拨号，因此不必每一步重连。
+	conn, err := remote_util.Root(ip).Connect(tc.Context())
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
 	for _, step := range deploySteps {
 		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d", tc.step, len(deploySteps)))
 
@@ -110,9 +118,9 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 				cancel()
 				return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
 			}
-			execErr = remote_util.ExecuteScriptRemote(script, ip, stepCtx, tc.println, true)
+			execErr = conn.ExecScript(stepCtx, script, tc.println)
 		case deployStepLocal:
-			execErr = step.localFn(tc, ip, stepCtx)
+			execErr = step.localFn(tc, conn, stepCtx)
 		}
 		cancel()
 		if execErr != nil {

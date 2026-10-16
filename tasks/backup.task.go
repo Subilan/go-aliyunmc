@@ -18,7 +18,7 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 		return err
 	}
 
-	err = remote_util.ExecuteScriptRemote(script, ip, tc.Context(), tc.println, true)
+	err = remote_util.Root(ip).ExecScript(tc.Context(), script, tc.println)
 	if err != nil {
 		return err
 	}

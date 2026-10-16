@@ -145,7 +145,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig FileConfig) {
 	defer cancel()
 
 	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
-	if err := remote_util.RsyncDownloadFile(syncCtx, fileConfig.RemotePath, localFullPath, ip); err != nil {
+	if err := remote_util.Mc(ip).DownloadFile(syncCtx, fileConfig.RemotePath, localFullPath, nil); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("文件同步超时(%s)", syncFileTimeout)
 			return
@@ -207,7 +207,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig DirConfig) {
 	defer cancel()
 
 	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
-	if err := remote_util.RsyncDownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, ip); err != nil {
+	if err := remote_util.Mc(ip).DownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, nil); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			p.logger.Error("目录同步超时(%s)", syncDirTimeout)
 			return

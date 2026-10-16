@@ -7,6 +7,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/aliyun"
 	"github.com/Subilan/go-aliyunmc/monitors"
 	"github.com/Subilan/go-aliyunmc/perms"
+	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/routes/user_routes"
 	"github.com/Subilan/go-aliyunmc/server"
 	"github.com/Subilan/go-aliyunmc/store"
@@ -282,6 +283,15 @@ func main() {
 
 	if err := writeConfigFile(configDir+"/sampler-balance.toml", balanceSamplerConfig); err != nil {
 		fmt.Printf("Error writing sampler-balance.toml: %v\n", err)
+		os.Exit(1)
+	}
+
+	remoteUtilConfig := remote_util.Config{
+		SSHPrivateKeyPath: "/home/gomc/.ssh/id_gomc",
+	}
+
+	if err := writeConfigFile(configDir+"/remote-util.toml", remoteUtilConfig); err != nil {
+		fmt.Printf("Error writing remote-util.toml: %v\n", err)
 		os.Exit(1)
 	}
 

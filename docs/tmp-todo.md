@@ -27,10 +27,11 @@ maps.go 两个 sync.Map 存运行中／独占执行器，Executor.Wait 手搓结
 x/sync 的 errgroup / semaphore / singleflight 更直白。
 不建议整体换 asynq、river：进程内可中断可订阅是有意设计。成本低。
 
-## 6. rsync 外部进程 + 手写 SSH → pkg/sftp
+## 6. rsync 外部进程 + 手写 SSH（已处理）
 remote_util/rsync.go 调 rsync -e "ssh -o BatchMode=yes"，与其余密码认证路径不一致。
-github.com/pkg/sftp 可复用已有 ssh.ClientConfig，去掉本机 rsync 依赖。
-ExecuteWithStartFn 的双流扫描与 ctx 取消是合理的，不必替换。
+决定不替换为 pkg/sftp：控制器与 ECS 跨地域走公网，rsync 的 -z 与增量传输有实际价值。
+改为统一 API 层：remote_util.Target（Root/Mc + Exec/ExecScript/Upload/Download*/Probe）
+统一解析凭据、超时与重试，rsync 降为内部传输细节；rsync 的 ctx 中断错误现可被 errors.Is 识别。
 
 ## 7. 手写退避重试 → cenkalti/backoff 或 SDK RetryOptions
 DialWithRetry 固定 2s/4s 且不响应 ctx；create_instance.task.go 的 startInstanceWithRetry 手搓 5s ticker。
