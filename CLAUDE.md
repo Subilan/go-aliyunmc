@@ -11,6 +11,7 @@ go test ./...     # 直接运行即可，不需要先生成或复制配置文件
 make build        # Build binary as aliyunmc
 make dev          # Run in dev mode (sets GO_ALIYUNMC_DEV=1)
 make run          # Run without dev mode
+./aliyunmc check_config   # 只校验配置，不连库、不建客户端
 ```
 
 Run a single package test:
@@ -70,6 +71,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
   9. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
   10. `monitors.MustInitialize(ctx)` — 启动各 monitor/sampler，需在路由注册之后
 - `migrate` 和 `create_user` 只调用 `config.MustLoadStore()`（仅读 `store.toml`），因此不会被云凭证、私钥路径等其余各节挡住。
+- `check_config` 调用 `config.MustLoad()` 后立即退出：不连库、不建客户端、不读私钥，用于部署前确认配置与二进制版本匹配。
 
 各功能包只提供显式的 `MustInitialize()`，且只做副作用（连库、建 client、载 Casbin、读私钥）：配置由 `config.Get()` 自取，不再有包级配置全局，也没有 `MustLoadConfig()`。结构体上的 `validate` tags 会在加载时统一校验，无效配置直接终止进程。
 
@@ -143,8 +145,8 @@ SSH always uses port 22. Authentication is role-based:
 
 | 文件 | 内容 | 读取者 |
 |---|---|---|
-| `configs/store.toml` | 数据库配置 | `run`、`migrate`、`create_user` |
-| `configs/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[perms]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run` |
+| `configs/store.toml` | 数据库配置 | `run`、`migrate`、`create_user`、`check_config` |
+| `configs/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[perms]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run`、`check_config` |
 
 `store` 单独成文件，是因为另外两个子命令只需要它。`Config.Store` 标了 `toml:"-"`，所以 `config.toml` 里若出现 `[store]` 会被严格解码直接报错，不会形成第二条真相。
 

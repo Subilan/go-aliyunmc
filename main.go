@@ -47,6 +47,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  run          启动服务器\n")
 		fmt.Fprintf(os.Stderr, "  migrate      手动执行数据库迁移\n")
 		fmt.Fprintf(os.Stderr, "  create_user  创建用户\n")
+		fmt.Fprintf(os.Stderr, "  check_config 校验配置，不连接任何外部依赖\n")
 		os.Exit(1)
 	}
 
@@ -57,6 +58,8 @@ func main() {
 		runMigrate()
 	case "create_user":
 		runCreateUser()
+	case "check_config":
+		runCheckConfig()
 	default:
 		fmt.Fprintf(os.Stderr, "未知指令: %s\n", os.Args[1])
 		os.Exit(1)
@@ -152,6 +155,12 @@ func runServer() {
 	})
 	wg.Wait()
 	log_util.Info("清除完毕")
+}
+
+// runCheckConfig 用来在部署前确认配置与二进制的版本匹配
+func runCheckConfig() {
+	config.MustLoad()
+	fmt.Println("配置校验通过")
 }
 
 func runMigrate() {
