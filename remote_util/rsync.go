@@ -11,8 +11,7 @@ import (
 )
 
 // rsyncSSHCommand 返回 rsync 的远端 shell 命令。身份由 -i 与 IdentitiesOnly=yes 显式指定，
-// 避免回落到服务账号家目录或 agent 中的任意密钥。密钥路径由调用方（Target）传入，
-// 因此本函数与传输层不依赖任何全局状态。
+// 避免回落到服务账号家目录或 agent 中的任意密钥。密钥路径由调用方传入。
 func rsyncSSHCommand(privateKeyPath string) string {
 	return fmt.Sprintf(
 		"ssh -i %s -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o BatchMode=yes",

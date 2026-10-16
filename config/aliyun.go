@@ -72,10 +72,7 @@ type AliyunDisk struct {
 	// 可能的取值：cloud_efficiency cloud_ssd cloud_essd cloud cloud_auto cloud_essd_entry
 	Category string `toml:"category" default:"cloud_essd" comment:"云盘类型"`
 
-	// Size 是云服务器云盘的大小，单位 GiB。
-	//
-	// 系统盘与数据盘共用这个类型，而两者的常见大小并不相同（系统盘 40、数据盘 100），
-	// 一个默认值无法同时表达，因此要求显式填写。
+	// Size 是云服务器云盘的大小，单位 GiB
 	Size int `toml:"size,commented" validate:"required,min=20" comment:"云盘大小，单位GiB（系统盘常见 40，数据盘常见 100）"`
 }
 

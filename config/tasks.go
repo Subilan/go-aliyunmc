@@ -8,15 +8,11 @@ type Tasks struct {
 }
 
 // TasksDeployVars 对应 [tasks.deploy.vars]。
-//
-// 写入 /home/mc/.ssh/authorized_keys 的公钥不在这里：它由 remote_util 从私钥推导
-// （AuthorizedKeyLine），所以配置里只有私钥一处真相，不存在两者失配的状态。
 type TasksDeployVars struct {
 	SSHAccessPublicKey string `toml:"ssh_access_public_key,commented" validate:"required" comment:"用于SSH访问的公钥"`
 
 	JavaVersion int `toml:"java_version" default:"21" validate:"min=1" comment:"JRE版本号，建议使用当前服务端要求的最低版本"`
 
-	// Packages 不给默认值：空列表是合法取值，给默认值会让显式写下的空列表被静默替换。
 	Packages []string `toml:"packages" validate:"dive,min=1" comment:"额外安装的软件包列表，例如 ['zip', 'unzip']"`
 
 	ArchiveOSSPath string `toml:"archive_oss_path,commented" validate:"required" comment:"用于部署恢复的OSS归档路径"`
@@ -37,7 +33,6 @@ type TasksBackupVars struct {
 
 	BaseDir string `toml:"base_dir" default:"/home/mc/server/archive" comment:"需要备份的目录的公共父目录"`
 
-	// TargetDirs 不给默认值，理由同 TasksDeployVars.Packages。
 	TargetDirs []string `toml:"target_dirs" validate:"required,min=1,dive,min=1" comment:"需要备份的目录列表（相对于BaseDir），例如 ['world', 'world_nether', 'world_the_end']"`
 }
 
@@ -47,8 +42,6 @@ type TasksBackup struct {
 
 	TimeoutSec int `toml:"timeout_sec" default:"1800" validate:"min=1" comment:"任务超时时间（秒）"`
 
-	// Exclusive 不给默认值：false 是合法且有意义的取值（不互斥），
-	// 给 default:"true" 会把显式写下的 false 静默翻转。
 	Exclusive bool `toml:"exclusive" comment:"是否同类互斥执行"`
 
 	Vars TasksBackupVars `toml:"vars" comment:"备份脚本模板变量"`

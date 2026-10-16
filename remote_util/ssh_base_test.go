@@ -11,7 +11,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// 重试与重连的判定直接决定部署这类多步任务的耗时与健壮性，这里把策略钉住。
 func TestPermanentDialError(t *testing.T) {
 	cases := []struct {
 		name string

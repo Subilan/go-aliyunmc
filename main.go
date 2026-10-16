@@ -66,8 +66,7 @@ func main() {
 func runServer() {
 	env.MustInitialize()
 
-	// 一次性读入、填默认值并校验全部配置。此后各功能包从 config.Get() 自行读取，
-	// 自己只负责副作用（连库、建 client、载 Casbin、读私钥等）。
+	// 读入、填默认值并校验全部配置。
 	config.MustLoad()
 
 	store.MustInitialize()
@@ -156,7 +155,7 @@ func runServer() {
 }
 
 func runMigrate() {
-	// 只需要数据库配置，因此不读 config.toml，也不会被云凭证等其余各节挡住。
+	// migrate 只需要数据库配置。
 	config.MustLoadStore()
 	store.MustInitialize()
 	store.AutoMigrate()

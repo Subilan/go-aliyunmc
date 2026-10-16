@@ -2,7 +2,6 @@
 //
 // 示例完全由 tag 驱动：comment tag 变成注释，default tag 变成默认值，
 // commented 选项把必须自行填写的字段（凭证、密钥路径、资源 ID 等）注释掉。
-// 因此新增字段会自动出现在示例里，不需要在这里补任何东西。
 package main
 
 import (
@@ -29,9 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// store 单独一个文件：run / migrate / create_user 三个入口都需要它，
-	// 而另外两个不该被云凭证之类的配置牵着走。Config.Store 标了 toml:"-"，
-	// 所以写 config.toml 时它不会出现。
+	// store 单独写成 store.toml；Config.Store 标了 toml:"-"，不会出现在 config.toml 里。
 	if err := write(dir+"/store.toml", cfg.Store); err != nil {
 		fmt.Printf("写入 store.toml 失败: %v\n", err)
 		os.Exit(1)

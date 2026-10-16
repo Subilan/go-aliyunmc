@@ -131,9 +131,9 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	}
 }
 
-// 显式写下的值绝不能被默认值覆盖——defaults.Set 只填零值，这条要钉住。
+// 显式写下的值不能被默认值覆盖。
 func TestLoadPreservesExplicitValues(t *testing.T) {
-	// port 所在的分节在基准配置里已经存在，TOML 不允许重复定义，所以插在它内部。
+	// port 必须写在已有的 [server] 节内，TOML 不允许重复定义。
 	explicit := strings.Replace(validConfig, "[server]\n", "[server]\nport = 1234\n", 1)
 
 	cfg, err := loadAll(t, explicit+`
@@ -191,7 +191,7 @@ func TestLoadRejectsMissingRequired(t *testing.T) {
 	}
 }
 
-// store.toml 只含数据库配置，其余各节缺失也必须能加载——migrate / create_user 依赖这一点。
+// store.toml 只含数据库配置，其余各节缺失也必须能加载。
 func TestLoadStoreOnlyNeedsStoreSection(t *testing.T) {
 	writeConfigs(t, map[string]string{"store": validStore})
 
@@ -208,7 +208,7 @@ func TestLoadStoreRequiresPortForNonSqlite(t *testing.T) {
 	writeConfigs(t, map[string]string{"store": "driver = \"mysql\"\ndbname = \"aliyunmc\"\n"})
 
 	var cfg Config
-	// Port 零值会生成 ":0"，所以 mysql / postgres 下必须显式填写
+	// mysql / postgres 下 Port 必填
 	if err := load("store", &cfg.Store); err == nil {
 		t.Fatal("mysql 驱动缺少 port 应当报错")
 	}

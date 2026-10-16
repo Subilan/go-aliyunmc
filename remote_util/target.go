@@ -28,7 +28,6 @@ func (r Role) username() string {
 }
 
 // authMethod 返回该角色的认证方式：mc 使用配置中的私钥，root 使用密码。
-// root 用密码是因为部署早期实例上还没有任何授权密钥，只能以密码登录。
 func (r Role) authMethod() (ssh.AuthMethod, error) {
 	switch r {
 	case RoleMc:
@@ -51,15 +50,15 @@ const (
 	sshConnectTimeout = 10 * time.Second
 )
 
-// 连接建立的重试策略。拨号失败往往是因为实例刚开机、sshd 还没起来，值得重试；
-// 而连通性探测的调用方本身就在轮询，在这里叠加退避只会拖慢轮询节奏。
+// 连接建立的重试次数。
 const (
-	maxConnectAttempts   = 3
+	// maxConnectAttempts 是一次连接建立的最大尝试次数
+	maxConnectAttempts = 3
+	// probeConnectAttempts 是连通性探测的尝试次数
 	probeConnectAttempts = 1
 )
 
-// Target 描述一台可通过 SSH 操作的远端主机。所有远端操作都从 Target 发起，
-// 由它统一解析凭据、超时与重试，并屏蔽底层采用的是进程内 SSH 还是外部传输工具。
+// Target 描述一台可通过 SSH 操作的远端主机，是所有远端操作的入口。
 type Target struct {
 	IP   string
 	Role Role
@@ -93,8 +92,7 @@ func (t Target) clientConfig() (*ssh.ClientConfig, error) {
 	}, nil
 }
 
-// Connect 建立一条 SSH 连接。在它上面可以依次执行多个操作，省去重复握手；
-// 调用方负责 Close。
+// Connect 建立一条 SSH 连接，调用方负责 Close。
 func (t Target) Connect(ctx context.Context) (*Conn, error) {
 	return t.connect(ctx, maxConnectAttempts)
 }

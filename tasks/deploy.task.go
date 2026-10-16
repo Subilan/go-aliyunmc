@@ -90,7 +90,7 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
-	// 授权公钥从 mc 私钥推导，避免配置里同时存在私钥与公钥两份、两者还可能失配。
+	// 授权公钥从 mc 私钥推导。
 	authorizedKey, err := remote_util.AuthorizedKeyLine()
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		DataDiskSize:     config.Get().Aliyun.Ecs.DataDisk.Size,
 	}
 
-	// 整个部署过程复用同一条 root 连接。连接中途失效时 Conn 会自行重新拨号，因此不必每一步重连。
+	// 整个部署过程复用同一条 root 连接。
 	conn, err := remote_util.Root(ip).Connect(tc.Context())
 	if err != nil {
 		return err

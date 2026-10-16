@@ -12,8 +12,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// Conn 是一条已建立的 SSH 连接。同一条连接上可以依次执行多个命令或脚本，省去重复握手；
-// 需要连续执行多步操作时应由 Target.Connect 建立一次并复用。Conn 可被多个 goroutine 并发使用。
+// Conn 是一条已建立的 SSH 连接，可被多个 goroutine 并发使用。
 type Conn struct {
 	target Target
 	config *ssh.ClientConfig
@@ -55,8 +54,7 @@ func (c *Conn) ExecScript(ctx context.Context, script string, onLine func(string
 	})
 }
 
-// run 执行一次会话。若失败说明连接本身已经不可用，则丢弃当前连接，让下一次操作重新拨号——
-// 复用连接的调用方（如部署任务的多个步骤）不会因为中途断线而步步失败。
+// run 执行一次会话；失败说明连接本身已不可用，则丢弃当前连接，下一次操作会重新拨号。
 func (c *Conn) run(ctx context.Context, onLine func(string), startFn func(*ssh.Session) error) error {
 	err := c.runSession(ctx, onLine, startFn)
 	if brokenConnection(err) {
@@ -170,8 +168,7 @@ func (c *Conn) clientOrDial(ctx context.Context) (*ssh.Client, error) {
 	return client, nil
 }
 
-// brokenConnection 报告错误是否意味着底层连接已经不可用：远端命令返回非零退出说明连接仍然
-// 健康，调用方的 ctx 取消则是我们主动关闭会话的结果，两者都不算。
+// brokenConnection 报告错误是否说明底层连接已经不可用。远端命令返回非零退出、调用方的 ctx 取消，两者都不算。
 func brokenConnection(err error) bool {
 	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false

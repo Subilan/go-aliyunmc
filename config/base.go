@@ -15,9 +15,6 @@ type Base struct {
 }
 
 // BaseCors 对应 [base.cors]，字段解释见 https://pkg.go.dev/github.com/gin-contrib/cors#Config
-//
-// 这几个列表故意不给默认值：空列表是合法且有意义的取值，给默认值会让显式写下的
-// 空列表被静默替换。
 type BaseCors struct {
 	AllowOrigins     []string `toml:"allow_origins" comment:"允许的源地址，例如 ['https://example.com']"`
 	AllowMethods     []string `toml:"allow_methods" comment:"允许的请求方法，例如 ['GET', 'POST']"`
@@ -26,7 +23,6 @@ type BaseCors struct {
 }
 
 // GinCorsConfig 把本节的配置转成 gin-contrib/cors 需要的结构。
-// 它紧跟着被转换的字段，改了字段就能在这里一眼看到对应关系。
 func (c BaseCors) GinCorsConfig() cors.Config {
 	return cors.Config{
 		AllowMethods:     c.AllowMethods,
@@ -36,7 +32,7 @@ func (c BaseCors) GinCorsConfig() cors.Config {
 	}
 }
 
-// BaseTLS 对应 [base.tls]。证书路径只在启用 HTTPS 时才需要填写，因此示例里是注释掉的。
+// BaseTLS 对应 [base.tls]。
 type BaseTLS struct {
 	Enabled  bool   `toml:"enabled" comment:"是否启用HTTPS。如果启用，将覆盖Expose端口，使用443端口"`
 	CertFile string `toml:"cert_file,commented" comment:"证书文件路径 (fullchain.cer)"`

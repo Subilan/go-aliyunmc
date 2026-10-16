@@ -6,8 +6,7 @@ import (
 	"github.com/creasty/defaults"
 )
 
-// DSN 里的默认值已经搬到字段的 default tag 上，所以这些用例要先过一遍默认值填充，
-// 才能等价于运行时的行为。
+// 这些用例先过一遍默认值填充，与运行时的加载顺序一致。
 func TestStoreDSNDefaultValues(t *testing.T) {
 	mysqlConfig := Store{
 		Driver:   "mysql",
@@ -43,7 +42,7 @@ func TestStoreDSNDefaultValues(t *testing.T) {
 		t.Errorf("PostgreSQL DSN 生成错误，期望: %s, 实际: %s", expectedPostgresDSN, got)
 	}
 
-	// sqlite 的 path 派生自 DBName，是跨字段逻辑，留在 DSN() 里而不是 tag 上
+	// sqlite 的 path 派生自 DBName
 	sqliteConfig := Store{
 		Driver: "sqlite",
 		DBName: "aliyunmc",

@@ -23,9 +23,7 @@ func MustInitialize() {
 	sshKey = signer
 }
 
-// AuthorizedKeyLine 返回已加载私钥对应的 authorized_keys 行。部署任务会把这一行写进
-// /home/mc/.ssh/authorized_keys，因此该公钥是推导出来的——配置里只留私钥这一处真相，
-// 也就不会出现"公钥与私钥忘了同步"这种状态。
+// AuthorizedKeyLine 返回已加载私钥对应的 authorized_keys 行。
 func AuthorizedKeyLine() (string, error) {
 	if sshKey == nil {
 		return "", fmt.Errorf("尚未加载 mc 用户的SSH私钥")

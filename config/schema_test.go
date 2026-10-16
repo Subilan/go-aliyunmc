@@ -9,8 +9,7 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// 类型名 / 字段名必须与 TOML 分节路径严格对应，这条映射是 config 包"命名空间"的全部依据，
-// 所以用测试钉住：任何人改动分节名或字段名，都必须同时更新这份清单。
+// 分节路径必须与这份清单一致。
 func TestSectionPaths(t *testing.T) {
 	out, err := toml.Marshal(Config{})
 	if err != nil {
@@ -59,8 +58,7 @@ func TestConfigTOMLHasNoStoreSection(t *testing.T) {
 	}
 }
 
-// commented 只允许用在叶子字段上。库对结构体字段会把它连同整个表头与子键一起注释掉，
-// 而合并工具依赖"被注释掉的键值行"来还原真实配置——一旦用在表上，子键就会被挂错分节。
+// commented 只允许用在叶子字段上：库对结构体字段会把它连同整个表头与子键一起注释掉。
 func TestCommentedOnlyOnLeafFields(t *testing.T) {
 	checkCommentedTag(t, reflect.TypeFor[Config](), "Config")
 }

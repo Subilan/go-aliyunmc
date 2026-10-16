@@ -38,8 +38,7 @@ func MustLoad() {
 	Set(&cfg)
 }
 
-// MustLoadStore 只读取 configs/store.toml。migrate 与 create_user 只需要数据库配置，
-// 不该被云凭证、私钥路径等其余各节的合法性挡住。
+// MustLoadStore 只读取 configs/store.toml，供 migrate 与 create_user 使用。
 func MustLoadStore() {
 	var cfg Config
 
@@ -50,10 +49,7 @@ func MustLoadStore() {
 	Set(&cfg)
 }
 
-// load 把一个配置文件读进 obj：严格解码 → 填默认值 → 校验。
-//
-// 顺序不可颠倒：先解码，再填默认值，最后校验。反过来的话，带 default 的字段会因为
-// 还没拿到默认值而被 required 判为缺失。
+// load 把一个配置文件读进 obj：严格解码 → 填默认值 → 校验，三个步骤的顺序不可颠倒。
 func load(name string, obj any) error {
 	path := filepath.Join(configDir(), name+".toml")
 
@@ -62,8 +58,7 @@ func load(name string, obj any) error {
 		return fmt.Errorf("无法读取配置文件 %s: %w", path, err)
 	}
 
-	// DisallowUnknownFields：配置里出现结构体没有的键（拼错、或字段已删除）时直接报错，
-	// 而不是静默忽略。这类漂移在分片配置时代一直是隐形的。
+	// DisallowUnknownFields：配置里出现结构体没有的键（拼错、或字段已删除）时直接报错。
 	decoder := toml.NewDecoder(bytes.NewReader(data)).DisallowUnknownFields()
 	if err := decoder.Decode(obj); err != nil {
 		return fmt.Errorf("无法解析配置文件 %s: %s", path, describeDecodeError(err))
@@ -81,8 +76,7 @@ func load(name string, obj any) error {
 	return nil
 }
 
-// describeDecodeError 让"配置里有未知键"这类错误带上具体是哪个键。
-// StrictMissingError 的 Error() 只有一句笼统的话，逐字段的明细在 String() 里。
+// describeDecodeError 返回解码错误的详细信息：StrictMissingError 的逐字段明细在 String() 里。
 func describeDecodeError(err error) string {
 	var missing *toml.StrictMissingError
 	if errors.As(err, &missing) {

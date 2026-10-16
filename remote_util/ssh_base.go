@@ -11,8 +11,7 @@ import (
 )
 
 // dialWithRetry 尝试建立 SSH 连接，最多 attempts 次（含首次），退避间隔为 2s、4s、8s……，
-// 拨号与重试等待都会响应 ctx 取消。重试只针对可能自行恢复的失败：认证失败一类的永久性
-// 错误立刻返回，否则调用方要白白等完整个退避序列。
+// 拨号与重试等待都会响应 ctx 取消。认证失败一类的永久性错误立刻返回。
 func dialWithRetry(ctx context.Context, addr string, config *ssh.ClientConfig, attempts int) (*ssh.Client, error) {
 	if ctx == nil {
 		ctx = context.Background()
@@ -58,9 +57,8 @@ func dialOnce(ctx context.Context, addr string, config *ssh.ClientConfig) (*ssh.
 	return ssh.NewClient(clientConn, chans, reqs), nil
 }
 
-// permanentDialError 报告该错误重试也不会成功。认证失败与算法协商失败取决于配置或
-// 两端环境，重试只会白白等待退避时间——部署任务每一步都要连一次，累计相当可观。
-// x/crypto 没有为认证失败导出哨兵错误，只能匹配它稳定的报文（其自身的测试同样依赖该字符串）。
+// permanentDialError 报告该错误重试也不会成功：认证失败与算法协商失败取决于配置或两端环境。
+// x/crypto 没有为认证失败导出哨兵错误，只能匹配它稳定的报文。
 func permanentDialError(err error) bool {
 	if err == nil {
 		return false

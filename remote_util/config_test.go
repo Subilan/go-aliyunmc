@@ -102,8 +102,7 @@ func TestAuthorizedKeyLine(t *testing.T) {
 		t.Fatalf("应当返回公钥行: %v", err)
 	}
 
-	// 部署任务把这一行原样写进 authorized_keys，所以它必须能被解析回来，
-	// 且与私钥配对——这正是删掉配置里那份公钥后需要守住的唯一不变量。
+	// 这一行会被原样写进 authorized_keys，所以要能被解析回来且与私钥配对。
 	parsed, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
 	if err != nil {
 		t.Fatalf("推导出的公钥行无法解析: %v", err)
@@ -121,7 +120,6 @@ func TestAuthorizedKeyLineWithoutLoadedKey(t *testing.T) {
 	}
 }
 
-// 密钥路径由参数传入，因此这个用例不需要碰任何全局状态。
 func TestRsyncSSHCommandPinsIdentity(t *testing.T) {
 	command := rsyncSSHCommand("/home/gomc/.ssh/id_gomc")
 
