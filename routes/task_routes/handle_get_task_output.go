@@ -39,16 +39,15 @@ func HandleGetTaskOutput(c *gin.Context) {
 		return
 	}
 
-	go client.Listen()
-
-	ok = executor.SubscribeOrFail(client)
+	unsubscribe, ok := executor.Subscribe(client)
 
 	if !ok {
-		c.JSON(http.StatusInternalServerError, h.DetailsF("无法注册输出监听器"))
+		c.JSON(http.StatusNotFound, h.DetailsF("该任务不存在或已结束"))
 		return
 	}
 
-	defer executor.Unsubscribe(client)
+	defer unsubscribe()
 
-	<-client.Done()
+	// Listen 会阻塞到客户端断开、任务结束或订阅 channel 被关闭为止。
+	client.Listen()
 }

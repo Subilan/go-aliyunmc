@@ -24,6 +24,9 @@ type Client struct {
 	ctx       context.Context
 	cancel    context.CancelFunc
 	eventChan chan Event
+	// source 是 Listen 实际消费的事件来源。默认指向 eventChan；
+	// 任务输出链路会通过 Attach 接入订阅器的 channel。
+	source <-chan Event
 }
 
 // NewClient 对当前链接进行升级并创建新的SSE客户端
@@ -39,14 +42,23 @@ func NewClient(c *gin.Context) (*Client, error) {
 	c.Header("X-Accel-Buffering", "no")
 
 	ctx, cancel := context.WithCancel(c.Request.Context())
+	eventChan := make(chan Event, 100)
 
 	return &Client{
 		writer:    c.Writer,
 		flusher:   flusher,
 		ctx:       ctx,
 		cancel:    cancel,
-		eventChan: make(chan Event, 100),
+		eventChan: eventChan,
+		source:    eventChan,
 	}, nil
+}
+
+// Attach 将外部事件源接入客户端，供 Listen 消费。
+// 该函数必须在调用 Listen 之前完成；接入后不应再使用 Send/SendData/SendEvent，
+// 否则事件会写入未被消费的内部 channel。
+func (c *Client) Attach(events <-chan Event) {
+	c.source = events
 }
 
 func (c *Client) Done() <-chan struct{} {
@@ -78,7 +90,8 @@ func (c *Client) Close() {
 	c.cancel()
 }
 
-// Listen 开始监听事件并将其写入响应流，直到连接关闭或接收到 "task_done" 事件
+// Listen 开始监听事件并将其写入响应流，直到连接关闭或事件源关闭。
+// 事件源（订阅 channel）关闭即表示流结束，Listen 不解释任何业务事件名。
 func (c *Client) Listen() {
 	defer c.Close()
 	ticker := time.NewTicker(5 * time.Second)
@@ -87,17 +100,19 @@ func (c *Client) Listen() {
 	for {
 		select {
 		case <-ticker.C:
-			c.writeComment("keep-alive")
+			if err := c.writeComment("keep-alive"); err != nil {
+				return
+			}
 			c.flusher.Flush()
 
-		case event := <-c.eventChan:
+		case event, ok := <-c.source:
+			if !ok {
+				return
+			}
 			if err := c.writeEvent(event); err != nil {
 				return
 			}
 			c.flusher.Flush()
-			if event.Event == "task_done" {
-				return
-			}
 
 		case <-c.ctx.Done():
 			return
@@ -105,8 +120,9 @@ func (c *Client) Listen() {
 	}
 }
 
-func (c *Client) writeComment(comment string) {
-	_, _ = fmt.Fprintf(c.writer, ":%s\n\n", comment)
+func (c *Client) writeComment(comment string) error {
+	_, err := fmt.Fprintf(c.writer, ":%s\n\n", comment)
+	return err
 }
 
 // writeEvent 写入事件到响应流

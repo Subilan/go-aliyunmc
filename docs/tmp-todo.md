@@ -17,10 +17,13 @@ archive/backup/install-ossutil/restore 脚本依赖实例上装 ossutil，并把
 渲染进脚本、写进实例 /root/.ossutilconfig。主控已依赖 alibabacloud-oss-go-sdk-v2 与 credentials-go。
 方案：控制面用 OSS SDK 直传直取，或给实例发 RAM STS 临时凭据。安全性收益大，成本中等。
 
-## 4. sse（255 行）→ tmaxmax/go-sse 或 r3labs/sse
-手写 broker 三通道 + task_done 自停；client 手写 writeEvent 与 keep-alive。
-缺 Last-Event-ID 重放、多行 data；broker 关闭时 client 清理逻辑有前后不一致。
-收益中等，需要包一层适配现有 API 形状。
+## 4. [done] sse（255 行）→ 自研 + 抽出 pubsub.Hub
+手写 broker 的 actor 循环与原 states.Hub 合并为泛型 pubsub.Hub：任务流用 buffer=100 并在满时移除慢订阅者，
+状态流用 buffer=1 并丢弃中间值；Hub.Close 取代 task_done 特判。
+任务输出改为有缓冲 channel（1024 行）+ 阻塞背压 + 批量落库（500ms / 256 行），
+广播与持久化解耦，终止事件不再依赖数据库成功。
+未引入 Last-Event-ID；tmaxmax/go-sse、r3labs/sse 的模型是长生命周期 server + topic，
+与“每任务一条短流、结束时关闭”不匹配，整体替换收益低于适配成本。
 
 ## 5. tasks 执行器注册表与互斥 → x/sync
 maps.go 两个 sync.Map 存运行中／独占执行器，Executor.Wait 手搓结果通道，RunTask 用 recover 兜 panic。

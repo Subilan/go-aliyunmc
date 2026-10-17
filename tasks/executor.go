@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/pubsub"
 	"github.com/Subilan/go-aliyunmc/sse"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
@@ -16,8 +17,8 @@ var ErrTaskInterrupted = errors.New("任务中断")
 var ErrTaskTypeExecuting = errors.New("同类任务正在执行中")
 
 type Executor struct {
-	// broker 用于管理当前任务的 SSE 连接，并向连接中的客户端广播任务状态更新和输出。
-	broker *sse.Broker
+	// hub 用于管理当前任务的 SSE 订阅者，并向连接中的客户端广播任务状态更新和输出。
+	hub *pubsub.Hub[sse.Event]
 	// task 指向当前正在执行的任务信息。
 	//  - invariant: 只能在 monitor goroutine 中访问和修改 task，其余 goroutine 访问将导致竞态条件。
 	task *models.Task
@@ -64,23 +65,21 @@ func (e *Executor) Interrupt() {
 	})
 }
 
-// SubscribeOrFail 将 client 添加到当前任务执行器的 broker 订阅列表中，用于接收任务执行状态更新以及输出。
-// 如果当前任务执行器的 broker 未初始化（常常发生于任务开始执行之前），则返回 false。
-func (e *Executor) SubscribeOrFail(client *sse.Client) bool {
-	if e.broker == nil {
-		return false
+// Subscribe 将 client 注册为当前任务的事件订阅者，并把订阅 channel 接入客户端。
+// 返回的 unsubscribe 用于在连接结束后释放订阅；如果执行器尚未初始化广播器，
+// 或广播器已经关闭，则返回 false。
+func (e *Executor) Subscribe(client *sse.Client) (func(), bool) {
+	if e.hub == nil {
+		return func() {}, false
 	}
-	e.broker.Register(client)
-	return true
-}
 
-// Unsubscribe 将 client 从当前任务执行器的 broker 订阅列表中移除。
-func (e *Executor) Unsubscribe(client *sse.Client) {
-	if e.broker == nil {
-		client.Close()
-		return
+	events, unsubscribe, ok := e.hub.Subscribe(taskEventBuffer, client.Close)
+	if !ok {
+		return func() {}, false
 	}
-	e.broker.Unregister(client)
+
+	client.Attach(events)
+	return unsubscribe, true
 }
 
 // RunTask 创建并开始执行一个任务，并将任务的触发者设置为 by（可以为 nil，表示由系统触发）。
@@ -111,8 +110,8 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 		return nil, err
 	}
 
-	// 初始化 broker 和 TaskContext
-	e.broker = sse.NewBroker()
+	// 初始化广播器和 TaskContext
+	e.hub = pubsub.NewHub[sse.Event]()
 	tc := NewTaskContextWithTimeout(e.taskDefinition.Timeout)
 	e.stateLock.Lock()
 	e.tc = tc
@@ -129,14 +128,18 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 		SetExclusiveExecutor(task.Type, e)
 	}
 
-	// 启动 broker 和 monitor goroutine。
-	go e.broker.Run()
+	// 在启动 monitor 之前复制一份任务快照返回给调用方。
+	// e.task 归 monitor goroutine 所有，调用方（例如 HTTP handler 在 JSON 序列化时）
+	// 不得直接读取它，否则会与 monitor 的写入产生数据竞争。
+	snapshot := *task
+
+	// 启动 monitor goroutine。
 	go e.monitor()
 
 	// 如果在启动任务的过程中，任务被触发过中断逻辑，则立即将任务标记为失败并退出。
 	if interrupted {
 		tc.throw(ErrTaskInterrupted)
-		return task, nil
+		return &snapshot, nil
 	}
 
 	// 否则，在新的 goroutine 中执行任务定义中的函数 F，并在其 panic 后将任务标记为失败。
@@ -155,7 +158,7 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 		tc.done()
 	}()
 
-	return task, nil
+	return &snapshot, nil
 }
 
 // RunTaskAndWait 启动任务并阻塞等待任务完成。
@@ -166,11 +169,15 @@ func (e *Executor) RunTaskAndWait(by *uint, args map[string]any) (*models.Task, 
 		return nil, err
 	}
 
-	if waitErr := <-e.Wait(); waitErr != nil {
-		return task, waitErr
+	waitErr := <-e.Wait()
+
+	// monitor 已退出，e.task 不会再被修改，返回最终状态。
+	if e.task != nil {
+		final := *e.task
+		task = &final
 	}
 
-	return task, nil
+	return task, waitErr
 }
 
 type TaskSummary struct {
@@ -178,29 +185,14 @@ type TaskSummary struct {
 	Error   string `json:"error"`
 }
 
-// updateAndBroadcast 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播 event。
-func (e *Executor) updateAndBroadcast(event sse.Event) {
-	if err := store.UpdateTask(e.task); err != nil {
-		log_util.Error("更新任务状态时出错: %v\n", err)
-	} else {
-		e.broker.Broadcast(event)
-	}
-}
-
-// updateAndSummary 是一个方便的封装，它尝试将 e.task 同步到数据库，并在没有出现差错的情况下广播任务结束事件。
-func (e *Executor) updateAndSummary() {
-	if err := store.UpdateTask(e.task); err != nil {
-		log_util.Error("更新任务状态时出错: %v\n", err)
-	} else {
-		e.broker.Broadcast(sse.Event{
-			Event: "task_done",
-			Data: TaskSummary{
-				Success: e.task.Status == models.TaskStatusSuccess,
-				Error:   e.task.Error,
-			},
-		})
-	}
-}
+const (
+	// taskEventBuffer 是每个 SSE 订阅者的事件缓冲大小。
+	taskEventBuffer = 100
+	// taskOutputFlushInterval 是输出写库的最大延迟。
+	taskOutputFlushInterval = 500 * time.Millisecond
+	// taskOutputFlushLines 是触发提前写库的未落库行数。
+	taskOutputFlushLines = 256
+)
 
 func (e *Executor) Done() <-chan struct{} {
 	return e.ctx.Done()
@@ -235,10 +227,61 @@ func (e *Executor) monitor() {
 	if e.exclusiveType {
 		defer DeleteExclusiveExecutor(e.task.Type)
 	}
+	// 无论任务如何结束，都保证广播器被关闭，订阅者不会残留。
+	defer e.hub.Close()
+
+	flushTicker := time.NewTicker(taskOutputFlushInterval)
+	defer flushTicker.Stop()
+
+	// needsPersist 表示内存中的任务状态还没有写入数据库。
+	needsPersist := false
+	pendingLines := 0
+
+	// flush 将内存中的任务状态同步到数据库。失败时保留 needsPersist，
+	// 周期 flush 会在下一个 tick 再次尝试。
+	flush := func() {
+		if !needsPersist {
+			return
+		}
+		if err := store.UpdateTask(e.task); err != nil {
+			log_util.Error("更新任务状态时出错: %v\n", err)
+			return
+		}
+		needsPersist = false
+		pendingLines = 0
+	}
+
+	handleOutput := func(output TaskOutput) {
+		e.task.Output += output.Output + "\n"
+		e.task.Step = output.Step
+
+		// 先广播；持久化失败不应影响实时输出。
+		e.hub.Broadcast(sse.Event{
+			Event: "task_output",
+			Data:  output,
+		})
+
+		needsPersist = true
+		pendingLines++
+		if pendingLines >= taskOutputFlushLines {
+			flush()
+		}
+	}
 
 	for {
 		select {
 		case <-e.tc.ctx.Done():
+			// 任务结束时 outputChan 中可能仍有已入队的输出，先全部消费再收尾。
+		drain:
+			for {
+				select {
+				case output := <-e.tc.outputChan:
+					handleOutput(output)
+				default:
+					break drain
+				}
+			}
+
 			cause := context.Cause(e.tc.ctx)
 
 			if errors.Is(cause, context.DeadlineExceeded) {
@@ -256,23 +299,37 @@ func (e *Executor) monitor() {
 			}
 			now := time.Now()
 			e.task.EndAt = &now
-			e.updateAndSummary()
+			needsPersist = true
+			// 终态只尝试落库一次。失败时记日志，不阻塞 task_done 的广播；
+			// 持久化重试应由统一的写库策略处理，而不是在这个分支里单独实现。
+			flush()
+
+			// 终止事件只是最后一个普通事件。monitor 返回后 defer 关闭 Hub，
+			// 订阅 channel 关闭就是客户端退出的唯一信号。
+			e.hub.Broadcast(sse.Event{
+				Event: "task_done",
+				Data: TaskSummary{
+					Success: e.task.Status == models.TaskStatusSuccess,
+					Error:   e.task.Error,
+				},
+			})
 			return
 
 		case status := <-e.tc.statusChan:
 			e.task.Status = status
-			e.updateAndBroadcast(sse.Event{
+			// 先广播，再写库；写库失败不回退已发出的状态。
+			e.hub.Broadcast(sse.Event{
 				Event: "task_status_update",
 				Data:  status,
 			})
+			needsPersist = true
+			flush()
 
 		case output := <-e.tc.outputChan:
-			e.task.Output += output.Output + "\n"
-			e.task.Step = output.Step
-			e.updateAndBroadcast(sse.Event{
-				Event: "task_output",
-				Data:  output,
-			})
+			handleOutput(output)
+
+		case <-flushTicker.C:
+			flush()
 		}
 	}
 }

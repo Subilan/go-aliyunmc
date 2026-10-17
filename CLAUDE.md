@@ -41,8 +41,9 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `store/` | GORM database layer. `store.DB` is the global connection pool (SQLite/MySQL/Postgres). Models in `store/models/`. |
 | `tasks/` | Task execution system: definitions, execution lifecycle, SSE integration. `TaskDefinitions` map registers task types. |
 | `scripts/` | Shell script templates (`*.tmpl.sh`) executed remotely via SSH during tasks. |
-| `sse/` | Server-Sent Events broker and client for streaming task output to browsers. |
-| `states/` | Generic pub/sub state hub (`Hub[T]`) for broadcasting state snapshots to SSE clients. |
+| `sse/` | Server-Sent Events client: event framing, keep-alive, and the blocking write loop for a connection. |
+| `pubsub/` | Generic fan-out hub (`Hub[T]`) with per-subscriber buffers; shared by task event streams and state snapshots. |
+| `states/` | State store + `HubbedStore[T]` built on `pubsub.Hub`, broadcasting state snapshots to SSE clients. |
 | `aliyun/` | Alibaba Cloud SDK clients (ECS, VPC, OSS, BSS). Initialized once at startup. |
 | `perms/` | Casbin RBAC. Three roles: `basic` (empty string), `operator`, `superuser` — with inheritance (superuser > operator > basic). |
 | `monitors/` | Background goroutines: server/instance status polling, file sync, auto-archive idle, scheduled backup, spot instance interruption detection, best ECS candidate, player count / balance sampling. |
@@ -116,7 +117,7 @@ Task types are registered in `tasks/task_definition.go` via the `TaskDefinitions
 
 Task execution lifecycle:
 1. `TriggerTask` performs role check, optional enforcer check, parameter validation, then creates an `Executor`
-2. `Executor.RunTask` creates a DB record, starts an SSE broker, runs `F()` in a goroutine, and runs a `monitor()` goroutine that watches for completion/timeout/interrupt/cancellation
+2. `Executor.RunTask` creates a DB record, creates a per-task `pubsub.Hub`, runs `F()` in a goroutine, and runs a `monitor()` goroutine that watches for completion/timeout/interrupt/cancellation
 3. The task function communicates progress via `TaskContext`: `println(msg)`, `nextStep()`, `status(status)`, `done()`, `throw(err)`
 4. `done()` → task marked success; `throw(err)` → task marked failed; timeout → `__TIMEOUT__`; interrupt → `__INTERRUPTED__`
 5. On shutdown, `main()` calls `RangeExecutors` to interrupt all running tasks and waits for them to finish
@@ -166,11 +167,11 @@ Runtime `configs/` files are user-managed — never auto-generate them.
 
 Task output is streamed via SSE. The flow:
 1. Client hits `GET /task/:id/output`
-2. Handler looks up the running `Executor`, creates an `sse.Client`, subscribes to the executor's broker
-3. As the task calls `tc.println()`, messages flow through `Executor.monitor()` → broker broadcast → SSE client → browser
-4. On `task_done` event, both broker and client connection close
+2. Handler looks up the running `Executor`, creates an `sse.Client`, and subscribes to the executor's `pubsub.Hub`
+3. As the task calls `tc.println()`, messages flow through `Executor.monitor()` → hub broadcast → SSE client → browser. Output is buffered in `TaskContext.outputChan`, broadcast immediately, and persisted in batches (500ms / 256 lines)
+4. On terminal state the executor broadcasts `task_done`, then closes the hub; closing the subscriber channel ends `Client.Listen` and the connection
 
-State watch endpoints (`/state/watch/*`) use a similar pattern but with `states.Hub[T]` for generic pub/sub instead of task brokers.
+State watch endpoints (`/state/watch/*`) use the same `pubsub.Hub[T]` primitive with a buffer of 1, where a full buffer drops the value instead of the subscriber.
 
 ## Synced Remote Data
 

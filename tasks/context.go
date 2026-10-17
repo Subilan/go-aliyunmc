@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+// taskOutputChanBuffer 是任务输出进入 executor 前的缓冲行数。
+// 使用有缓冲 channel 可以在输出突发时保留每一行，而不是依赖调用方恰好及时接收。
+const taskOutputChanBuffer = 1024
+
 type TaskContext struct {
 	ctx    context.Context
 	cancel context.CancelCauseFunc
@@ -41,7 +45,7 @@ func NewTaskContextWithTimeout(timeout time.Duration) *TaskContext {
 		ctx:        ctx,
 		cancel:     cancel,
 		step:       0,
-		outputChan: make(chan TaskOutput),
+		outputChan: make(chan TaskOutput, taskOutputChanBuffer),
 		statusChan: make(chan models.TaskStatus),
 	}
 }
@@ -56,12 +60,15 @@ func (tc *TaskContext) println(msg string) {
 		return
 	default:
 	}
+
+	// 阻塞直到 exec 接收到这一行或任务结束。缓冲区满时形成背压，
+	// 而不是静默丢弃输出。
 	select {
 	case tc.outputChan <- TaskOutput{
 		Step:   tc.step,
 		Output: msg,
 	}:
-	default:
+	case <-tc.ctx.Done():
 	}
 }
 

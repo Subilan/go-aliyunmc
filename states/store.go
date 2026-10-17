@@ -3,6 +3,7 @@ package states
 import (
 	"errors"
 	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/pubsub"
 	"sync"
 	"time"
 )
@@ -30,7 +31,7 @@ func (state *State[T]) IsValid() bool {
 }
 
 // ForceStore 无条件地将值存储到 store 中，并更新时间。
-func (s *StateStore[T]) ForceStore(value T, hub *Hub[State[T]]) {
+func (s *StateStore[T]) ForceStore(value T, hub *pubsub.Hub[State[T]]) {
 	s.mu.Lock()
 	s.Value = value
 	s.UpdatedAt = time.Now()
@@ -44,7 +45,7 @@ func (s *StateStore[T]) ForceStore(value T, hub *Hub[State[T]]) {
 }
 
 // Store 将新的 snapshot 存储到 store 中。如果值没有发生变化，则不做任何操作。返回值表示是否发生了变化。
-func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *log_util.NamedLogger) bool {
+func (s *StateStore[T]) Store(value T, hub *pubsub.Hub[State[T]], logger *log_util.NamedLogger) bool {
 	s.mu.Lock()
 	// 认为值发生更新的条件：
 	// 1. 新值与旧值不同；或者
@@ -69,7 +70,7 @@ func (s *StateStore[T]) Store(value T, hub *Hub[State[T]], logger *log_util.Name
 }
 
 // StoreError 将错误存储到 store 中。如果错误没有发生变化，则不做任何操作。返回值表示是否发生了变化。
-func (s *StateStore[T]) StoreError(err error, hub *Hub[State[T]], logger *log_util.NamedLogger) bool {
+func (s *StateStore[T]) StoreError(err error, hub *pubsub.Hub[State[T]], logger *log_util.NamedLogger) bool {
 	s.mu.Lock()
 	// 认为错误发生更新的条件：
 	// 1. 之前没有错误，现在有了错误；或者

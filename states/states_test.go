@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/Subilan/go-aliyunmc/pubsub"
 )
 
 func mustReceiveState[T any](t *testing.T, ch <-chan State[T]) State[T] {
@@ -22,8 +24,8 @@ func mustReceiveState[T any](t *testing.T, ch <-chan State[T]) State[T] {
 
 func TestStateStore_BroadcastWhenErrorClearedWithoutValueChange(t *testing.T) {
 	st := &StateStore[string]{}
-	hub := NewHub[State[string]]()
-	ch, unsubscribe := hub.Subscribe()
+	hub := pubsub.NewHub[State[string]]()
+	ch, unsubscribe, _ := hub.Subscribe(1, nil)
 	defer unsubscribe()
 
 	st.Store("running", hub, nil)

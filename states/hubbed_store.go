@@ -3,20 +3,25 @@ package states
 import (
 	"fmt"
 	"github.com/Subilan/go-aliyunmc/log_util"
+	"github.com/Subilan/go-aliyunmc/pubsub"
 	"time"
 )
+
+// hubbedStoreBuffer 是状态订阅的缓冲大小。状态只关心最新值，
+// 缓冲为 1 时，来不及消费的中间值会被丢弃，这正是期望的合并语义。
+const hubbedStoreBuffer = 1
 
 // HubbedStore 是一个将 StateStore 和 Hub 结合在一起的结构，简化了状态存储和订阅的使用。
 type HubbedStore[T comparable] struct {
 	st  *StateStore[T]
-	hub *Hub[State[T]]
+	hub *pubsub.Hub[State[T]]
 }
 
 // NewHubbedStore 创建一个新的 HubbedStore。
 func NewHubbedStore[T comparable]() *HubbedStore[T] {
 	return &HubbedStore[T]{
 		st:  &StateStore[T]{},
-		hub: NewHub[State[T]](),
+		hub: pubsub.NewHub[State[T]](),
 	}
 }
 
@@ -41,7 +46,8 @@ func (s *HubbedStore[T]) Snapshot() State[T] {
 
 // Subscribe 订阅状态更新，返回一个接收状态更新的 channel 和一个取消订阅的函数。
 func (s *HubbedStore[T]) Subscribe() (<-chan State[T], func()) {
-	return s.hub.Subscribe()
+	ch, unsubscribe, _ := s.hub.Subscribe(hubbedStoreBuffer, nil)
+	return ch, unsubscribe
 }
 
 // WaitSnapshot 等待首次数据到达后返回快照。若已有数据则直接返回，否则等待更新或超时。
