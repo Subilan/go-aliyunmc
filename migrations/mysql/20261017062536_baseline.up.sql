@@ -5,7 +5,7 @@ CREATE TABLE `balance_samples` (
   `amount` double NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `idx_balance_samples_created_at` (`created_at`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "changelogs" table
 CREATE TABLE `changelogs` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -18,7 +18,7 @@ CREATE TABLE `changelogs` (
   PRIMARY KEY (`id`),
   INDEX `idx_changelogs_category` (`category`),
   INDEX `idx_changelogs_deleted_at` (`deleted_at`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "instances" table
 CREATE TABLE `instances` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -34,7 +34,7 @@ CREATE TABLE `instances` (
   `is_deployed` bool NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   INDEX `idx_instances_deleted_at` (`deleted_at`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "player_list_samples" table
 CREATE TABLE `player_list_samples` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -42,7 +42,7 @@ CREATE TABLE `player_list_samples` (
   `player_names` longtext NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `idx_player_list_samples_created_at` (`created_at`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "user_preferences" table
 CREATE TABLE `user_preferences` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -54,7 +54,7 @@ CREATE TABLE `user_preferences` (
   PRIMARY KEY (`id`),
   INDEX `idx_user_preferences_deleted_at` (`deleted_at`),
   UNIQUE INDEX `idx_user_preferences_user_id` (`user_id`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "users" table
 CREATE TABLE `users` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -70,7 +70,7 @@ CREATE TABLE `users` (
   UNIQUE INDEX `idx_username_deleted_at` (`deleted_at`, `username`),
   INDEX `idx_users_deleted_at` (`deleted_at`),
   UNIQUE INDEX `idx_whitelist_uuid` (`whitelist_uuid`)
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "changelog_likes" table
 CREATE TABLE `changelog_likes` (
   `changelog_id` bigint unsigned NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE `changelog_likes` (
   INDEX `fk_changelog_likes_user` (`user_id`),
   CONSTRAINT `fk_changelog_likes_changelog` FOREIGN KEY (`changelog_id`) REFERENCES `changelogs` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
   CONSTRAINT `fk_changelog_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;
 -- create "tasks" table
 CREATE TABLE `tasks` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -98,4 +98,4 @@ CREATE TABLE `tasks` (
   INDEX `fk_tasks_user` (`by`),
   INDEX `idx_tasks_deleted_at` (`deleted_at`),
   CONSTRAINT `fk_tasks_user` FOREIGN KEY (`by`) REFERENCES `users` (`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
-) CHARSET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+) CHARSET utf8mb4 COLLATE utf8mb4_general_ci;

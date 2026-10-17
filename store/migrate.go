@@ -74,6 +74,19 @@ func Migrate() error {
 		return err
 	}
 
+	// 数据迁移与 schema 迁移在同一次 migrate 中执行。当前 schema 版本决定哪些
+	// 数据迁移已经可以运行；数据迁移本身必须幂等（见 migrations/data/）。
+	version, _, err := m.Version()
+	if errors.Is(err, migrate.ErrNilVersion) {
+		version = 0
+	} else if err != nil {
+		return fmt.Errorf("读取当前迁移版本失败: %w", err)
+	}
+
+	if err := applyDataMigrations(db, uint64(version)); err != nil {
+		return err
+	}
+
 	return nil
 }
 

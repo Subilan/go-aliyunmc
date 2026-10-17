@@ -19,7 +19,9 @@ data "external_schema" "gorm_mysql" {
 
 env "mysql" {
   src = data.external_schema.gorm_mysql.url
-  dev = "docker://mysql/8/dev"
+  # 生产与本地开发都用 MariaDB；dev 库必须与目标服务器一致，否则生成的
+  # collation（例如 MySQL 8 的 utf8mb4_0900_ai_ci）在 MariaDB 上无法执行。
+  dev = "docker+maria://_/mariadb:10.11/dev"
 
   migration {
     dir    = "file://migrations/mysql"

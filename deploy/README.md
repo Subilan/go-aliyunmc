@@ -10,6 +10,9 @@
 
 如果 `DEPLOY_USER=gomc`，需要先执行一次 `deploy/install-gomc-sudoers.sh`。
 
+数据库迁移不在 `remote-install.sh` 内执行：production 仓库的 deploy workflow 会在调用它之前，
+用 `.deploy/<release>/go-aliyunmc migrate` 应用迁移。迁移失败则不会切换到新 release。
+
 ## 远端目标布局
 
 ```text

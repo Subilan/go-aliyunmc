@@ -7,7 +7,11 @@
 2. 迁移文件提交到本目录；
 3. 运行时由 `./aliyunmc migrate` 使用 **golang-migrate** 按版本顺序应用。
 
-> 版本化迁移目前只支持 MySQL。其他数据库驱动运行 `./aliyunmc migrate` 会直接报错。
+> 版本化迁移目前只支持 MySQL 协议。其他数据库驱动运行 `./aliyunmc migrate` 会直接报错。
+
+生产运行的是 MariaDB（Debian 12 自带 10.11），`atlas.hcl` 的 dev 库也固定为同一个版本：
+`docker+maria://_/mariadb:10.11/dev`。不要用 MySQL 8 作为 dev 库——它生成的
+`utf8mb4_0900_ai_ci` 在 MariaDB 上会报 `ERROR 1273: Unknown collation`。
 
 ## 目录结构
 
@@ -17,7 +21,9 @@ migrations/
     <version>_<name>.up.sql
     <version>_<name>.down.sql
     atlas.sum       # Atlas 校验和，不参与运行时嵌入
-  embed.go          # //go:embed mysql/*.sql，供运行时使用
+  data/
+    <version>_<name>.addendum.sql   # 一次性数据迁移，与同名 schema 迁移关联
+  embed.go          # //go:embed mysql/*.sql data/*.sql，供运行时使用
 ```
 
 当前版本：
@@ -61,6 +67,11 @@ atlas migrate hash --env mysql
 
 - 迁移文件通过 `//go:embed` 编译进二进制，部署时不需要额外文件。
 - 已应用的版本记录在 `schema_migrations` 表。
+- 生产部署时，production 仓库的 deploy workflow 会在切换 `current` 之前，用暂存目录里的新二进制
+  自动执行这一步；迁移失败会中止发布，不会影响线上 release。
+- 数据迁移不写成 Go 代码：一次性 SQL 放在 `migrations/data/`，文件名与 schema 迁移同名
+  （后缀 `.addendum.sql`）。`store.Migrate()` 会在 `m.Up()` 之后按版本执行它们；SQL 必须幂等，
+  详见 `DB.md`。
 - 首次升级到版本化迁移时，如果检测到库中已有 `users` 表但没有 `schema_migrations`，
   会把基线版本直接写入版本表，然后只执行基线之后的迁移：
   - 旧库（没有 `task_output_lines`）→ 基线为 `baseline`；
@@ -69,7 +80,7 @@ atlas migrate hash --env mysql
 ## 工具依赖
 
 - [Atlas CLI](https://atlasgo.io)（`atlas`）
-- Docker：Atlas 用它启动临时 MySQL dev 数据库来计算差量
+- Docker：Atlas 用它启动临时 MariaDB 10.11 dev 数据库来计算差量（首次会自动拉取 `mariadb:10.11`）
 - `tools/atlasloader` 是一个独立 Go module，避免把 Atlas provider 的依赖带进主程序
 
 ## 注意

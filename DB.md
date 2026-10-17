@@ -13,10 +13,14 @@
 当前版本化迁移只支持 **MySQL**。`store.Migrate()` 检测到其他驱动（如 sqlite/postgres）会直接返回错误。
 测试使用临时 SQLite 数据库，由 `store.DB.AutoMigrate(models.Entities()...)` 建表，不经过迁移文件。
 
+生产实际运行的是 **MariaDB**（Debian 12 自带 10.11），因此 Atlas 的 dev 数据库也必须是 MariaDB：
+`atlas.hcl` 使用 `docker+maria://_/mariadb:10.11/dev`。如果用 MySQL 8 作为 dev 库，生成的 DDL 会带
+`utf8mb4_0900_ai_ci`，而 MariaDB 不支持该 collation，迁移会在生产执行时直接失败。
+
 相关文件：
 
 ```
-atlas.hcl                     # Atlas 配置（MySQL env）
+atlas.hcl                     # Atlas 配置（MariaDB dev 库）
 tools/atlasloader/            # 独立 Go module，把 GORM 模型输出为 MySQL DDL
 migrations/
   embed.go                    # //go:embed mysql/*.sql
@@ -74,7 +78,7 @@ atlas migrate diff --env mysql add_your_change
 
 Atlas 会：
 
-1. 启动临时 MySQL dev 数据库（Docker）；
+1. 启动临时 MariaDB 10.11 dev 数据库（Docker）；
 2. 在该库中回放 `migrations/mysql/` 的已有迁移；
 3. 通过 `tools/atlasloader` 读取当前 GORM 模型；
 4. 对比两者，把差量写入新的 `<version>_<name>.up.sql` / `.down.sql`。
@@ -103,6 +107,38 @@ atlas migrate hash --env mysql
 
 迁移 SQL 已通过 `//go:embed` 编译进二进制，部署时不需要额外文件。
 `migrate` 只读取 `configs/store.toml`，不会加载云凭证、SSH 私钥等配置。
+
+生产部署时不需要手工执行：production 仓库的 deploy workflow 会在切换 `current` 之前，
+用暂存目录里的新二进制自动执行 `migrate`。迁移失败会中止 workflow，线上 release 和
+`current` 均保持不变。因此迁移应当保持 additive，旧二进制要能在新 schema 上继续运行。
+
+## 数据迁移（SQL）
+
+一次性数据回填放在 `migrations/data/`，文件名与对应的 schema 迁移同名，只把后缀换成
+`.addendum.sql`：
+
+```
+migrations/
+  mysql/20261017062544_task_output_lines.up.sql
+  data/20261017062544_task_output_lines.addendum.sql
+```
+
+`store.Migrate()` 在 `m.Up()` 之后读取当前 schema 版本，并执行所有版本号不大于它的数据迁移。
+因此它们和 schema 迁移在同一次 `./aliyunmc migrate`（也就是 production deploy workflow 的
+迁移步骤）中自动完成。
+
+约定：
+
+- 数据迁移**没有独立版本表**：每次 migrate 都会重新执行，SQL 必须幂等
+  （`NOT EXISTS`、`INSERT IGNORE`、带条件的 `UPDATE` 等）。
+- 只放 DML，不要放 DDL；DDL 会让事务失去原子性。
+- 文件必须能对应到 `migrations/mysql/` 下的 `<name>.up.sql`，由 `migrations` 包的测试守护。
+- 数据迁移不参与 Atlas 的差量和 `atlas.sum`；Atlas 只管理 `migrations/mysql/`。
+
+当前的回填 `20261017062544_task_output_lines.addendum.sql` 把旧版 `tasks.output` 作为单行
+（`seq=1`）写入 `task_output_lines`，保留原始换行。`GetTaskOutputString` 会在行尾补一个
+`\n`，所以重建结果与旧版一致。只处理已经结束的任务；发布期间仍在运行的任务会在后续
+`migrate` 时补上。
 
 ## 版本与基线
 
@@ -141,7 +177,8 @@ mysql -e "SELECT * FROM schema_migrations"
 ## 注意事项
 
 - **不要**在生产路径调用 GORM `AutoMigrate`。
-- **不要**修改已经提交的迁移文件；新增一个版本即可，否则已部署环境无法按序升级。
+- **不要**修改已经应用到任何环境的迁移文件；新增一个版本即可，否则已部署环境无法按序升级。
+- 迁移应保持 additive / expand-contract：发布健康检查失败时会回滚二进制，但不会回滚数据库 schema。
 - 每个迁移文件可能包含多条 SQL，运行时连接会自动附加 `multiStatements=true`。
 - 迁移失败时 golang-migrate 会把 `schema_migrations` 标记为 dirty。此时需要先手工确认并修复数据库状态，再按需执行 `migrate force <version>`（CLI），不要直接删除版本表。
 - 运行迁移前建议先备份数据库。
