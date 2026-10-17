@@ -41,7 +41,9 @@ func TestMain(m *testing.M) {
 	tasks.RegisterTaskDefinitions()
 	perms.MustInitialize()
 	store.MustInitialize()
-	store.AutoMigrate()
+	if err := store.DB.AutoMigrate(models.Entities()...); err != nil {
+		panic(err)
+	}
 
 	code := m.Run()
 	_ = os.Remove(testDBPath)

@@ -8,6 +8,7 @@ require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.16
 	github.com/creasty/defaults v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/mcstatus-io/mcutil/v4 v4.0.1
@@ -68,11 +69,11 @@ require (
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.6.0 // indirect
 	golang.org/x/arch v0.27.0 // indirect
-	golang.org/x/crypto v0.51.0
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/crypto v0.53.0
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
 	gorm.io/driver/mysql v1.6.0

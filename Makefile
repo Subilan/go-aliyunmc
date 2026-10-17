@@ -1,4 +1,6 @@
-.PHONY: gen-config test build dev run
+.PHONY: gen-config test build dev run migrate-diff
+
+MIGRATION_NAME ?= change
 
 APP_VERSION := $(shell cat VERSION)
 APP_COMMIT := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
@@ -25,3 +27,7 @@ dev:
 
 run:
 	@go run . run
+
+# 根据 GORM 模型与已有迁移的差量生成 MySQL 迁移（需要 atlas CLI 和 Docker）
+migrate-diff:
+	@atlas migrate diff --env mysql $(MIGRATION_NAME)

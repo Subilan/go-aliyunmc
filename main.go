@@ -167,7 +167,9 @@ func runMigrate() {
 	// migrate 只需要数据库配置。
 	config.MustLoadStore()
 	store.MustInitialize()
-	store.AutoMigrate()
+	if err := store.Migrate(); err != nil {
+		log_util.Fatal("数据库迁移失败: %v", err)
+	}
 	log_util.Info("数据库迁移完成")
 }
 

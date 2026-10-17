@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/Subilan/go-aliyunmc/config"
-	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
@@ -40,7 +39,7 @@ func MustInitialize() {
 
 	// 配置GORM
 	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger:         logger.Default.LogMode(logger.Info),
 		TranslateError: true,
 	}
 
@@ -51,17 +50,4 @@ func MustInitialize() {
 	}
 
 	fmt.Println("数据库连接成功!")
-}
-
-// AutoMigrate 自动迁移数据库表
-func AutoMigrate() {
-	DB.AutoMigrate(
-		&models.User{},
-		&models.Task{},
-		&models.Instance{},
-		&models.PlayerListSample{},
-		&models.BalanceSample{},
-		&models.UserPreference{},
-		&models.Changelog{},
-	)
 }
