@@ -61,7 +61,9 @@ type Task struct {
 	// Step 字段表示任务的当前步骤，通常用于多步骤任务，以便前端能够根据步骤信息展示不同的界面或提示用户当前任务的进度。
 	// 对于单步骤任务，Step 保持为 0。
 	Step uint `gorm:"not null,default:0" json:"step"`
-	// Output 字段记录了任务执行过程中的输出信息。它可以包含多行文本，描述任务的执行进度、结果或任何相关信息。
+	// Output 是任务执行过程中的输出文本。输出实际按行存放在 TaskOutputLine 表中，
+	// 该列仅作为旧库兼容保留，不再随执行过程更新；读取任务详情时由 store.GetTask
+	// 从 task_output_lines 拼接填充。
 	Output string `gorm:"not null" json:"output"`
 	// Error 字段记录了任务执行失败时的错误信息。它可以是一个简短的错误描述，也可能是特殊的字符串：
 	//  - __TIMEOUT__：表示任务因超时而失败。

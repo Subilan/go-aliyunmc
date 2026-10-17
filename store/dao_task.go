@@ -1,8 +1,10 @@
 package store
 
 import (
-	"github.com/Subilan/go-aliyunmc/store/models"
+	"strings"
 	"time"
+
+	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -22,11 +24,14 @@ func CreateTask(taskType models.TaskType, by *uint) (*models.Task, error) {
 	return task, result.Error
 }
 
-// UpdateTask 将任务数据写入到数据库。task 是要更新的任务结构体指针。
+// UpdateTask 将任务的可变字段写入数据库。输出内容已拆分到 task_output_lines，
+// 因此这里显式排除 output 列，避免每次落库都全量写入旧的大字段。
 func UpdateTask(task *models.Task) error {
 	result := DB.Session(&gorm.Session{
 		Logger: DB.Logger.LogMode(logger.Silent),
-	}).Save(task)
+	}).Model(task).
+		Select("start_at", "end_at", "status", "step", "error").
+		Updates(task)
 	return result.Error
 }
 
@@ -70,12 +75,12 @@ func CountTasks(status *models.TaskStatus) (int64, error) {
 
 // TaskStats 包含任务概览统计数据。
 type TaskStats struct {
-	Total              int64                       `json:"total"`
-	SuccessCount       int64                       `json:"successCount"`
-	LastCompletedAt    *time.Time                  `json:"lastCompletedAt"`
-	LastCreatedBy      *uint                       `json:"lastCreatedBy"`
-	LastCreatedUser    *models.User                `json:"lastCreatedUser"`
-	TotalRuntimeSec    int64                       `json:"totalRuntimeSec"`
+	Total               int64                          `json:"total"`
+	SuccessCount        int64                          `json:"successCount"`
+	LastCompletedAt     *time.Time                     `json:"lastCompletedAt"`
+	LastCreatedBy       *uint                          `json:"lastCreatedBy"`
+	LastCreatedUser     *models.User                   `json:"lastCreatedUser"`
+	TotalRuntimeSec     int64                          `json:"totalRuntimeSec"`
 	LastCompletedByType map[models.TaskType]*time.Time `json:"lastCompletedByType"`
 }
 
@@ -141,12 +146,93 @@ func GetTaskStats() (TaskStats, error) {
 	return stats, nil
 }
 
-// GetTask 根据任务ID获取任务详情。
+// GetTask 根据任务ID获取任务详情，并从 task_output_lines 拼接完整的输出文本。
 func GetTask(taskId uint) (*models.Task, error) {
+	task, err := GetTaskRecord(taskId)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := GetTaskOutputString(taskId)
+	if err != nil {
+		return nil, err
+	}
+	task.Output = output
+
+	return task, nil
+}
+
+// GetTaskRecord 根据任务ID获取任务记录，不加载旧的 output 列。Preload 用户信息。
+func GetTaskRecord(taskId uint) (*models.Task, error) {
 	var task models.Task
-	result := DB.Preload("User").First(&task, taskId)
+	result := DB.Preload("User").Omit("output").First(&task, taskId)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &task, nil
+}
+
+// AppendTaskOutputLines 将一批任务输出行写入数据库。
+func AppendTaskOutputLines(lines []models.TaskOutputLine) error {
+	if len(lines) == 0 {
+		return nil
+	}
+	return DB.Create(&lines).Error
+}
+
+// GetTaskOutputLinesRange 按序号升序返回任务输出行。
+// 返回区间为 (afterSeq, maxSeq]；maxSeq 为 nil 表示不设上限。
+func GetTaskOutputLinesRange(taskId uint, afterSeq uint64, maxSeq *uint64, limit int) ([]models.TaskOutputLine, error) {
+	var lines []models.TaskOutputLine
+
+	query := DB.Where("task_id = ? AND seq > ?", taskId, afterSeq)
+	if maxSeq != nil {
+		query = query.Where("seq <= ?", *maxSeq)
+	}
+	if limit > 0 {
+		query = query.Limit(limit)
+	}
+
+	result := query.Order("seq ASC").Find(&lines)
+	return lines, result.Error
+}
+
+// GetLastTaskOutputSeq 返回任务已落库的最大输出序号。没有输出时返回 0。
+func GetLastTaskOutputSeq(taskId uint) (uint64, error) {
+	var result struct {
+		MaxSeq uint64
+	}
+
+	query := DB.Model(&models.TaskOutputLine{}).
+		Where("task_id = ?", taskId).
+		Select("COALESCE(MAX(seq), 0) AS max_seq").
+		Scan(&result)
+
+	return result.MaxSeq, query.Error
+}
+
+// GetTaskOutputString 按行拼接任务的完整输出文本，行为与旧版 Task.Output 一致：
+// 每一行（包括最后一行）后都带一个换行符。
+func GetTaskOutputString(taskId uint) (string, error) {
+	rows, err := DB.Model(&models.TaskOutputLine{}).
+		Select("output").
+		Where("task_id = ?", taskId).
+		Order("seq ASC").
+		Rows()
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var builder strings.Builder
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			return "", err
+		}
+		builder.WriteString(line)
+		builder.WriteByte('\n')
+	}
+
+	return builder.String(), rows.Err()
 }

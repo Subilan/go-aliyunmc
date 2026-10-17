@@ -9,6 +9,8 @@ import (
 )
 
 type TaskOutput struct {
+	// ID 是任务内的输出序号，从 1 开始，同时作为 SSE 事件 ID。
+	ID     uint64 `json:"id"`
 	Step   uint   `json:"step"`
 	Output string `json:"output"`
 }

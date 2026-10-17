@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -238,5 +239,136 @@ func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
 	second := postTrigger(t, handler, cookie, string(taskType))
 	if second.Code != http.StatusConflict {
 		t.Fatalf("second trigger expected %d for exclusive lock, got %d, body=%s", http.StatusConflict, second.Code, second.Body.String())
+	}
+}
+
+// createFinishedTask 直接构造一个已结束任务及其输出行，用于验证数据库回放。
+func createFinishedTask(t *testing.T, outputs ...string) models.Task {
+	t.Helper()
+
+	task := models.Task{
+		Type:   models.TaskTypeTest,
+		Status: models.TaskStatusSuccess,
+	}
+	if err := store.DB.Create(&task).Error; err != nil {
+		t.Fatalf("create task failed: %v", err)
+	}
+
+	for i, line := range outputs {
+		output := models.TaskOutputLine{
+			TaskID: task.ID,
+			Seq:    uint64(i + 1),
+			Step:   0,
+			Output: line,
+		}
+		if err := store.DB.Create(&output).Error; err != nil {
+			t.Fatalf("create task output line failed: %v", err)
+		}
+	}
+
+	return task
+}
+
+func requestTaskOutput(t *testing.T, handler http.Handler, cookie *http.Cookie, taskID uint, lastEventID string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/task/%d/output", taskID), nil)
+	req.AddCookie(cookie)
+	if lastEventID != "" {
+		req.Header.Set("Last-Event-ID", lastEventID)
+	}
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	return w
+}
+
+func TestHandleGetTaskOutput_FinishedTaskReplaysAll(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUser(t, fmt.Sprintf("task_user_replay_all_%d", time.Now().UnixNano()))
+	cookie := loginCookie(t, handler, user.ID)
+
+	task := createFinishedTask(t, "line one", "line two", "line three")
+
+	w := requestTaskOutput(t, handler, cookie, task.ID, "")
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d, body=%s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	body := w.Body.String()
+	for _, line := range []string{"line one", "line two", "line three"} {
+		if !strings.Contains(body, fmt.Sprintf(`"output":%q`, line)) {
+			t.Fatalf("expected %q in replay body:\n%s", line, body)
+		}
+	}
+	if !strings.Contains(body, "event: task_done") {
+		t.Fatalf("expected task_done event:\n%s", body)
+	}
+	if !strings.Contains(body, "id: 4\n") {
+		t.Fatalf("expected task_done id 4:\n%s", body)
+	}
+}
+
+func TestHandleGetTaskOutput_ResumesAfterLastEventID(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUser(t, fmt.Sprintf("task_user_replay_some_%d", time.Now().UnixNano()))
+	cookie := loginCookie(t, handler, user.ID)
+
+	task := createFinishedTask(t, "line one", "line two", "line three")
+
+	w := requestTaskOutput(t, handler, cookie, task.ID, "1")
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d, body=%s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	body := w.Body.String()
+	if strings.Contains(body, `"output":"line one"`) {
+		t.Fatalf("line one should not be replayed:\n%s", body)
+	}
+	if !strings.Contains(body, `"output":"line two"`) || !strings.Contains(body, `"output":"line three"`) {
+		t.Fatalf("expected remaining lines in replay body:\n%s", body)
+	}
+}
+
+func TestHandleGetTaskOutput_StopsAfterTaskDone(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUser(t, fmt.Sprintf("task_user_replay_done_%d", time.Now().UnixNano()))
+	cookie := loginCookie(t, handler, user.ID)
+
+	task := createFinishedTask(t, "line one")
+
+	// task_done 的事件 ID 是 lastSeq+1 = 2；携带它重连时应返回 204。
+	w := requestTaskOutput(t, handler, cookie, task.ID, "2")
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected %d, got %d, body=%s", http.StatusNoContent, w.Code, w.Body.String())
+	}
+}
+
+func TestHandleGetTask_IncludesReconstructedOutput(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUser(t, fmt.Sprintf("task_user_output_text_%d", time.Now().UnixNano()))
+	cookie := loginCookie(t, handler, user.ID)
+
+	task := createFinishedTask(t, "first", "second")
+
+	req, _ := http.NewRequest(http.MethodGet, fmt.Sprintf("/task/%d", task.ID), nil)
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d, body=%s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var payload struct {
+		Data struct {
+			Output string `json:"output"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal response failed: %v", err)
+	}
+	if payload.Data.Output != "first\nsecond\n" {
+		t.Fatalf("unexpected output: %q", payload.Data.Output)
 	}
 }

@@ -177,15 +177,16 @@ Runtime `configs/` files are user-managed — never auto-generate them.
 - 一次性数据迁移放在 `migrations/data/`，文件名与同名 schema 迁移对应（`.addendum.sql`）。`store.Migrate()` 在 `m.Up()` 之后按 schema 版本执行它们；SQL 必须幂等，且只包含 DML。它们不参与 Atlas 差量和 `atlas.sum`。
 - 旧数据库（没有 `schema_migrations`）首次运行时会按已有表结构自动写入基线版本，不会重复建表。
 - 测试使用临时 SQLite 库，TestMain 里仍用 `store.DB.AutoMigrate(models.Entities()...)` 建表。
-- 详情见 `DB.md` 与 `migrations/README.md`。不要再用 `AutoMigrate` 修改 production schema。
+- 详情见 `migrations/README.md`。不要再用 `AutoMigrate` 修改 production schema。
 
 ## SSE Streaming
 
 Task output is streamed via SSE. The flow:
 1. Client hits `GET /task/:id/output`
 2. Handler looks up the running `Executor`, creates an `sse.Client`, and subscribes to the executor's `pubsub.Hub`
-3. As the task calls `tc.println()`, messages flow through `Executor.monitor()` → hub broadcast → SSE client → browser. Output is buffered in `TaskContext.outputChan`, broadcast immediately, and persisted in batches (500ms / 256 lines)
-4. On terminal state the executor broadcasts `task_done`, then closes the hub; closing the subscriber channel ends `Client.Listen` and the connection
+3. As the task calls `tc.println()`, messages flow through `Executor.monitor()` → hub broadcast → SSE client → browser. Each line gets a per-task monotonically increasing `Seq`; the event `id` is that sequence number. Output is buffered in `TaskContext.outputChan`, broadcast immediately, and persisted as rows in `task_output_lines` in batches (500ms / 256 lines). The legacy `tasks.output` column is kept for schema compatibility but is no longer updated (`store.UpdateTask` selects only mutable fields); `store.GetTask` reconstructs `Task.Output` from the lines for API compatibility.
+4. On reconnect the browser sends `Last-Event-ID`. The handler replays persisted lines with `seq > Last-Event-ID` before resuming live events. For a finished task it replays from the database and sends `task_done` (whose ID is `lastSeq+1`); if the client already consumed that ID the handler returns 204 so `EventSource` stops reconnecting.
+5. On terminal state the executor broadcasts `task_done`, then closes the hub; closing the subscriber channel ends `Client.Listen` and the connection
 
 State watch endpoints (`/state/watch/*`) use the same `pubsub.Hub[T]` primitive with a buffer of 1, where a full buffer drops the value instead of the subscriber.
 

@@ -20,10 +20,11 @@ archive/backup/install-ossutil/restore 脚本依赖实例上装 ossutil，并把
 ## 4. [done] sse（255 行）→ 自研 + 抽出 pubsub.Hub
 手写 broker 的 actor 循环与原 states.Hub 合并为泛型 pubsub.Hub：任务流用 buffer=100 并在满时移除慢订阅者，
 状态流用 buffer=1 并丢弃中间值；Hub.Close 取代 task_done 特判。
-任务输出改为有缓冲 channel（1024 行）+ 阻塞背压 + 批量落库（500ms / 256 行），
-广播与持久化解耦，终止事件不再依赖数据库成功。
-未引入 Last-Event-ID；tmaxmax/go-sse、r3labs/sse 的模型是长生命周期 server + topic，
-与“每任务一条短流、结束时关闭”不匹配，整体替换收益低于适配成本。
+任务输出改为有缓冲 channel（1024 行）+ 阻塞背压 + 按行批量落库（500ms / 256 行，写入 task_output_lines）。
+任务输出事件带序号 ID，已实现 Last-Event-ID 重连回放：先订阅再请求 monitor 刷盘，
+从数据库回放 seq > Last-Event-ID 的行后续接实时事件；已结束任务直接回放并在 task_done 后返回 204。
+未整体替换为 tmaxmax/go-sse、r3labs/sse：它们的模型是长生命周期 server + topic，
+与“每任务一条短流、结束时关闭”不匹配，适配成本高于收益。
 
 ## 5. tasks 执行器注册表与互斥 → x/sync
 maps.go 两个 sync.Map 存运行中／独占执行器，Executor.Wait 手搓结果通道，RunTask 用 recover 兜 panic。
