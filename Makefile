@@ -1,4 +1,4 @@
-.PHONY: gen-config test build dev run migrate-diff
+.PHONY: gen-config gen-policy test build dev run migrate-diff
 
 MIGRATION_NAME ?= change
 
@@ -12,6 +12,10 @@ LDFLAGS := -X github.com/Subilan/go-aliyunmc/internal/version.Version=$(APP_VERS
 # 生成配置文件
 gen-config:
 	@go run ./cmd/configgen
+
+# 根据 policies/policy.toml 渲染 RAM 策略并输出到 stdout
+gen-policy:
+	@go run . gen_policy
 
 # 运行测试
 test:

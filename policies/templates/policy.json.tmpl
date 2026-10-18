@@ -1,0 +1,73 @@
+{
+  "Version": "1",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeInstanceStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:CreateInstance",
+        "ecs:DescribeAvailableResource",
+        "ecs:DescribePrice"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeInstances",
+        "ecs:StartInstance",
+        "ecs:StopInstance",
+        "ecs:DeleteInstance",
+        "ecs:AllocatePublicIpAddress"
+      ],
+      "Resource": "acs:ecs:{{ .RegionID }}:{{ .AccountID }}:instance/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "vpc:DescribeVSwitches",
+        "vpc:CreateDefaultVSwitch"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "bss:DescribeAcccount"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "oss:ListObjects",
+        "oss:ListMultipartUploads",
+        "oss:GetBucketInfo",
+        "oss:GetBucketLocation"
+      ],
+      "Resource": "acs:oss:*:{{ .AccountID }}:{{ .OSSBucket }}"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "oss:GetObject",
+        "oss:GetObjectMeta",
+        "oss:PutObject",
+        "oss:DeleteObject",
+        "oss:RestoreObject",
+        "oss:InitiateMultipartUpload",
+        "oss:UploadPart",
+        "oss:CompleteMultipartUpload",
+        "oss:AbortMultipartUpload",
+        "oss:ListParts"
+      ],
+      "Resource": "acs:oss:*:{{ .AccountID }}:{{ .OSSBucket }}/{{ .OSSPrefix }}*"
+    }
+  ]
+}

@@ -14,6 +14,7 @@ make run          # Run without dev mode
 make migrate-diff NAME=add_xxx   # Generate a MySQL diff migration from GORM models (Atlas + Docker, MariaDB 10.11 dev)
 ./aliyunmc migrate   # Apply pending versioned migrations
 ./aliyunmc check_config   # 只校验配置，不连库、不建客户端
+./aliyunmc gen_policy [-config policies/policy.toml] [-env production]   # Render RAM policy to stdout
 ```
 
 Run a single package test:
@@ -28,6 +29,15 @@ cd hurl/users && make test-login USER=<name>
 cd hurl/users && make test-create USER=<name>
 cd hurl/tasks && make test-create-test-task USER=<name>
 ```
+
+## RAM Policy Generation
+
+`aliyunmc gen_policy` renders `policies/templates/policy.json.tmpl` with the
+values from `policies/policy.toml` and writes the result to stdout. The template
+contains no account ID, region, bucket or policy name; those come from the
+config. `policies/policy.example.toml` and the template are versioned;
+`policies/policy.toml` is gitignored. `-env <name>` prints one environment as
+pure JSON; without it all environments are printed with `#` headers.
 
 ## Architecture
 

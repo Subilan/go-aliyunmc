@@ -16,6 +16,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/env"
 	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/internal/policygen"
 	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/mc"
 	"github.com/Subilan/go-aliyunmc/monitors"
@@ -48,6 +49,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  migrate      手动执行数据库迁移\n")
 		fmt.Fprintf(os.Stderr, "  create_user  创建用户\n")
 		fmt.Fprintf(os.Stderr, "  check_config 校验配置，不连接任何外部依赖\n")
+		fmt.Fprintf(os.Stderr, "  gen_policy   根据策略配置渲染 RAM 策略并输出到 stdout\n")
 		os.Exit(1)
 	}
 
@@ -60,6 +62,8 @@ func main() {
 		runCreateUser()
 	case "check_config":
 		runCheckConfig()
+	case "gen_policy":
+		runGenPolicy()
 	default:
 		fmt.Fprintf(os.Stderr, "未知指令: %s\n", os.Args[1])
 		os.Exit(1)
@@ -162,6 +166,33 @@ func runServer() {
 func runCheckConfig() {
 	config.MustLoad()
 	fmt.Println("配置校验通过")
+}
+
+// runGenPolicy 把策略配置与模板渲染成 RAM 策略，结果只写到 stdout。
+func runGenPolicy() {
+	fs := flag.NewFlagSet("gen_policy", flag.ExitOnError)
+	configPath := fs.String("config", policygen.DefaultConfigPath, "策略配置文件路径")
+	templatePath := fs.String("template", policygen.DefaultTemplatePath, "策略模板路径")
+	envName := fs.String("env", "", "只输出指定环境的纯 JSON；留空输出全部环境")
+	_ = fs.Parse(os.Args[2:])
+
+	cfg, err := policygen.Load(*configPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "读取策略配置失败: %v\n可从 %s 复制一份并填写真实值\n", err, policygen.ExampleConfigPath)
+		} else {
+			fmt.Fprintf(os.Stderr, "读取策略配置失败: %v\n", err)
+		}
+		os.Exit(1)
+	}
+
+	out, err := policygen.Render(cfg, *templatePath, *envName)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "渲染策略失败: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Print(out)
 }
 
 func runMigrate() {
