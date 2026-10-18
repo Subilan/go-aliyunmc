@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -17,6 +18,20 @@ import (
 type BalanceDataPoint struct {
 	Time   time.Time `json:"time"`
 	Amount float64   `json:"amount"`
+}
+
+// BalanceStatsMinSpan 是计算平均消耗速率所需的最短观测时长。
+// 按小时计费时，窗口过短会让单个计费事件主导结果。
+const BalanceStatsMinSpan = 6 * time.Hour
+
+// BalanceStats 描述采样窗口内的余额消耗统计。
+type BalanceStats struct {
+	// Rate 为平均消耗速率（¥/h）；样本不足或无净消耗时为 nil。
+	Rate             *float64 `json:"rate"`
+	SpanHours        float64  `json:"span_hours"`
+	SampleCount      int      `json:"sample_count"`
+	HasEnoughSamples bool     `json:"has_enough_samples"`
+	MinSpanHours     float64  `json:"min_span_hours"`
 }
 
 // BalanceSampler 定期采样阿里云账户余额。
@@ -60,6 +75,50 @@ func (s *BalanceSampler) Snapshot() []BalanceDataPoint {
 	result := make([]BalanceDataPoint, len(s.dataPoints))
 	copy(result, s.dataPoints)
 	return result
+}
+
+// Stats 返回当前采样窗口内的余额消耗统计。
+func (s *BalanceSampler) Stats() BalanceStats {
+	return calculateBalanceStats(s.Snapshot())
+}
+
+// calculateBalanceStats 以整个观测时长为分母累计所有下降额。
+// 若改为对每个区间的速率取算术平均，短区间会与长区间获得相同权重，
+// 余额不变的区间也会被排除在统计之外。
+func calculateBalanceStats(points []BalanceDataPoint) BalanceStats {
+	stats := BalanceStats{
+		SampleCount:  len(points),
+		MinSpanHours: BalanceStatsMinSpan.Hours(),
+	}
+	if len(points) < 2 {
+		return stats
+	}
+
+	sorted := append([]BalanceDataPoint(nil), points...)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Time.Before(sorted[j].Time)
+	})
+
+	span := sorted[len(sorted)-1].Time.Sub(sorted[0].Time)
+	stats.SpanHours = span.Hours()
+	if span < BalanceStatsMinSpan {
+		return stats
+	}
+	stats.HasEnoughSamples = true
+
+	// 只累计下降额，忽略充值造成的上升，避免充值抵消当期消耗。
+	var totalDrop float64
+	for i := 1; i < len(sorted); i++ {
+		if drop := sorted[i-1].Amount - sorted[i].Amount; drop > 0 {
+			totalDrop += drop
+		}
+	}
+	if totalDrop > 0 {
+		rate := totalDrop / span.Hours()
+		stats.Rate = &rate
+	}
+
+	return stats
 }
 
 func (s *BalanceSampler) run(ctx context.Context) {
