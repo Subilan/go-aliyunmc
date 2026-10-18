@@ -2,6 +2,7 @@ package monitors
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -93,9 +94,16 @@ func (m *SpotInterruptionMonitor) pollOnce(ctx context.Context) {
 		return
 	}
 
+	// ECS 的 InstanceIds 参数是 JSON 数组字符串，裸实例 ID 会被判定为 InvalidParameter。
+	instanceIds, err := json.Marshal([]string{instance.InstanceId})
+	if err != nil {
+		m.logger.Warn("序列化实例 ID 失败: %v", err)
+		return
+	}
+
 	resp, err := aliyun.EcsClient.DescribeInstancesWithContext(ctx, &ecs20140526.DescribeInstancesRequest{
 		RegionId:    tea.String(config.Get().Aliyun.RegionId),
-		InstanceIds: tea.String(instance.InstanceId),
+		InstanceIds: tea.String(string(instanceIds)),
 	}, &dara.RuntimeOptions{})
 
 	if err != nil {
