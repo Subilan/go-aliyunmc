@@ -63,10 +63,13 @@ func (e *Executor) persistedSnapshot() uint64 {
 	}
 }
 
+// TaskDoneEventID 是 task_done 的固定事件 ID。客户端重连时带回该 ID，
+// 服务端返回 204 停止 EventSource 重连。
+const TaskDoneEventID = "done"
+
 // ReplayTaskOutput 回放一个已结束任务的持久化输出，并在最后发送 task_done。
-// task_done 的事件 ID 为 lastSeq+1，客户端据此判断历史已经消费完毕。
 // 调用方需要在调用后执行 client.Listen()。
-func ReplayTaskOutput(client *sse.Client, task *models.Task, lastSeq, afterSeq uint64) {
+func ReplayTaskOutput(client *sse.Client, task *models.Task, afterSeq uint64) {
 	events := make(chan sse.Event, taskEventBuffer)
 	client.Attach(events)
 
@@ -76,7 +79,7 @@ func ReplayTaskOutput(client *sse.Client, task *models.Task, lastSeq, afterSeq u
 		streamPersistedOutput(events, task.ID, afterSeq, nil, client.Done())
 
 		select {
-		case events <- taskDoneEvent(task.Status == models.TaskStatusSuccess, task.Error, lastSeq+1):
+		case events <- taskDoneEvent(task.Status == models.TaskStatusSuccess, task.Error):
 		case <-client.Done():
 		}
 	}()
@@ -193,9 +196,9 @@ func taskOutputEvent(line models.TaskOutputLine) sse.Event {
 	}
 }
 
-func taskDoneEvent(success bool, errorMessage string, seq uint64) sse.Event {
+func taskDoneEvent(success bool, errorMessage string) sse.Event {
 	return sse.Event{
-		ID:    strconv.FormatUint(seq, 10),
+		ID:    TaskDoneEventID,
 		Event: "task_done",
 		Data: TaskSummary{
 			Success: success,

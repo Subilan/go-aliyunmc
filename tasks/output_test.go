@@ -117,7 +117,10 @@ func TestSubscribeFromReplaysHistoryThenLive(t *testing.T) {
 	if _, err := executor.RunTask(nil, nil); err != nil {
 		t.Fatalf("run task failed: %v", err)
 	}
-	defer executor.Interrupt()
+	defer func() {
+		executor.Interrupt()
+		<-executor.Done()
+	}()
 
 	deadline := time.Now().Add(2 * time.Second)
 	for executor.lastSeq.Load() < 1 && time.Now().Before(deadline) {
@@ -167,8 +170,11 @@ func TestSubscribeFromReplaysHistoryThenLive(t *testing.T) {
 	if !strings.Contains(body, "event: task_done") {
 		t.Fatalf("expected task_done event\nbody:\n%s", body)
 	}
-	if !strings.Contains(body, "id: 1\n") || !strings.Contains(body, "id: 3\n") {
-		t.Fatalf("expected output and task_done event ids\nbody:\n%s", body)
+	if !strings.Contains(body, "id: 1\n") || !strings.Contains(body, "id: 2\n") {
+		t.Fatalf("expected output event ids\nbody:\n%s", body)
+	}
+	if !strings.Contains(body, "id: done\n") {
+		t.Fatalf("expected task_done event id\nbody:\n%s", body)
 	}
 }
 
@@ -208,7 +214,7 @@ func TestReplayTaskOutputResumesAfterSeq(t *testing.T) {
 		t.Fatalf("expected last seq 3, got %d", lastSeq)
 	}
 
-	ReplayTaskOutput(client, task, lastSeq, 2)
+	ReplayTaskOutput(client, task, 2)
 	client.Listen()
 
 	body := recorder.Body.String()

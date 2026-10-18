@@ -207,3 +207,40 @@ The file-sync monitor (`monitors/file_sync.go`) periodically downloads files fro
 - Script templates use `{{.VarName}}` Go template syntax and live under `scripts/`.
 - DB unique constraints are preferred over application-level checks for enforcing uniqueness (e.g. `WhitelistUUID` unique index).
 - Every newly-created or just-updated API route should be configured correctly in `rbac_policy.csv` to prevent access control issues.
+
+## 代码注释
+
+注释的唯一职责是补充代码本身无法表达的信息。写之前先问：删掉这条注释，读者会丢失什么？如果答案是「什么都不会」，就不要写。
+
+### 该写什么
+
+- **对外契约**：函数做什么、保证什么，例如阻塞语义、幂等性、并发安全、执行顺序。
+- **不直观的原因**：为什么这样实现、绕开了什么问题、依赖什么前提。这类注释应放在对应代码旁边，而不是函数头。
+- **非显然的约束与副作用**：超时、资源释放时机、错误语义中无法从错误值直接读出的部分。
+- **导出符号的 Go doc**：首句以符号名开头，一句话说清职责。
+
+### 不该写什么
+
+- **别处已有单一事实来源的内容**：权限在 `rbac_policy.csv`，路由在 `task_routes.go`，配置默认值在 `config` 的 tag 与 `example_configs/`。在注释里复述这些事实，等两处不同步时注释就变成了谎言。
+- **可从名称、签名、类型或紧邻代码直接读出的信息**。不要为「完整」而把代码翻译成自然语言。
+- **同一件事说两遍**。例如「等待任务函数退出后才返回」中的「后才返回」只是重复「等待」。
+- **与函数职责无关的背景、用法示例、历史沿革和铺垫性说明**。
+
+### 示例
+
+反面：
+
+```go
+// HandleInterruptTask 中止正在执行的任务，并等待任务函数退出后才返回。
+// 权限由 /task/:id/interrupt 的 Casbin 策略限制为 operator 及以上。
+func HandleInterruptTask(c *gin.Context) (any, error)
+```
+
+正面：
+
+```go
+// HandleInterruptTask 中止正在执行的任务，并等待任务函数退出
+func HandleInterruptTask(c *gin.Context) (any, error)
+```
+
+理由：第二句把 `rbac_policy.csv` 中已有的权限事实复制进了 handler，权限调整后必然失配；而「后才返回」与「等待」表达的是同一件事。注释只保留代码无法表达的契约：这个 handler 会阻塞到任务函数退出。

@@ -199,6 +199,8 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 		}
 	case <-ctx.Done():
 		exec.Interrupt()
+		// 等归档任务真正停止后再返回，避免实例操作与后续流程重叠。
+		<-exec.Done()
 		return ctx.Err()
 	}
 

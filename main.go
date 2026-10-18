@@ -150,6 +150,7 @@ func runServer() {
 	tasks.RangeExecutors(func(taskId uint, executor *tasks.Executor) {
 		wg.Go(func() {
 			executor.Interrupt()
+			// Done 在任务函数退出、monitor 完成收尾后关闭。
 			<-executor.Done()
 		})
 	})

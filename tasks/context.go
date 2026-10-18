@@ -90,7 +90,7 @@ func (tc *TaskContext) done() {
 	tc.cancel(nil)
 }
 
-// throw 结束 monitor 的运行并标为失败。该函数只能在任务返回之前调用。
+// throw 结束 monitor 的运行并标为失败。以首次 cause 为准，重复调用是空操作。
 func (tc *TaskContext) throw(err error) {
 	tc.cancel(err)
 }

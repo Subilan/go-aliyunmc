@@ -69,11 +69,16 @@ func setupTaskRouter() http.Handler {
 
 func createTestUser(t *testing.T, username string) models.User {
 	t.Helper()
+	return createTestUserWithRole(t, username, perms.RoleBasic)
+}
+
+func createTestUserWithRole(t *testing.T, username string, role perms.Role) models.User {
+	t.Helper()
 	whitelistUUID := fmt.Sprintf("wl-%s", username)
 	user := models.User{
 		Username:      username,
 		PasswordHash:  "hash",
-		Role:          perms.RoleBasic,
+		Role:          role,
 		WhitelistUUID: &whitelistUUID,
 	}
 	if err := store.DB.Create(&user).Error; err != nil {
@@ -242,6 +247,132 @@ func TestHandleTriggerTaskExecution_TypeExclusiveMutex(t *testing.T) {
 	}
 }
 
+func postInterrupt(t *testing.T, handler http.Handler, cookie *http.Cookie, taskID uint) *httptest.ResponseRecorder {
+	t.Helper()
+	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/task/%d/interrupt", taskID), nil)
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	return w
+}
+
+// registerBlockingTask 注册一个阻塞到 ctx 取消或 release 关闭的任务定义。
+func registerBlockingTask(t *testing.T, taskType models.TaskType, release <-chan struct{}) {
+	t.Helper()
+	tasks.TaskDefinitions[taskType] = &tasks.TaskDefinition{
+		Type:    taskType,
+		Timeout: 10 * time.Second,
+		F: func(tc *tasks.TaskContext, _ map[string]any) error {
+			select {
+			case <-release:
+				return nil
+			case <-tc.Context().Done():
+				return tc.Context().Err()
+			}
+		},
+	}
+	t.Cleanup(func() { delete(tasks.TaskDefinitions, taskType) })
+}
+
+func triggerAndGetID(t *testing.T, handler http.Handler, cookie *http.Cookie, taskType models.TaskType) uint {
+	t.Helper()
+	resp := postTrigger(t, handler, cookie, string(taskType))
+	if resp.Code != http.StatusOK {
+		t.Fatalf("trigger expected %d, got %d, body=%s", http.StatusOK, resp.Code, resp.Body.String())
+	}
+
+	var payload struct {
+		Data struct {
+			ID uint `json:"ID"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal trigger response failed: %v", err)
+	}
+	if payload.Data.ID == 0 {
+		t.Fatalf("expected non-zero task id, response=%s", resp.Body.String())
+	}
+	return payload.Data.ID
+}
+
+// operator 中止任务后返回 202；任务在执行器异步收尾后标记为中断失败。
+func TestHandleInterruptTask_OperatorSucceeds(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUserWithRole(t, fmt.Sprintf("task_user_interrupt_%d", time.Now().UnixNano()), perms.RoleOperator)
+	cookie := loginCookie(t, handler, user.ID)
+
+	release := make(chan struct{})
+	defer close(release)
+	taskType := models.TaskType(fmt.Sprintf("interrupt_route_test_%d", time.Now().UnixNano()))
+	registerBlockingTask(t, taskType, release)
+
+	taskID := triggerAndGetID(t, handler, cookie, taskType)
+
+	w := postInterrupt(t, handler, cookie, taskID)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("interrupt expected %d, got %d, body=%s", http.StatusAccepted, w.Code, w.Body.String())
+	}
+
+	// 202 只表示中断请求已受理，终态由 monitor 异步写入。
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if _, ok := tasks.GetExecutor(taskID); !ok {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("executor should be unregistered after the task stopped")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	task, err := store.GetTaskRecord(taskID)
+	if err != nil {
+		t.Fatalf("get task failed: %v", err)
+	}
+	if task.Status != models.TaskStatusFailed || task.Error != "__INTERRUPTED__" {
+		t.Fatalf("expected interrupted failure, got status=%s error=%q", task.Status, task.Error)
+	}
+}
+
+// basic 角色不能中止任务。
+func TestHandleInterruptTask_BasicForbidden(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUser(t, fmt.Sprintf("task_user_interrupt_basic_%d", time.Now().UnixNano()))
+	cookie := loginCookie(t, handler, user.ID)
+
+	release := make(chan struct{})
+	defer close(release)
+	taskType := models.TaskType(fmt.Sprintf("interrupt_route_basic_%d", time.Now().UnixNano()))
+	registerBlockingTask(t, taskType, release)
+
+	taskID := triggerAndGetID(t, handler, cookie, taskType)
+	defer cleanupExecutor(taskID)
+
+	w := postInterrupt(t, handler, cookie, taskID)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("interrupt expected %d, got %d, body=%s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+
+	if _, ok := tasks.GetExecutor(taskID); !ok {
+		t.Fatalf("task should still be running after a forbidden interrupt")
+	}
+}
+
+// 已结束的任务再次中止应返回冲突。
+func TestHandleInterruptTask_NotRunning(t *testing.T) {
+	handler := setupTaskRouter()
+	user := createTestUserWithRole(t, fmt.Sprintf("task_user_interrupt_done_%d", time.Now().UnixNano()), perms.RoleOperator)
+	cookie := loginCookie(t, handler, user.ID)
+
+	task := createFinishedTask(t)
+	w := postInterrupt(t, handler, cookie, task.ID)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("interrupt expected %d, got %d, body=%s", http.StatusConflict, w.Code, w.Body.String())
+	}
+}
+
 // createFinishedTask 直接构造一个已结束任务及其输出行，用于验证数据库回放。
 func createFinishedTask(t *testing.T, outputs ...string) models.Task {
 	t.Helper()
@@ -304,8 +435,8 @@ func TestHandleGetTaskOutput_FinishedTaskReplaysAll(t *testing.T) {
 	if !strings.Contains(body, "event: task_done") {
 		t.Fatalf("expected task_done event:\n%s", body)
 	}
-	if !strings.Contains(body, "id: 4\n") {
-		t.Fatalf("expected task_done id 4:\n%s", body)
+	if !strings.Contains(body, "id: done\n") {
+		t.Fatalf("expected task_done event id:\n%s", body)
 	}
 }
 
@@ -337,8 +468,8 @@ func TestHandleGetTaskOutput_StopsAfterTaskDone(t *testing.T) {
 
 	task := createFinishedTask(t, "line one")
 
-	// task_done 的事件 ID 是 lastSeq+1 = 2；携带它重连时应返回 204。
-	w := requestTaskOutput(t, handler, cookie, task.ID, "2")
+	// 客户端已经收到 task_done，携带该 ID 重连时应返回 204。
+	w := requestTaskOutput(t, handler, cookie, task.ID, tasks.TaskDoneEventID)
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("expected %d, got %d, body=%s", http.StatusNoContent, w.Code, w.Body.String())
 	}

@@ -19,6 +19,7 @@ p, basic, /task, GET
 p, basic, /task/:id, GET
 p, basic, /task/definition/:taskType, GET
 p, basic, /task/:id/output, GET
+p, operator, /task/:id/interrupt, POST
 p, basic, /task/trigger, POST
 p, basic, /state/snapshot/server-status, GET
 p, basic, /state/watch/server-status, GET

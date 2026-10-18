@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -19,6 +18,10 @@ import (
 var ErrTaskInterrupted = errors.New("任务中断")
 var ErrTaskTypeExecuting = errors.New("互斥任务正在执行中，请稍后再试")
 
+// Executor 的生命周期由三个按序发生的信号描述：
+//  1. tc.ctx.Done()：任务已确定结局（done/throw/超时），monitor 开始收尾；
+//  2. taskFuncDone：任务函数 F 已返回，不会再产生副作用；
+//  3. Done()：monitor 收尾完毕（落库、广播 task_done、注销执行器），任务真正停止。
 type Executor struct {
 	// hub 用于管理当前任务的 SSE 订阅者，并向连接中的客户端广播任务状态更新和输出。
 	hub *pubsub.Hub[sse.Event]
@@ -27,14 +30,11 @@ type Executor struct {
 	task *models.Task
 	// taskDefinition 用于存储当前执行器对应的任务定义，它在执行器的生命周期内保持不变。
 	taskDefinition *TaskDefinition
-	// stateLock 保护 interrupted 字段和 tc 字段的访问。
-	stateLock sync.Mutex
-	// tc 是任务的执行上下文，用于记录任务的执行进度、输出以及状态更新等信息。
+	// tc 是任务的执行上下文
 	tc *TaskContext
-	// interruptOnce 确保 Interrupt 方法的幂等性。
-	interruptOnce sync.Once
-	// interrupted 记录任务是否被触发过中断逻辑。
-	interrupted bool
+	// taskFuncDone 在任务函数 F 返回（包括 panic）后关闭。
+	// 不变式：tc.ctx 一定先被取消，taskFuncDone 才关闭；monitor 写终态前等待它。
+	taskFuncDone chan struct{}
 	// ctx 用于控制当前执行器的生命周期。
 	ctx context.Context
 	// cancel 用于取消当前执行器的执行。
@@ -58,26 +58,18 @@ func NewExecutor(def *TaskDefinition) *Executor {
 		ctx:            ctx,
 		cancel:         cancel,
 		flushReq:       make(chan chan uint64),
+		taskFuncDone:   make(chan struct{}),
 	}
 }
 
-// Interrupt 触发任务执行器的中断逻辑，monitor 将立即退出并将任务标记为失败。
+// Interrupt 立即请求停止任务，并把原因标记为中断。
 func (e *Executor) Interrupt() {
-	e.interruptOnce.Do(func() {
-		e.stateLock.Lock()
-		e.interrupted = true
-		tc := e.tc
-		e.stateLock.Unlock()
-
-		if tc != nil {
-			tc.throw(ErrTaskInterrupted)
-		}
-	})
+	e.tc.throw(ErrTaskInterrupted)
 }
 
 // Subscribe 将 client 注册为当前任务的事件订阅者，并把订阅 channel 接入客户端。
-// 返回的 unsubscribe 用于在连接结束后释放订阅；如果执行器尚未初始化广播器，
-// 或广播器已经关闭，则返回 false。
+// 返回的 unsubscribe 用于在连接结束后释放订阅；
+// 如果执行器尚未初始化广播器，或广播器已经关闭，则返回 false。
 func (e *Executor) Subscribe(client *sse.Client) (func(), bool) {
 	if e.hub == nil {
 		return func() {}, false
@@ -134,10 +126,7 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	// 初始化广播器和 TaskContext
 	e.hub = pubsub.NewHub[sse.Event]()
 	tc := NewTaskContextWithTimeout(e.taskDefinition.Timeout)
-	e.stateLock.Lock()
 	e.tc = tc
-	interrupted := e.interrupted
-	e.stateLock.Unlock()
 
 	/** 运行阶段，从这里开始需要正确处理 goroutine 的退出 **/
 
@@ -156,17 +145,19 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	// monitor 已经启动，互斥占位由它在退出时释放。
 	exclusiveReserved = false
 
-	// 如果在启动任务的过程中，任务被触发过中断逻辑，则立即将任务标记为失败并退出。
-	if interrupted {
-		tc.throw(ErrTaskInterrupted)
-		return &snapshot, nil
-	}
-
-	// 否则，在新的 goroutine 中执行任务定义中的函数 F，并在其 panic 后将任务标记为失败。
+	// 在新的 goroutine 中执行任务定义中的函数 F。
+	// 所有退出路径（正常返回、错误、panic、runtime.Goexit）都保证先确定终态、
+	// 再关闭 taskFuncDone，因此 monitor 可以只看 ctx 的 cause。
 	go func() {
+		defer close(e.taskFuncDone)
 		defer func() {
 			if r := recover(); r != nil {
 				tc.throw(fmt.Errorf("任务执行panic: %v", r))
+				return
+			}
+			if tc.ctx.Err() == nil {
+				// F 直接返回却没有调用 done/throw（例如 runtime.Goexit）。
+				tc.throw(errors.New("任务函数已退出但未标记结束"))
 			}
 		}()
 
@@ -329,6 +320,8 @@ func (e *Executor) monitor() {
 	for {
 		select {
 		case <-e.tc.ctx.Done():
+			<-e.taskFuncDone
+
 			// 任务结束时 outputChan 中可能仍有已入队的输出，先全部消费再收尾。
 		drain:
 			for {
@@ -365,12 +358,11 @@ func (e *Executor) monitor() {
 			// 持久化重试应由统一的写库策略处理，而不是在这个分支里单独实现。
 			flushTask()
 
-			// task_done 使用 lastSeq+1 作为事件 ID：客户端凭它判断历史已经消费完毕，
+			// task_done 使用固定的事件 ID，客户端凭它判断历史已经消费完毕，
 			// 重连时服务端可以直接返回 204 停止重连。
 			e.hub.Broadcast(taskDoneEvent(
 				e.task.Status == models.TaskStatusSuccess,
 				e.task.Error,
-				e.lastSeq.Load()+1,
 			))
 			return
 
