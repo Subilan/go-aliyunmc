@@ -31,9 +31,15 @@ func HandleGetTaskOutput(c *gin.Context) {
 		return
 	}
 
-	afterSeq, hasLastEventID, err := parseLastEventID(c)
+	afterSeq, hasLastEventID, done, err := parseLastEventID(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, h.DetailsF("Last-Event-ID格式错误"))
+		return
+	}
+
+	if done {
+		// 客户端已经收到 task_done，输出流没有更多内容，返回 204 让 EventSource 停止重连。
+		c.Status(http.StatusNoContent)
 		return
 	}
 
@@ -66,27 +72,31 @@ func HandleGetTaskOutput(c *gin.Context) {
 		// 执行器恰好在此刻结束，退回从数据库回放。
 	}
 
-	streamFinishedTaskOutput(c, uint(taskIdUint), afterSeq, hasLastEventID)
+	streamFinishedTaskOutput(c, uint(taskIdUint), afterSeq)
 }
 
 // parseLastEventID 读取 SSE 重连时浏览器自动携带的 Last-Event-ID 请求头。
-func parseLastEventID(c *gin.Context) (uint64, bool, error) {
+// done 表示客户端已经消费到 task_done；其余情况返回输出序号。
+func parseLastEventID(c *gin.Context) (afterSeq uint64, hasLastEventID, done bool, err error) {
 	raw := strings.TrimSpace(c.GetHeader("Last-Event-ID"))
 	if raw == "" {
-		return 0, false, nil
+		return 0, false, false, nil
+	}
+	if raw == tasks.TaskDoneEventID {
+		return 0, true, true, nil
 	}
 
 	id, err := strconv.ParseUint(raw, 10, 64)
 	if err != nil {
-		return 0, true, err
+		return 0, true, false, err
 	}
 
-	return id, true, nil
+	return id, true, false, nil
 }
 
 // streamFinishedTaskOutput 在任务没有正在运行的执行器时，从数据库回放其输出。
-// 不带 Last-Event-ID 时从头回放；带 Last-Event-ID 时只回放其后的行。
-func streamFinishedTaskOutput(c *gin.Context, taskID uint, afterSeq uint64, hasLastEventID bool) {
+// afterSeq 之前的行不再回放；为 0 时从头回放。
+func streamFinishedTaskOutput(c *gin.Context, taskID uint, afterSeq uint64) {
 	task, err := store.GetTaskRecord(taskID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -103,25 +113,12 @@ func streamFinishedTaskOutput(c *gin.Context, taskID uint, afterSeq uint64, hasL
 		return
 	}
 
-	lastSeq, err := store.GetLastTaskOutputSeq(taskID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, h.DetailsF("读取任务输出失败：%s", err.Error()))
-		return
-	}
-
-	// task_done 的事件 ID 是 lastSeq+1。客户端已经收到它（或更靠后的 ID）时，
-	// 返回 204 让 EventSource 停止自动重连。
-	if hasLastEventID && afterSeq > lastSeq {
-		c.Status(http.StatusNoContent)
-		return
-	}
-
 	client, err := sse.NewClient(c)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, h.DetailsF("无法建立SSE连接：%s", err.Error()))
 		return
 	}
 
-	tasks.ReplayTaskOutput(client, task, lastSeq, afterSeq)
+	tasks.ReplayTaskOutput(client, task, afterSeq)
 	client.Listen()
 }
