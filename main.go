@@ -43,6 +43,8 @@ import (
 )
 
 func main() {
+	env.MustInitialize()
+
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "usage: %s <command>\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  run          启动服务器\n")
@@ -71,12 +73,13 @@ func main() {
 }
 
 func runServer() {
-	env.MustInitialize()
-
 	// 读入、填默认值并校验全部配置。
 	config.MustLoad()
 
 	store.MustInitialize()
+	if err := store.AutoMigrate(); err != nil {
+		log_util.Fatal("初始化开发数据库失败: %v", err)
+	}
 	if err := session.InitStore(store.DB); err != nil {
 		log_util.Fatal("初始化 session 存储失败: %v", err)
 	}

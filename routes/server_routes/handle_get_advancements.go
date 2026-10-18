@@ -3,20 +3,21 @@ package server_routes
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Subilan/go-aliyunmc/context_util"
-	"github.com/Subilan/go-aliyunmc/h"
-	"github.com/Subilan/go-aliyunmc/mc"
-	"github.com/Subilan/go-aliyunmc/store"
-	"github.com/Subilan/go-aliyunmc/store/models"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/context_util"
+	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/mc"
+	"github.com/Subilan/go-aliyunmc/playerdata"
+	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/store/models"
+
 	"github.com/gin-gonic/gin"
 )
-
-const advancementsDir = "remote_data_cache/player_advancements"
 
 type rawAchievement struct {
 	Criteria map[string]string `json:"criteria"`
@@ -49,7 +50,7 @@ func HandleGetAdvancements(c *gin.Context) (any, error) {
 		}
 	}
 
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", advancementsDir, uuid))
+	data, err := os.ReadFile(filepath.Join(playerdata.AdvancementsDir(), uuid+".json"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, h.HttpError(http.StatusNotFound, "未找到该玩家的成就数据")

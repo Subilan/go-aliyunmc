@@ -9,7 +9,6 @@ import (
 
 // validStore / validConfig 是一份满足全部必填项的最小配置，用例在其中做局部改动。
 const validStore = `
-driver = "sqlite"
 dbname = "aliyunmc"
 `
 
@@ -99,6 +98,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		want int
 	}{
 		{"base.expose", cfg.Base.Expose, 45678},
+		{"store.port", cfg.Store.Port, 3306},
 		{"server.port", int(cfg.Server.Port), 25565},
 		{"monitors.server.poll_interval_sec", cfg.Monitors.Server.PollIntervalSec, 5},
 		{"monitors.auto_archive_idle.idle_countdown_sec", cfg.Monitors.AutoArchiveIdle.IdleCountdownSec, 1200},
@@ -120,7 +120,6 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		want string
 	}{
 		{"store.charset", cfg.Store.Charset, "utf8mb4"},
-		{"store.sslmode", cfg.Store.SSLMode, "disable"},
 		{"monitors.file_sync.local_cache_root", cfg.Monitors.FileSync.LocalCacheRoot, "remote_data_cache"},
 		{"monitors.best_ecs_candidate.cache_file", cfg.Monitors.BestEcsCandidate.CacheFile, "ecs_candidates.json"},
 		{"tasks.backup.vars.base_dir", cfg.Tasks.Backup.Vars.BaseDir, "/home/mc/server/archive"},
@@ -199,18 +198,18 @@ func TestLoadStoreOnlyNeedsStoreSection(t *testing.T) {
 	if err := load("store", &cfg.Store); err != nil {
 		t.Fatalf("只读 store 节时不应报错: %v", err)
 	}
-	if cfg.Store.DSN() != "aliyunmc.db" {
+	want := "root:@tcp(localhost:3306)/aliyunmc?charset=utf8mb4&parseTime=True&loc=Local"
+	if cfg.Store.DSN() != want {
 		t.Errorf("DSN 不正确: %s", cfg.Store.DSN())
 	}
 }
 
-func TestLoadStoreRequiresPortForNonSqlite(t *testing.T) {
-	writeConfigs(t, map[string]string{"store": "driver = \"mysql\"\ndbname = \"aliyunmc\"\n"})
+func TestLoadStoreRejectsInvalidPort(t *testing.T) {
+	writeConfigs(t, map[string]string{"store": "port = 70000\n"})
 
 	var cfg Config
-	// mysql / postgres 下 Port 必填
 	if err := load("store", &cfg.Store); err == nil {
-		t.Fatal("mysql 驱动缺少 port 应当报错")
+		t.Fatal("超出范围的 port 应当报错")
 	}
 }
 

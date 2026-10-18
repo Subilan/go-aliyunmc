@@ -9,7 +9,7 @@ make gen-config   # Generate example configs into example_configs/
 make test         # Run all tests (go test -v ./...)
 go test ./...     # 直接运行即可，不需要先生成或复制配置文件
 make build        # Build binary as aliyunmc
-make dev          # Run in dev mode (sets GO_ALIYUNMC_DEV=1)
+make dev          # Run in dev mode (sets GO_ALIYUNMC_DEV=1; auto-migrates DB)
 make run          # Run without dev mode
 make migrate-diff NAME=add_xxx   # Generate a MySQL diff migration from GORM models (Atlas + Docker, MariaDB 10.11 dev)
 ./aliyunmc migrate   # Apply pending versioned migrations
@@ -23,12 +23,26 @@ go test -v ./routes/user_routes/
 go test -v ./config/ -run TestStoreDSN
 ```
 
+需要数据库的测试会在 MySQL/MariaDB 上为每个测试包创建临时库（`aliyunmc_test_<随机>`），
+应用嵌入的版本化迁移后在结束时删除。连接信息取自
+`GO_ALIYUNMC_TEST_MYSQL_{HOST,PORT,USER,PASSWORD}`，默认
+`127.0.0.1:3306` / `root` / 空密码；账号需要 `CREATE DATABASE` 与 `DROP DATABASE` 权限，
+通常只需授予库级权限：`GRANT ALL PRIVILEGES ON \`aliyunmc_test_%\`.* TO '<user>'@'<host>';`。
+
 API integration tests (requires running server + [hurl](https://hurl.dev)):
 ```bash
 cd hurl/users && make test-login USER=<name>
 cd hurl/users && make test-create USER=<name>
 cd hurl/tasks && make test-create-test-task USER=<name>
 ```
+
+## Development Environment
+
+本地开发直接使用 `configs/`，并与生产使用同样的能力。隔离完全由配置决定：
+开发配置指向独立的数据库、实例资源、SSH 密钥与 OSS 前缀，代码层不做限制。
+`env.DEV` 只开启 Gin debug、`dev/dev` 自动登录和 GORM auto-migrate；
+`make dev` 会对 `configs/store.toml` 指向的库执行 AutoMigrate，运行前确认它指向开发库。
+`configs/` 含敏感数据且被 gitignore。
 
 ## RAM Policy Generation
 
@@ -50,7 +64,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `routes/` | Route registration and HTTP handlers. Each sub-package has a `Bind(*gin.Engine)` and handler files prefixed `handle_`. |
 | `mid/` | Auth (`mid.Auth`) and RBAC permission (`mid.Perm`) middleware. Auth sets `user`/`user_id` in the Gin context; Perm checks Casbin rules. |
 | `h/` | Handler wrappers that enforce the `{"data": ...}` / `{"error": ...}` API contract. |
-| `store/` | GORM database layer. `store.DB` is the global connection pool (SQLite/MySQL/Postgres). Models in `store/models/`. |
+| `store/` | GORM database layer. `store.DB` is the global MySQL connection pool. Models in `store/models/`. Tests use a temporary MySQL database via `internal/testutil`. |
 | `tasks/` | Task execution system: definitions, execution lifecycle, SSE integration. `TaskDefinitions` map registers task types. |
 | `scripts/` | Shell script templates (`*.tmpl.sh`) executed remotely via SSH during tasks. |
 | `sse/` | Server-Sent Events client: event framing, keep-alive, and the blocking write loop for a connection. |
@@ -72,10 +86,11 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 初始化是显式发生的，不再依赖 `init()`：
 
 - `config.MustLoad()` 一次性读入 `configs/store.toml` + `configs/config.toml`（严格解码 → 填默认值 → 校验）并安装进 registry。此后全程序通过 `config.Get()` 读取。
+- `main()` 先调用 `env.MustInitialize()` — DEV flag。
 - `runServer` 按以下顺序装配：
-  1. `env.MustInitialize()` — DEV flag
-  2. `config.MustLoad()` — 全部配置
-  3. `store.MustInitialize()` — 用 `config.Get().Store` 连接 DB
+  1. `config.MustLoad()` — 全部配置
+  2. `store.MustInitialize()` — 用 `config.Get().Store` 连接 MySQL
+  3. `store.AutoMigrate()` — DEV 下由 GORM AutoMigrate 建表（生产仍走 `migrate`）
   4. `session.InitStore(store.DB)` — session 存储
   5. `perms.MustInitialize()` — Casbin enforcer
   6. `aliyun.MustInitialize()` — 阿里云 clients
@@ -84,7 +99,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
   9. `mc.MustLoadData()` — Minecraft 语言数据；`mc.Advancements()` 等访问器在首次访问时也会自动加载
   10. `monitors.MustInitialize(ctx)` — 启动各 monitor/sampler，需在路由注册之后
 - `migrate` 和 `create_user` 只调用 `config.MustLoadStore()`（仅读 `store.toml`），因此不会被云凭证、私钥路径等其余各节挡住。
-- `migrate` 调用 `store.Migrate()`：用嵌入的 `migrations/mysql/*.sql`（golang-migrate 格式）应用版本化迁移。**不再使用 GORM AutoMigrate**；schema 变更必须通过 Atlas 生成迁移文件。版本化迁移目前只支持 MySQL 协议（生产为 MariaDB），其他驱动会报错。生产部署由 production 仓库的 workflow 在切换 `current` 前自动执行 `migrate`。
+- `migrate` 调用 `store.Migrate()`：用嵌入的 `migrations/mysql/*.sql`（golang-migrate 格式）应用版本化迁移。系统只支持 MySQL（生产为 MariaDB）；生产的 schema 变更必须通过 Atlas 生成迁移文件。DEV 模式由 `store.AutoMigrate()` 在启动时用 GORM AutoMigrate 补表。生产部署由 production 仓库的 workflow 在切换 `current` 前自动执行 `migrate`。
 - `check_config` 调用 `config.MustLoad()` 后立即退出：不连库、不建客户端、不读私钥，用于部署前确认配置与二进制版本匹配。
 
 各功能包只提供显式的 `MustInitialize()`，且只做副作用（连库、建 client、载 Casbin、读私钥）：配置由 `config.Get()` 自取，不再有包级配置全局，也没有 `MustLoadConfig()`。结构体上的 `validate` tags 会在加载时统一校验，无效配置直接终止进程。
@@ -163,7 +178,7 @@ SSH always uses port 22. Authentication is role-based:
 
 | 文件 | 内容 | 读取者 |
 |---|---|---|
-| `configs/store.toml` | 数据库配置 | `run`、`migrate`、`create_user`、`check_config` |
+| `configs/store.toml` | MySQL 数据库配置 | `run`、`migrate`、`create_user`、`check_config` |
 | `configs/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[perms]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run`、`check_config` |
 
 `store` 单独成文件，是因为另外两个子命令只需要它。`Config.Store` 标了 `toml:"-"`，所以 `config.toml` 里若出现 `[store]` 会被严格解码直接报错，不会形成第二条真相。
@@ -182,15 +197,15 @@ Runtime `configs/` files are user-managed — never auto-generate them.
 
 ## Database Migrations
 
-数据库 schema 由 `store/models` 的 GORM 实体定义，但变更通过版本化 SQL 管理（目前只支持 MySQL 协议，生产为 MariaDB）：
+数据库 schema 由 `store/models` 的 GORM 实体定义。系统只支持 MySQL（生产为 MariaDB）；生产变更通过版本化 SQL 管理：
 
 - `migrations/mysql/` 存放 golang-migrate 格式的迁移文件（`<version>_<name>.up.sql` / `.down.sql`），由 `migrations/embed.go` 嵌入二进制。
 - 修改模型后运行 `make migrate-diff NAME=...`（`atlas.hcl` + `tools/atlasloader`）自动生成差量 SQL；Atlas 通过 Docker 启动临时 **MariaDB 10.11** dev 库。不要换回 MySQL 8：它生成的 `utf8mb4_0900_ai_ci` 在 MariaDB 上无法执行。
 - 新增 GORM 模型时必须把它加入 `store/models/entities.go` 的 `Entities()`，否则 Atlas 看不到它。
-- 运行时 `./aliyunmc migrate` 调用 `store.Migrate()`，用 golang-migrate 应用嵌入的迁移并记录到 `schema_migrations`；非 MySQL 驱动会直接报错。生产 deploy workflow 会在切换 `current` 之前自动执行这一步。
+- 运行时 `./aliyunmc migrate` 调用 `store.Migrate()`，用 golang-migrate 应用嵌入的迁移并记录到 `schema_migrations`。生产 deploy workflow 会在切换 `current` 之前自动执行这一步。
 - 一次性数据迁移放在 `migrations/data/`，文件名与同名 schema 迁移对应（`.addendum.sql`）。`store.Migrate()` 在 `m.Up()` 之后按 schema 版本执行它们；SQL 必须幂等，且只包含 DML。它们不参与 Atlas 差量和 `atlas.sum`。
 - 旧数据库（没有 `schema_migrations`）首次运行时会按已有表结构自动写入基线版本，不会重复建表。
-- 测试使用临时 SQLite 库，TestMain 里仍用 `store.DB.AutoMigrate(models.Entities()...)` 建表。
+- 测试通过 `internal/testutil.OpenMySQLTestDB()` 在 MySQL 上创建临时库，并调用 `store.MigrateDSN()` 应用同一套迁移。
 - 详情见 `migrations/README.md`。不要再用 `AutoMigrate` 修改 production schema。
 
 ## SSE Streaming

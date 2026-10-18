@@ -10,7 +10,6 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/migrations"
-	"github.com/Subilan/go-aliyunmc/store/models"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -18,29 +17,29 @@ import (
 )
 
 const (
-	// migrationDriver 是目前唯一支持版本化迁移的数据库。
+	// migrationDriver 是系统唯一支持的数据库。
 	migrationDriver = "mysql"
 	// migrationsTable 是 golang-migrate 记录已应用版本的默认表名。
 	migrationsTable = "schema_migrations"
 )
 
-// Migrate 按版本顺序应用 migrations/mysql/ 下嵌入的 SQL 迁移。
+// Migrate 用 config.Get().Store 的 DSN 应用嵌入的 SQL 迁移。
+func Migrate() error {
+	return MigrateDSN(config.Get().Store.DSN())
+}
+
+// MigrateDSN 按版本顺序在 dsn 指向的数据库上应用 migrations/mysql/ 下嵌入的 SQL 迁移。
 //
 // 旧版本的数据库由 GORM AutoMigrate 创建，没有版本记录。为了平滑接入，
 // 首次运行时如果检测到已有 users 表但还没有 schema_migrations，就把基线
 // 版本直接写入版本表，只执行基线之后的迁移。
-func Migrate() error {
-	driverName := config.Get().Store.Driver
-	if driverName != migrationDriver {
-		return fmt.Errorf("版本化迁移目前只支持 mysql，当前驱动为 %s", driverName)
-	}
-
+func MigrateDSN(dsn string) error {
 	src, err := iofs.New(migrations.FS, migrationDriver)
 	if err != nil {
 		return fmt.Errorf("加载 mysql 迁移文件失败: %w", err)
 	}
 
-	db, err := openMigrationDB()
+	db, err := openMigrationDB(dsn)
 	if err != nil {
 		return err
 	}
@@ -48,7 +47,15 @@ func Migrate() error {
 
 	// 基线检测必须在 database driver 初始化之前完成：WithInstance 会创建
 	// schema_migrations 表，之后就无法区分新库和旧库了。
-	needsBaseline := !DB.Migrator().HasTable(migrationsTable) && DB.Migrator().HasTable("users")
+	hasMigrations, err := tableExists(db, migrationsTable)
+	if err != nil {
+		return err
+	}
+	hasUsers, err := tableExists(db, "users")
+	if err != nil {
+		return err
+	}
+	needsBaseline := !hasMigrations && hasUsers
 
 	dbDriver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
@@ -61,7 +68,11 @@ func Migrate() error {
 	}
 
 	if needsBaseline {
-		version, err := baselineVersion()
+		hasOutputLines, err := tableExists(db, "task_output_lines")
+		if err != nil {
+			return err
+		}
+		version, err := baselineVersion(hasOutputLines)
 		if err != nil {
 			return err
 		}
@@ -94,9 +105,9 @@ func Migrate() error {
 //   - 若库中已有 task_output_lines（本分支曾用 AutoMigrate 跑过），
 //     基线为创建该表的迁移；
 //   - 否则基线为最初的 baseline 迁移。
-func baselineVersion() (uint64, error) {
+func baselineVersion(hasOutputLines bool) (uint64, error) {
 	suffix := "_baseline"
-	if DB.Migrator().HasTable(&models.TaskOutputLine{}) {
+	if hasOutputLines {
 		suffix = "_task_output_lines"
 	}
 
@@ -126,10 +137,22 @@ func baselineVersion() (uint64, error) {
 	return 0, fmt.Errorf("在 migrations/%s 中找不到 %s 迁移", migrationDriver, suffix)
 }
 
+// tableExists 报告当前连接的数据库里是否已有指定表。
+func tableExists(db *sql.DB, table string) (bool, error) {
+	var count int
+	err := db.QueryRow(
+		"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+		table,
+	).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("检查表 %s 是否存在失败: %w", table, err)
+	}
+	return count > 0, nil
+}
+
 // openMigrationDB 打开一个仅用于执行迁移的 MySQL 连接。
 // 一个迁移文件可能包含多条语句，因此需要显式开启 multiStatements。
-func openMigrationDB() (*sql.DB, error) {
-	dsn := config.Get().Store.DSN()
+func openMigrationDB(dsn string) (*sql.DB, error) {
 	if !strings.Contains(dsn, "multiStatements=") {
 		separator := "?"
 		if strings.Contains(dsn, "?") {

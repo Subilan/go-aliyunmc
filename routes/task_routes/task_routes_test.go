@@ -22,18 +22,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const testDBPath = "task_routes_test.db"
-
 func TestMain(m *testing.M) {
 	if err := testutil.ChdirProjectRoot(); err != nil {
 		panic(err)
 	}
 	config.Set(&config.Config{
-		Store: config.Store{
-			Driver: "sqlite",
-			DBName: "task_routes_test",
-			Path:   testDBPath,
-		},
 		Perms: config.Perms{
 			ModelPath:  "rbac_model.conf",
 			PolicyPath: "rbac_policy.csv",
@@ -41,13 +34,15 @@ func TestMain(m *testing.M) {
 	})
 	tasks.RegisterTaskDefinitions()
 	perms.MustInitialize()
-	store.MustInitialize()
-	if err := store.DB.AutoMigrate(models.Entities()...); err != nil {
+
+	cleanup, err := testutil.OpenMySQLTestDB()
+	if err != nil {
 		panic(err)
 	}
 
 	code := m.Run()
-	_ = os.Remove(testDBPath)
+
+	cleanup()
 	os.Exit(code)
 }
 

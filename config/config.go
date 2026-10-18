@@ -43,6 +43,11 @@ func Get() *Config {
 	return cfg
 }
 
+// TryGet 返回已安装的配置；尚未加载时返回 nil，供需要默认值兜底的库函数使用。
+func TryGet() *Config {
+	return current.Load()
+}
+
 // Set 安装配置。供测试与 migrate/create_user 这类特殊入口使用。
 func Set(cfg *Config) {
 	current.Store(cfg)

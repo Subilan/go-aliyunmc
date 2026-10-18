@@ -22,11 +22,11 @@ func TestMain(m *testing.M) {
 func writeStatsFile(t *testing.T, uuid string, playTime int) string {
 	t.Helper()
 
-	if err := os.MkdirAll(StatsDir, 0o755); err != nil {
+	if err := os.MkdirAll(StatsDir(), 0o755); err != nil {
 		t.Fatalf("create stats dir failed: %v", err)
 	}
 
-	path := filepath.Join(StatsDir, uuid+".json")
+	path := filepath.Join(StatsDir(), uuid+".json")
 	content := fmt.Sprintf(`{"stats":{"minecraft:custom":{"minecraft:play_time":%d}},"DataVersion":1}`, playTime)
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write stats file failed: %v", err)
@@ -88,7 +88,7 @@ func TestReadStatsDoesNotCacheMissingFile(t *testing.T) {
 }
 
 func TestListPlayerUUIDsCachesResult(t *testing.T) {
-	if err := os.MkdirAll(StatsDir, 0o755); err != nil {
+	if err := os.MkdirAll(StatsDir(), 0o755); err != nil {
 		t.Fatalf("create stats dir failed: %v", err)
 	}
 

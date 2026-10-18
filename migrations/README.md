@@ -85,6 +85,6 @@ atlas migrate hash --env mysql
 
 ## 注意
 
-- 不要再调用 GORM 的 `AutoMigrate` 修改 production schema（测试中的临时 SQLite 库除外）。
+- 不要再调用 GORM 的 `AutoMigrate` 修改 production schema（DEV 模式的 `store.AutoMigrate()` 除外）。
 - 不要在已有迁移文件上叠加变更；应新增一个迁移版本，保证已部署环境可以按序升级。
 - 运行 `./aliyunmc migrate` 前建议先备份数据库。

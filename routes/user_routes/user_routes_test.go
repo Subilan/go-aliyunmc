@@ -19,35 +19,27 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-const testDBPath = "user_routes_test.db"
-
 func TestMain(m *testing.M) {
 	if err := testutil.ChdirProjectRoot(); err != nil {
 		panic(err)
 	}
-	_ = os.Remove(testDBPath)
 
 	config.Set(&config.Config{
-		Store: config.Store{
-			Driver: "sqlite",
-			DBName: "user_routes_test",
-			Path:   testDBPath,
-		},
 		Perms: config.Perms{
 			ModelPath:  "rbac_model.conf",
 			PolicyPath: "rbac_policy.csv",
 		},
 	})
 	perms.MustInitialize()
-	store.MustInitialize()
-	if err := store.DB.AutoMigrate(models.Entities()...); err != nil {
+
+	cleanup, err := testutil.OpenMySQLTestDB()
+	if err != nil {
 		panic(err)
 	}
 
 	code := m.Run()
 
-	_ = os.Remove(testDBPath)
-
+	cleanup()
 	os.Exit(code)
 }
 

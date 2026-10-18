@@ -7,8 +7,6 @@ import (
 	"github.com/Subilan/go-aliyunmc/config"
 
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -23,19 +21,6 @@ func Silent() *gorm.DB {
 // MustInitialize 初始化GORM连接池
 func MustInitialize() {
 	var err error
-	var dialector gorm.Dialector
-
-	// 根据驱动类型选择对应的dialector
-	switch config.Get().Store.Driver {
-	case "mysql":
-		dialector = mysql.Open(config.Get().Store.DSN())
-	case "postgres":
-		dialector = postgres.Open(config.Get().Store.DSN())
-	case "sqlite":
-		dialector = sqlite.Open(config.Get().Store.DSN())
-	default:
-		log.Fatalf("不支持的数据库驱动: %s", config.Get().Store.Driver)
-	}
 
 	// 配置GORM
 	gormConfig := &gorm.Config{
@@ -44,7 +29,7 @@ func MustInitialize() {
 	}
 
 	// 连接数据库
-	DB, err = gorm.Open(dialector, gormConfig)
+	DB, err = gorm.Open(mysql.Open(config.Get().Store.DSN()), gormConfig)
 	if err != nil {
 		log.Fatalf("数据库连接失败: %v", err)
 	}

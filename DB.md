@@ -10,8 +10,10 @@
 | Atlas CLI + `atlas-provider-gorm` | 读取 GORM 实体，与已有迁移做差量，自动生成 SQL |
 | golang-migrate | 运行时按版本顺序执行 SQL，并在 `schema_migrations` 表记录已应用版本 |
 
-当前版本化迁移只支持 **MySQL**。`store.Migrate()` 检测到其他驱动（如 sqlite/postgres）会直接返回错误。
-测试使用临时 SQLite 数据库，由 `store.DB.AutoMigrate(models.Entities()...)` 建表，不经过迁移文件。
+系统只支持 **MySQL**。生产环境的 schema 变更走版本化迁移；DEV 模式在启动时由
+`store.AutoMigrate()` 调用 GORM AutoMigrate 直接补表，不要求每次改模型都生成迁移。
+测试通过 `internal/testutil.OpenMySQLTestDB()` 在 MySQL 上创建临时数据库，并调用
+`store.MigrateDSN()` 应用同一套版本化迁移，因此测试使用的 schema 与生产一致。
 
 生产实际运行的是 **MariaDB**（Debian 12 自带 10.11），因此 Atlas 的 dev 数据库也必须是 MariaDB：
 `atlas.hcl` 使用 `docker+maria://_/mariadb:10.11/dev`。如果用 MySQL 8 作为 dev 库，生成的 DDL 会带
@@ -33,7 +35,7 @@ store/migrate.go              # store.Migrate()：运行时应用迁移 + 旧库
 store/models/entities.go      # Entities()：参与迁移的模型列表
 ```
 
-## 为什么不再使用 AutoMigrate
+## 为什么生产不使用 AutoMigrate
 
 `AutoMigrate` 直接对比模型与数据库并修改 schema，问题在于：
 
@@ -41,7 +43,8 @@ store/models/entities.go      # Entities()：参与迁移的模型列表
 - 多实例/多环境之间的实际 schema 容易漂移；
 - 对已有大表做隐式变更风险不可控。
 
-改为版本化迁移后，模型仍然决定“目标 schema”，但落到数据库的每一步都先变成可提交、可审计的 SQL。
+生产因此使用版本化迁移：模型仍然决定“目标 schema”，但落到数据库的每一步都先变成可提交、可审计的 SQL。
+DEV 模式不追求可审计性，`store.AutoMigrate()` 会在启动时直接按模型补表，方便本地迭代。
 
 ## 修改数据库的流程
 
@@ -107,6 +110,8 @@ atlas migrate hash --env mysql
 
 迁移 SQL 已通过 `//go:embed` 编译进二进制，部署时不需要额外文件。
 `migrate` 只读取 `configs/store.toml`，不会加载云凭证、SSH 私钥等配置。
+
+本地开发（`make dev`）不需要执行这一步：DEV 启动时会自动 `AutoMigrate`。
 
 生产部署时不需要手工执行：production 仓库的 deploy workflow 会在切换 `current` 之前，
 用暂存目录里的新二进制自动执行 `migrate`。迁移失败会中止 workflow，线上 release 和

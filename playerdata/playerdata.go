@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -15,13 +16,35 @@ import (
 )
 
 const (
-	StatsDir        = "remote_data_cache/player_stats"
-	AdvancementsDir = "remote_data_cache/player_advancements"
-	WhitelistPath   = "remote_data_cache/whitelist.json"
+	defaultCacheRoot = "remote_data_cache"
 
 	// dataCacheTTL 是远端数据缓存的有效期，需短于文件同步的轮询间隔。
 	dataCacheTTL = 30 * time.Second
 )
+
+// CacheRoot 返回远端数据缓存根目录。
+// 配置加载前（例如单元测试）回退到默认值。
+func CacheRoot() string {
+	if cfg := config.TryGet(); cfg != nil && cfg.Monitors.FileSync.LocalCacheRoot != "" {
+		return cfg.Monitors.FileSync.LocalCacheRoot
+	}
+	return defaultCacheRoot
+}
+
+// StatsDir 返回玩家统计数据目录。
+func StatsDir() string {
+	return filepath.Join(CacheRoot(), "player_stats")
+}
+
+// AdvancementsDir 返回玩家成就数据目录。
+func AdvancementsDir() string {
+	return filepath.Join(CacheRoot(), "player_advancements")
+}
+
+// WhitelistPath 返回白名单文件路径。
+func WhitelistPath() string {
+	return filepath.Join(CacheRoot(), "whitelist.json")
+}
 
 var (
 	uuidCache     = cache.New[[]string](dataCacheTTL, 1)
@@ -52,7 +75,7 @@ type AdvancementProgress struct {
 
 // ReadWhitelist reads the whitelist JSON file
 func ReadWhitelist() ([]WhitelistEntry, error) {
-	data, err := os.ReadFile(WhitelistPath)
+	data, err := os.ReadFile(WhitelistPath())
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +111,7 @@ func BuildPlayerNameMap() map[string]string {
 // ReadStats reads the raw Minecraft stats JSON for a player
 func ReadStats(uuid string) (json.RawMessage, error) {
 	return statsCache.GetOrLoad(uuid, func() (json.RawMessage, error) {
-		data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", StatsDir, uuid))
+		data, err := os.ReadFile(filepath.Join(StatsDir(), uuid+".json"))
 
 		if err != nil {
 			return nil, err
@@ -125,7 +148,7 @@ func computeAdvancementProgress(uuid string) (AdvancementProgress, error) {
 
 	advancements := mc.Advancements()
 
-	data, err := os.ReadFile(fmt.Sprintf("%s/%s.json", AdvancementsDir, uuid))
+	data, err := os.ReadFile(filepath.Join(AdvancementsDir(), uuid+".json"))
 	if err != nil {
 		return AdvancementProgress{}, err
 	}
@@ -196,12 +219,7 @@ func AdvancementCategory(key string) string {
 // playerNameMatchExpr returns a SQL expression that matches playerName
 // within the comma-separated player_names column.
 func playerNameMatchExpr() string {
-	switch config.Get().Store.Driver {
-	case "mysql":
-		return "CONCAT(',', player_names, ',') LIKE CONCAT('%,', ?, ',%')"
-	default:
-		return "',' || player_names || ',' LIKE '%,' || ? || ',%'"
-	}
+	return "CONCAT(',', player_names, ',') LIKE CONCAT('%,', ?, ',%')"
 }
 
 // QueryOnlineDates returns sorted list of dates when the player was online.
@@ -351,7 +369,7 @@ func ReadMinecraftPlaytime(uuid string) (float64, error) {
 // ListPlayerUUIDs returns all UUIDs that have stats files
 func ListPlayerUUIDs() ([]string, error) {
 	return uuidCache.GetOrLoad("uuids", func() ([]string, error) {
-		entries, err := os.ReadDir(StatsDir)
+		entries, err := os.ReadDir(StatsDir())
 		if err != nil {
 			return nil, err
 		}

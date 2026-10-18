@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/internal/testutil"
 	"github.com/Subilan/go-aliyunmc/sse"
 	"github.com/Subilan/go-aliyunmc/store"
 	"github.com/Subilan/go-aliyunmc/store/models"
@@ -18,30 +18,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var testDBDir string
-
 func TestMain(m *testing.M) {
-	dir, err := os.MkdirTemp("", "tasks-test-*")
+	config.Set(&config.Config{})
+
+	cleanup, err := testutil.OpenMySQLTestDB()
 	if err != nil {
-		panic(err)
-	}
-	testDBDir = dir
-
-	config.Set(&config.Config{
-		Store: config.Store{
-			Driver: "sqlite",
-			Path:   filepath.Join(dir, "tasks_test.db"),
-		},
-	})
-
-	store.MustInitialize()
-	if err := store.DB.AutoMigrate(models.Entities()...); err != nil {
 		panic(err)
 	}
 
 	code := m.Run()
 
-	_ = os.RemoveAll(dir)
+	cleanup()
 	os.Exit(code)
 }
 

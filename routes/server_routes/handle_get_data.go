@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Subilan/go-aliyunmc/config"
@@ -52,7 +53,7 @@ func HandleGetData(c *gin.Context) (any, error) {
 		}
 
 		if file.Id != "" && file.Id == name || file.LocalPath == name {
-			filePath := config.Get().Monitors.FileSync.LocalCacheRoot + file.LocalPath
+			filePath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, file.LocalPath)
 			content, err := os.ReadFile(filePath)
 
 			if err != nil {
