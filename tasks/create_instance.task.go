@@ -152,6 +152,12 @@ func createInstanceTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
+	return createInstance(tc, params)
+}
+
+// createInstance 按已绑定的参数创建实例并分配公网 IP。
+// 当 params.StartWhenCreated 为 true 时，还会启动实例并等待其 SSH 可用。
+func createInstance(tc *TaskContext, params CreateInstanceTaskArgs) error {
 	if params.InstanceType == "" || params.ZoneId == "" {
 		snap := SnapshotBestEcsCandidate()
 		if !snap.IsValid() {
@@ -310,7 +316,7 @@ outer:
 	return nil
 }
 
-func checkCreateInstanceTask(args map[string]any) error {
+func checkCreateInstanceTask(_ map[string]any) error {
 	activeInstance, err := store.GetActiveInstanceDefaultNil()
 
 	if err != nil {

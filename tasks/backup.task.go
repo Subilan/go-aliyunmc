@@ -42,7 +42,7 @@ func checkBackupTask(args map[string]any) error {
 	if !snap.IsValid() {
 		return h.HttpError(http.StatusServiceUnavailable, "无法获取最新的服务器状态")
 	}
-	
+
 	if !snap.Value.Online {
 		return h.HttpError(http.StatusServiceUnavailable, "服务器未运行，跳过备份")
 	}

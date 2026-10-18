@@ -17,7 +17,7 @@ import (
 )
 
 var ErrTaskInterrupted = errors.New("任务中断")
-var ErrTaskTypeExecuting = errors.New("同类任务正在执行中")
+var ErrTaskTypeExecuting = errors.New("互斥任务正在执行中，请稍后再试")
 
 type Executor struct {
 	// hub 用于管理当前任务的 SSE 订阅者，并向连接中的客户端广播任务状态更新和输出。
@@ -39,9 +39,9 @@ type Executor struct {
 	ctx context.Context
 	// cancel 用于取消当前执行器的执行。
 	cancel context.CancelFunc
-	// exlusiveType 记录当前任务是否属于独占类型，如果是独占类型，在任务结束前同类任务将无法执行。
-	// 它的值相当于 taskDefinition.TypeExlusive。
-	exclusiveType bool
+	// exclusiveKey 是当前执行器在独占执行器表中的键；空字符串表示该任务不互斥。
+	// 未设置 ExclusiveGroup 时等于任务类型，否则为共享分组。
+	exclusiveKey models.TaskType
 	// taskID 是任务创建后固定的 ID，供 monitor 之外的 goroutine 读取。
 	taskID uint
 	// lastSeq 是当前任务已分配的最后一条输出序号。monitor 是唯一写入者。
@@ -96,11 +96,21 @@ func (e *Executor) Subscribe(client *sse.Client) (func(), bool) {
 //   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
 //   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
 func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) {
-	if e.taskDefinition.Exclusive {
-		if _, ok := GetExclusiveExecutor(e.taskDefinition.Type); ok {
+	// 互斥检查与占位是同一个原子操作：并发触发时只有一个执行器能抢到 key。
+	exclusiveReserved := false
+	if key := e.taskDefinition.exclusiveKey(); key != "" {
+		if _, loaded := runningExclusiveExecutors.LoadOrStore(key, e); loaded {
 			return nil, ErrTaskTypeExecuting
 		}
-		e.exclusiveType = true
+		e.exclusiveKey = key
+		exclusiveReserved = true
+
+		// monitor 启动后会接管清理；在此之前任何提前返回都必须释放占位。
+		defer func() {
+			if exclusiveReserved {
+				runningExclusiveExecutors.CompareAndDelete(key, e)
+			}
+		}()
 	}
 
 	// 创建任务记录
@@ -135,10 +145,6 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 	// 以便其他 goroutine 可以通过任务 ID 获取到它。
 	SetExecutor(task.ID, e)
 
-	if e.exclusiveType {
-		SetExclusiveExecutor(task.Type, e)
-	}
-
 	// 在启动 monitor 之前复制一份任务快照返回给调用方。
 	// e.task 归 monitor goroutine 所有，调用方（例如 HTTP handler 在 JSON 序列化时）
 	// 不得直接读取它，否则会与 monitor 的写入产生数据竞争。
@@ -146,6 +152,9 @@ func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) 
 
 	// 启动 monitor goroutine。
 	go e.monitor()
+
+	// monitor 已经启动，互斥占位由它在退出时释放。
+	exclusiveReserved = false
 
 	// 如果在启动任务的过程中，任务被触发过中断逻辑，则立即将任务标记为失败并退出。
 	if interrupted {
@@ -237,8 +246,8 @@ func (e *Executor) finalError() error {
 func (e *Executor) monitor() {
 	defer e.cancel()
 	defer DeleteExecutor(e.task.ID)
-	if e.exclusiveType {
-		defer DeleteExclusiveExecutor(e.task.Type)
+	if e.exclusiveKey != "" {
+		defer DeleteExclusiveExecutor(e.exclusiveKey)
 	}
 	// 无论任务如何结束，都保证广播器被关闭，订阅者不会残留。
 	defer e.hub.Close()

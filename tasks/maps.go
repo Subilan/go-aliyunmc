@@ -8,28 +8,23 @@ import (
 var runningExecutors sync.Map
 var runningExclusiveExecutors sync.Map
 
-// SetExclusiveExecutor 将正在执行的独占任务执行器与任务类型关联起来，供后续查询和管理。
-func SetExclusiveExecutor(taskType models.TaskType, executor *Executor) {
-	runningExclusiveExecutors.Store(taskType, executor)
-}
-
-// GetExclusiveExecutor 获取当前正在执行的独占任务执行器，如果不存在则返回 nil 和 false。
-// 只有类型互斥任务才能使用这个函数查询正在执行的任务执行器。
-func GetExclusiveExecutor(taskType models.TaskType) (*Executor, bool) {
-	executor, loaded := runningExclusiveExecutors.Load(taskType)
+// GetExclusiveExecutor 获取当前持有独占 key 的执行器，如果不存在则返回 nil 和 false。
+// key 通常是任务类型，也可以是多个任务共享的 ExclusiveGroup。
+func GetExclusiveExecutor(key models.TaskType) (*Executor, bool) {
+	executor, loaded := runningExclusiveExecutors.Load(key)
 	if !loaded {
 		return nil, loaded
 	}
 	return executor.(*Executor), true
 }
 
-// DeleteExclusiveExecutor 从正在执行的独占任务执行器表中删除指定任务类型的执行器。
-func DeleteExclusiveExecutor(taskType models.TaskType) {
-	runningExclusiveExecutors.Delete(taskType)
+// DeleteExclusiveExecutor 释放指定的独占 key。
+func DeleteExclusiveExecutor(key models.TaskType) {
+	runningExclusiveExecutors.Delete(key)
 }
 
-func IsExclusiveTaskRunning(taskType models.TaskType) bool {
-	_, running := GetExclusiveExecutor(taskType)
+func IsExclusiveTaskRunning(key models.TaskType) bool {
+	_, running := GetExclusiveExecutor(key)
 	return running
 }
 

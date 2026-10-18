@@ -15,8 +15,16 @@ type TaskDefinition struct {
 	// Type 定义了任务的类型，它是一个字符串，用于唯一标识一种任务。Type 与任务函数 F 一一对应，可以理解为任务函数的标识符。
 	Type models.TaskType `json:"type"`
 
-	// Exclusive 定义了任务是否属于独占类型。如果 Exclusive 为 true，则在该任务执行期间，同类型的其他任务将无法执行。
+	// Exclusive 定义了任务是否互斥。为 true 时，同一 ExclusiveGroup（未设置则为本任务 Type）
+	// 的任务在它执行期间都无法启动。
+	//
+	// 互斥由 Executor.RunTask 统一执行，任务定义里的 C 不需要再重复检查。
 	Exclusive bool `json:"exclusive"`
+
+	// ExclusiveGroup 可选，用于让多个不同类型但共享同一资源的任务互斥。
+	// 只在 Exclusive 为 true 时生效；为空时等价于使用 Type。
+	// 例如创建实例、部署、启动服务器和一键部署共用 [TaskExclusiveGroupDeployChain]。
+	ExclusiveGroup models.TaskType `json:"exclusiveGroup"`
 
 	// Role 定义了执行该任务所需的权限等级，只有大于或等于该权限等级的用户可以执行此任务。如果不填，相当于 perms.RoleUser，表示所有登录用户都可以执行。
 	Role perms.Role `json:"role"`
@@ -41,7 +49,23 @@ type TaskEnforcerFunc func(perms.Role, map[string]any) error
 
 type TaskFunc func(*TaskContext, map[string]any) error
 
+// TaskExclusiveGroupDeployChain 是部署链路的互斥分组。
+// 创建实例、部署、启动服务器和一键部署共享同一台实例，必须在整条链路上互斥。
+const TaskExclusiveGroupDeployChain models.TaskType = "deploy_chain"
+
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
+
+// exclusiveKey 返回该任务在独占执行器表中的键。
+// 没有任何互斥要求时返回空字符串。
+func (d *TaskDefinition) exclusiveKey() models.TaskType {
+	if !d.Exclusive {
+		return ""
+	}
+	if d.ExclusiveGroup != "" {
+		return d.ExclusiveGroup
+	}
+	return d.Type
+}
 
 func GetTaskDefinition(taskType models.TaskType) *TaskDefinition {
 	def, ok := TaskDefinitions[taskType]
@@ -66,11 +90,12 @@ func RegisterTaskDefinitions() {
 	}
 
 	TaskDefinitions[models.TaskTypeDeploy] = &TaskDefinition{
-		Exclusive: true,
-		Type:      models.TaskTypeDeploy,
-		Timeout:   0, // 不设置超时，由任务内部逻辑控制
-		F:         deployTask,
-		C:         checkDeployTask,
+		Exclusive:      true,
+		ExclusiveGroup: TaskExclusiveGroupDeployChain,
+		Type:           models.TaskTypeDeploy,
+		Timeout:        0, // 不设置超时，由任务内部逻辑控制
+		F:              deployTask,
+		C:              checkDeployTask,
 	}
 
 	TaskDefinitions[models.TaskTypeBackup] = &TaskDefinition{
@@ -92,19 +117,30 @@ func RegisterTaskDefinitions() {
 	}
 
 	TaskDefinitions[models.TaskTypeCreateInstance] = &TaskDefinition{
-		Exclusive: true,
-		Type:      models.TaskTypeCreateInstance,
-		Timeout:   10 * time.Minute,
-		F:         createInstanceTask,
-		C:         checkCreateInstanceTask,
-		E:         enforceCreateInstanceTask,
+		Exclusive:      true,
+		ExclusiveGroup: TaskExclusiveGroupDeployChain,
+		Type:           models.TaskTypeCreateInstance,
+		Timeout:        10 * time.Minute,
+		F:              createInstanceTask,
+		C:              checkCreateInstanceTask,
+		E:              enforceCreateInstanceTask,
+	}
+
+	TaskDefinitions[models.TaskTypeFullDeploy] = &TaskDefinition{
+		Exclusive:      true,
+		ExclusiveGroup: TaskExclusiveGroupDeployChain,
+		Type:           models.TaskTypeFullDeploy,
+		Timeout:        0, // 与 deploy 任务一致：各步骤自带超时，整体不设上限
+		F:              fullDeployTask,
+		E:              enforceFullDeployTask,
 	}
 
 	TaskDefinitions[models.TaskTypeStartServer] = &TaskDefinition{
-		Exclusive: true,
-		Type:      models.TaskTypeStartServer,
-		Timeout:   3 * time.Minute,
-		F:         startServerTask,
-		C:         checkStartServerTask,
+		Exclusive:      true,
+		ExclusiveGroup: TaskExclusiveGroupDeployChain,
+		Type:           models.TaskTypeStartServer,
+		Timeout:        3 * time.Minute,
+		F:              startServerTask,
+		C:              checkStartServerTask,
 	}
 }

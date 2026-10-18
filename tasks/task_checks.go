@@ -1,11 +1,12 @@
 package tasks
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/Subilan/go-aliyunmc/h"
 	"github.com/Subilan/go-aliyunmc/states"
 	"github.com/Subilan/go-aliyunmc/store"
-	"net/http"
-	"time"
 )
 
 // 来自 monitors 包的函数，用于避免 import cycle

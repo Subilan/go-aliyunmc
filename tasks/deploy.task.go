@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/config"
 	"github.com/Subilan/go-aliyunmc/h"
+	"github.com/Subilan/go-aliyunmc/log_util"
 	"github.com/Subilan/go-aliyunmc/remote_util"
 	"github.com/Subilan/go-aliyunmc/store"
 )
@@ -36,6 +38,7 @@ const (
 
 // deployStep 表示部署任务的一个步骤
 type deployStep struct {
+	name       string // 步骤名称，用于日志与失败点记录
 	stepType   deployStepType
 	script     string                                                       // 脚本步骤：模板路径
 	localFn    func(*TaskContext, *remote_util.Conn, context.Context) error // 本地步骤：执行函数
@@ -44,17 +47,63 @@ type deployStep struct {
 
 const scriptBasePath = "scripts/"
 
-// deploySteps 定义了部署任务的各个步骤，包括每个步骤对应的脚本模板路径和执行超时时间（秒）
+// 部署状态文件位于实例上，记录最近一次部署的结果与失败步骤。
+const (
+	deployStateDir  = "/var/lib/aliyunmc"
+	deployStateFile = deployStateDir + "/deploy-state"
+)
+
+// deploySteps 定义了部署任务的各个步骤，包括每个步骤对应的脚本模板路径和执行超时时间（秒）。
+// 所有脚本都必须保持幂等：部署失败后可以直接重新触发，已完成的步骤会跳过或安全覆盖。
 var deploySteps = []deployStep{
-	{script: "deploy.create-user.tmpl.sh", timeoutSec: 30},
-	{script: "deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
-	{script: "deploy.configure-apt-sources.tmpl.sh", timeoutSec: 120},
-	{script: "deploy.setup-java-repo.tmpl.sh", timeoutSec: 120},
-	{script: "deploy.install-system-packages.tmpl.sh", timeoutSec: 180},
-	{script: "deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
-	{script: "deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
-	{script: "deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
-	{stepType: deployStepLocal, localFn: deployCopyWssCert, timeoutSec: 30},
+	{name: "创建部署用户", script: "deploy.create-user.tmpl.sh", timeoutSec: 30},
+	{name: "配置SSH公钥", script: "deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
+	{name: "配置APT源", script: "deploy.configure-apt-sources.tmpl.sh", timeoutSec: 120},
+	{name: "配置Java源", script: "deploy.setup-java-repo.tmpl.sh", timeoutSec: 120},
+	{name: "安装系统软件包", script: "deploy.install-system-packages.tmpl.sh", timeoutSec: 180},
+	{name: "安装ossutil", script: "deploy.install-ossutil.tmpl.sh", timeoutSec: 60},
+	{name: "格式化并挂载数据盘", script: "deploy.format-and-mount-data-disk.tmpl.sh", timeoutSec: 60},
+	{name: "恢复归档数据", script: "deploy.restore-archive-data.tmpl.sh", timeoutSec: 420},
+	{name: "上传WSS证书", stepType: deployStepLocal, localFn: deployCopyWssCert, timeoutSec: 30},
+}
+
+// recordDeployState 把部署结果写入实例上的状态文件，便于在实例上直接查看失败点。
+// 这是 best-effort 操作：连接已断开或任务已取消时只记录服务端日志。
+func recordDeployState(conn *remote_util.Conn, content string) {
+	if conn == nil {
+		return
+	}
+
+	encoded := base64.StdEncoding.EncodeToString([]byte(content))
+	cmd := fmt.Sprintf(
+		"mkdir -p %s && printf '%%s' '%s' | base64 -d > %s",
+		deployStateDir,
+		encoded,
+		deployStateFile,
+	)
+
+	// 不复用任务 context：步骤超时或任务被取消时，任务 context 已经不可用，
+	// 但失败点仍然需要尽量写入。
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := conn.Exec(ctx, cmd, func(string) {}); err != nil {
+		log_util.Warn("写入部署状态文件失败: %v", err)
+	}
+}
+
+// recordDeployFailure 记录部署失败点：步骤序号、步骤名称、错误与时间。
+func recordDeployFailure(conn *remote_util.Conn, stepNo int, stepName, stepType string, cause error) {
+	content := fmt.Sprintf(
+		"status=failed\nstep=%d/%d\nname=%s\ntype=%s\nerror=%s\ntime=%s\n",
+		stepNo,
+		len(deploySteps),
+		stepName,
+		stepType,
+		cause.Error(),
+		time.Now().Format(time.RFC3339),
+	)
+	recordDeployState(conn, content)
 }
 
 func deployCopyWssCert(tc *TaskContext, conn *remote_util.Conn, ctx context.Context) error {
@@ -115,8 +164,9 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 	}
 	defer conn.Close()
 
-	for _, step := range deploySteps {
-		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d", tc.step, len(deploySteps)))
+	for i, step := range deploySteps {
+		stepNo := i + 1
+		tc.println(fmt.Sprintf("[deploy] 执行步骤 %d/%d「%s」", stepNo, len(deploySteps), step.name))
 
 		stepCtx, cancel := context.WithTimeout(tc.Context(), time.Duration(step.timeoutSec)*time.Second)
 		var execErr error
@@ -126,7 +176,9 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 			script, renderErr := remote_util.RenderScriptTemplate(scriptBasePath+step.script, expandedVars)
 			if renderErr != nil {
 				cancel()
-				return fmt.Errorf("渲染部署步骤%d脚本失败: %w", tc.step, renderErr)
+				wrapped := fmt.Errorf("部署步骤 %d/%d「%s」渲染脚本失败: %w", stepNo, len(deploySteps), step.name, renderErr)
+				recordDeployFailure(conn, stepNo, step.name, "render", wrapped)
+				return wrapped
 			}
 			execErr = conn.ExecScript(stepCtx, script, tc.println)
 		case deployStepLocal:
@@ -134,18 +186,29 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 		}
 		cancel()
 		if execErr != nil {
+			stepType := "script"
+			if step.stepType == deployStepLocal {
+				stepType = "local"
+			}
+
 			// 如果stepCtx超时或被取消，返回特定的错误信息；否则返回一般的执行错误
 			if errors.Is(execErr, context.DeadlineExceeded) {
-				tc.println(fmt.Sprintf("[deploy] 步骤%d执行超时", tc.step))
+				tc.println(fmt.Sprintf("[deploy] 步骤%d执行超时", stepNo))
 			}
 			if errors.Is(execErr, context.Canceled) {
-				tc.println(fmt.Sprintf("[deploy] 执行步骤%d时被取消", tc.step))
+				tc.println(fmt.Sprintf("[deploy] 执行步骤%d时被取消", stepNo))
 			}
-			return execErr
+
+			wrapped := fmt.Errorf("部署步骤 %d/%d「%s」失败: %w", stepNo, len(deploySteps), step.name, execErr)
+			recordDeployFailure(conn, stepNo, step.name, stepType, wrapped)
+			tc.println("[deploy] " + wrapped.Error())
+			return wrapped
 		}
 
 		tc.nextStep()
 	}
+
+	recordDeployState(conn, fmt.Sprintf("status=success\ntime=%s\n", time.Now().Format(time.RFC3339)))
 
 	err = store.SetActiveDeployed()
 
