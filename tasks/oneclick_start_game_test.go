@@ -29,21 +29,21 @@ func TestExclusiveKey(t *testing.T) {
 	}
 }
 
-func TestFullDeployTaskDefinitionRegistered(t *testing.T) {
+func TestOneClickStartGameTaskDefinitionRegistered(t *testing.T) {
 	RegisterTaskDefinitions()
 
-	def, ok := TaskDefinitions[models.TaskTypeFullDeploy]
+	def, ok := TaskDefinitions[models.TaskTypeOneClickStartGame]
 	if !ok {
-		t.Fatalf("full_deploy task definition is not registered")
+		t.Fatalf("oneclick_start_game task definition is not registered")
 	}
 	if !def.Exclusive {
-		t.Fatalf("full_deploy should be exclusive")
+		t.Fatalf("oneclick_start_game should be exclusive")
 	}
 	if def.ExclusiveGroup != TaskExclusiveGroupDeployChain {
-		t.Fatalf("full_deploy should share %s, got %s", TaskExclusiveGroupDeployChain, def.ExclusiveGroup)
+		t.Fatalf("oneclick_start_game should share %s, got %s", TaskExclusiveGroupDeployChain, def.ExclusiveGroup)
 	}
 	if def.F == nil || def.E == nil {
-		t.Fatalf("full_deploy should define F and E")
+		t.Fatalf("oneclick_start_game should define F and E")
 	}
 }
 
@@ -95,9 +95,9 @@ func TestExclusiveGroupBlocksDifferentTypes(t *testing.T) {
 	<-third.Done()
 }
 
-func TestNormalizeFullDeployArgs(t *testing.T) {
+func TestNormalizeOneClickStartGameArgs(t *testing.T) {
 	// 完全不带参数时使用默认交换机，并强制启动实例。
-	normalized := normalizeFullDeployArgs(nil)
+	normalized := normalizeOneClickStartGameArgs(nil)
 	if normalized["startWhenCreated"] != true {
 		t.Fatalf("startWhenCreated should be forced to true, got %v", normalized["startWhenCreated"])
 	}
@@ -106,13 +106,13 @@ func TestNormalizeFullDeployArgs(t *testing.T) {
 	}
 
 	// 显式指定的交换机不能被默认值覆盖。
-	normalized = normalizeFullDeployArgs(map[string]any{"vSwitchId": "vsw-test"})
+	normalized = normalizeOneClickStartGameArgs(map[string]any{"vSwitchId": "vsw-test"})
 	if _, ok := normalized["useDefaultVSwitch"]; ok {
 		t.Fatalf("useDefaultVSwitch should not be added when vSwitchId is provided")
 	}
 
 	// 调用方的显式选择保留，只覆盖 startWhenCreated。
-	normalized = normalizeFullDeployArgs(map[string]any{"useDefaultVSwitch": false, "startWhenCreated": false})
+	normalized = normalizeOneClickStartGameArgs(map[string]any{"useDefaultVSwitch": false, "startWhenCreated": false})
 	if normalized["useDefaultVSwitch"] != false {
 		t.Fatalf("explicit useDefaultVSwitch=false should be preserved")
 	}
@@ -121,9 +121,9 @@ func TestNormalizeFullDeployArgs(t *testing.T) {
 	}
 }
 
-func TestEnforceFullDeployTaskSkipsCreateCheckWhenInstanceExists(t *testing.T) {
+func TestEnforceOneClickStartGameTaskSkipsCreateCheckWhenInstanceExists(t *testing.T) {
 	instance := models.Instance{
-		InstanceId:   "test-full-deploy-resume",
+		InstanceId:   "test-oneclick-start-game-resume",
 		InstanceType: "ecs.test",
 		RegionId:     "test-region",
 		ZoneId:       "test-zone",
@@ -135,7 +135,7 @@ func TestEnforceFullDeployTaskSkipsCreateCheckWhenInstanceExists(t *testing.T) {
 	defer store.DB.Unscoped().Delete(&instance)
 
 	// 续跑不会创建实例，因此不应再执行 create-custom-instance 的权限检查。
-	if err := enforceFullDeployTask(perms.RoleBasic, map[string]any{"zoneId": "custom-zone"}); err != nil {
+	if err := enforceOneClickStartGameTask(perms.RoleBasic, map[string]any{"zoneId": "custom-zone"}); err != nil {
 		t.Fatalf("expected no create permission check on resume, got %v", err)
 	}
 }

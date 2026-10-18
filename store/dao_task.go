@@ -110,18 +110,18 @@ func GetTaskStats() (TaskStats, error) {
 	}
 
 	// 计算总运行时长：按 启动服务器—archive 配对。
-	// full_deploy 成功意味着服务器已经启动，因此也作为启动标记参与配对。
+	// oneclick_start_game 成功意味着服务器已经启动，因此也作为启动标记参与配对。
 	var pairedTasks []models.Task
 	DB.Where("status = ? AND type IN ?", successStatus, []models.TaskType{
 		models.TaskTypeStartServer,
-		models.TaskTypeFullDeploy,
+		models.TaskTypeOneClickStartGame,
 		models.TaskTypeArchive,
 	}).Order("end_at ASC").Find(&pairedTasks)
 
 	var totalRuntime time.Duration
 	var lastStartEnd *time.Time
 	for _, t := range pairedTasks {
-		if (t.Type == models.TaskTypeStartServer || t.Type == models.TaskTypeFullDeploy) && t.EndAt != nil {
+		if (t.Type == models.TaskTypeStartServer || t.Type == models.TaskTypeOneClickStartGame) && t.EndAt != nil {
 			lastStartEnd = t.EndAt
 		} else if t.Type == models.TaskTypeArchive && t.EndAt != nil && lastStartEnd != nil {
 			totalRuntime += t.EndAt.Sub(*lastStartEnd)

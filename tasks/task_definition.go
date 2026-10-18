@@ -23,7 +23,7 @@ type TaskDefinition struct {
 
 	// ExclusiveGroup 可选，用于让多个不同类型但共享同一资源的任务互斥。
 	// 只在 Exclusive 为 true 时生效；为空时等价于使用 Type。
-	// 例如创建实例、部署、启动服务器和一键部署共用 [TaskExclusiveGroupDeployChain]。
+	// 例如创建实例、部署、启动服务器和启动游戏共用 [TaskExclusiveGroupDeployChain]。
 	ExclusiveGroup models.TaskType `json:"exclusiveGroup"`
 
 	// Role 定义了执行该任务所需的权限等级，只有大于或等于该权限等级的用户可以执行此任务。如果不填，相当于 perms.RoleUser，表示所有登录用户都可以执行。
@@ -50,7 +50,7 @@ type TaskEnforcerFunc func(perms.Role, map[string]any) error
 type TaskFunc func(*TaskContext, map[string]any) error
 
 // TaskExclusiveGroupDeployChain 是部署链路的互斥分组。
-// 创建实例、部署、启动服务器和一键部署共享同一台实例，必须在整条链路上互斥。
+// 创建实例、部署、启动服务器和启动游戏共享同一台实例，必须在整条链路上互斥。
 const TaskExclusiveGroupDeployChain models.TaskType = "deploy_chain"
 
 var TaskDefinitions = make(map[models.TaskType]*TaskDefinition)
@@ -126,13 +126,13 @@ func RegisterTaskDefinitions() {
 		E:              enforceCreateInstanceTask,
 	}
 
-	TaskDefinitions[models.TaskTypeFullDeploy] = &TaskDefinition{
+	TaskDefinitions[models.TaskTypeOneClickStartGame] = &TaskDefinition{
 		Exclusive:      true,
 		ExclusiveGroup: TaskExclusiveGroupDeployChain,
-		Type:           models.TaskTypeFullDeploy,
+		Type:           models.TaskTypeOneClickStartGame,
 		Timeout:        0, // 与 deploy 任务一致：各步骤自带超时，整体不设上限
-		F:              fullDeployTask,
-		E:              enforceFullDeployTask,
+		F:              oneClickStartGameTask,
+		E:              enforceOneClickStartGameTask,
 	}
 
 	TaskDefinitions[models.TaskTypeStartServer] = &TaskDefinition{

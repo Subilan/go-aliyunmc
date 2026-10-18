@@ -60,7 +60,7 @@ func checkRunningTasks() error {
 	}{
 		{models.TaskTypeArchive, "归档任务"},
 		{models.TaskTypeBackup, "备份任务"},
-		{tasks.TaskExclusiveGroupDeployChain, "部署链路任务（创建实例 / 部署 / 启动服务器 / 一键部署）"},
+		{tasks.TaskExclusiveGroupDeployChain, "部署链路任务（创建实例 / 部署 / 启动服务器 / 启动游戏）"},
 	}
 
 	for _, blocker := range blockers {

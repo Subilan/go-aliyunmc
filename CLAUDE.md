@@ -129,7 +129,7 @@ Deploy steps are defined by the `deploySteps` slice in `tasks/deploy.task.go` (e
 
 Deploy has no destructive rollback: every step must be **idempotent** so a failed deploy can be retried directly. In particular, archive restore downloads into a temporary directory and atomically swaps it into place, and the data disk records its UUID in `/var/lib/aliyunmc/data-disk-uuid` so a retry mounts instead of reformatting. On failure the task error includes the step number/name, and `/var/lib/aliyunmc/deploy-state` records `status=failed` along with the failed step for on-instance inspection. `tasks/deploy_script_test.go` renders every script template and runs `bash -n` as a syntax guard.
 
-`full_deploy`（一键部署，`tasks/full_deploy.task.go`）是首页唯一的部署入口，并且是**幂等**的：每次触发先读取当前实例状态，只补做 `createInstance` → `deployTask` → `startServerTask` 中尚未完成的阶段（无实例时创建，未部署时部署，服务器未在线时启动）。因此用户始终只需点击「一键部署」，失败后再次点击即可从失败点继续，不需要在「部署 / 启动服务器」之间切换。对外接口保持不变（仍是 `full_deploy` + 原有参数）。`create_instance`、`deploy`、`start_server`、`full_deploy` 共享 `TaskExclusiveGroupDeployChain`（`TaskDefinition.ExclusiveGroup`），在整条部署链路上互斥。
+`oneclick_start_game`（启动游戏，`tasks/oneclick_start_game.task.go`）是首页唯一的入口，并且是**幂等**的：每次触发先读取当前实例状态，只补做 `createInstance` → `deployTask` → `startServerTask` 中尚未完成的阶段（无实例时创建，未部署时部署，服务器未在线时启动）。因此用户始终只需点击「启动游戏」，失败后再次点击即可从失败点继续，不需要在「部署 / 启动服务器」之间切换。对外接口为 `oneclick_start_game` + 原有参数。`create_instance`、`deploy`、`start_server`、`oneclick_start_game` 共享 `TaskExclusiveGroupDeployChain`（`TaskDefinition.ExclusiveGroup`），在整条部署链路上互斥。
 
 ## SSH Remote Execution
 
