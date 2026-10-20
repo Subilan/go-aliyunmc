@@ -1,1 +1,0 @@
-DELETE {{baseURL}}/instance/active

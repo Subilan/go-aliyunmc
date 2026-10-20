@@ -30,13 +30,6 @@ go test -v ./internal/config/ -run TestStoreDSN
 `127.0.0.1:3306` / `root` / 空密码；账号需要 `CREATE DATABASE` 与 `DROP DATABASE` 权限，
 通常只需授予库级权限：`GRANT ALL PRIVILEGES ON \`aliyunmc_test_%\`.* TO '<user>'@'<host>';`。
 
-API integration tests (requires running server + [hurl](https://hurl.dev)):
-```bash
-cd tests/api/users && make test-login USER=<name>
-cd tests/api/users && make test-create USER=<name>
-cd tests/api/tasks && make test-create-test-task USER=<name>
-```
-
 ## Development Environment
 
 本地开发直接使用 `.dev/config/`，并与生产使用同样的能力。隔离完全由配置决定：
@@ -85,7 +78,7 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `internal/context_util/` | Helpers to extract `user`, `user_id`, and `role` from Gin context (set by `mid.Auth`). |
 | `internal/migrations/` | Go embed 包与版本化 SQL；不是运维脚本。 |
 
-仓库内不存在运行时读取的数据文件：权限策略、脚本模板、Minecraft 语言数据一律 embed 进二进制，发布包只有一个可执行文件加 unit 与安装脚本。仓库级目录：`policy/` 只用于生成 RAM 策略；`release/` 是与 production 仓库之间的发布契约；`tests/api/` 是 hurl 集成测试；`docs/` 是设计文档；`examples/` 是生成的示例配置；`.dev/` 是本地运行时 home。
+仓库内不存在运行时读取的数据文件：权限策略、脚本模板、Minecraft 语言数据一律 embed 进二进制，发布包只有一个可执行文件加 unit 与安装脚本。仓库级目录：`policy/` 只用于生成 RAM 策略；`release/` 是与 production 仓库之间的发布契约；`docs/` 是设计文档；`examples/` 是生成的示例配置；`.dev/` 是本地运行时 home。
 
 ## Initialization Order
 
