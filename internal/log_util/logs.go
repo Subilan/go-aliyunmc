@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Subilan/go-aliyunmc/internal/paths"
+
 	"github.com/lmittmann/tint"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -220,13 +222,9 @@ func (m multiHandler) WithGroup(name string) slog.Handler {
 }
 
 func resolveDefaultLogsDir() string {
-	if dir := strings.TrimSpace(os.Getenv("GO_ALIYUNMC_LOG_DIR")); dir != "" {
-		return dir
-	}
-
 	if strings.HasSuffix(os.Args[0], ".test") {
 		return filepath.Join(os.TempDir(), "github.com/Subilan/go-aliyunmc-logs")
 	}
 
-	return "state/logs"
+	return paths.LogsDir()
 }

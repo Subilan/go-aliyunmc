@@ -12,17 +12,8 @@ import (
 	"github.com/pelletier/go-toml/v2"
 
 	"github.com/Subilan/go-aliyunmc/internal/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 )
-
-// ConfigDir 是配置目录的默认位置。
-const ConfigDir = "config/"
-
-func configDir() string {
-	if dir := os.Getenv("GO_ALIYUNMC_CONFIG_DIR"); dir != "" {
-		return dir
-	}
-	return ConfigDir
-}
 
 // MustLoad 读取全部配置：config/store.toml 与 config/config.toml。run 使用。
 func MustLoad() {
@@ -51,7 +42,7 @@ func MustLoadStore() {
 
 // load 把一个配置文件读进 obj：严格解码 → 填默认值 → 校验，三个步骤的顺序不可颠倒。
 func load(name string, obj any) error {
-	path := filepath.Join(configDir(), name+".toml")
+	path := filepath.Join(paths.ConfigDir(), name+".toml")
 
 	data, err := os.ReadFile(path)
 	if err != nil {

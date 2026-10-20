@@ -114,10 +114,3 @@ func TestSanitizeBaseName(t *testing.T) {
 		t.Fatalf("unexpected fallback name %q", got)
 	}
 }
-
-func TestResolveDefaultLogsDirUsesEnv(t *testing.T) {
-	t.Setenv("GO_ALIYUNMC_LOG_DIR", "/tmp/aliyunmc-custom-logs")
-	if got := resolveDefaultLogsDir(); got != "/tmp/aliyunmc-custom-logs" {
-		t.Fatalf("unexpected logs dir %q", got)
-	}
-}

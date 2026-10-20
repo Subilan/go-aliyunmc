@@ -9,6 +9,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/internal/config"
 	"github.com/Subilan/go-aliyunmc/internal/h"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-yaml"
@@ -53,7 +54,7 @@ func HandleGetData(c *gin.Context) (any, error) {
 		}
 
 		if file.Id != "" && file.Id == name || file.LocalPath == name {
-			filePath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, file.LocalPath)
+			filePath := filepath.Join(paths.CacheDir(), file.LocalPath)
 			content, err := os.ReadFile(filePath)
 
 			if err != nil {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/internal/config"
 	"github.com/Subilan/go-aliyunmc/internal/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 	"github.com/Subilan/go-aliyunmc/internal/playerdata"
 	"github.com/Subilan/go-aliyunmc/internal/remote_util"
 	"github.com/Subilan/go-aliyunmc/internal/store"
@@ -59,7 +60,7 @@ func (p *FileSyncPoller) run(ctx context.Context) {
 	}
 
 	// 注册白名单同步后钩子：当 whitelist.json 同步完成后，校验并清理失效的绑定关系
-	whitelistLocalPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, "whitelist.json")
+	whitelistLocalPath := filepath.Join(paths.CacheDir(), "whitelist.json")
 	p.mu.Lock()
 	p.postSyncHooks[whitelistLocalPath] = func() error {
 		return validateAndCleanWhitelistBindings(p.logger)
@@ -137,7 +138,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig config.Monitor
 		return
 	}
 
-	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, fileConfig.LocalPath)
+	localFullPath := filepath.Join(paths.CacheDir(), fileConfig.LocalPath)
 	if err := os.MkdirAll(filepath.Dir(localFullPath), 0755); err != nil {
 		p.logger.Error("无法创建本地目录: %v", err)
 		return
@@ -199,7 +200,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig config.MonitorsF
 		return
 	}
 
-	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, dirConfig.LocalPath)
+	localFullPath := filepath.Join(paths.CacheDir(), dirConfig.LocalPath)
 	if err := os.MkdirAll(localFullPath, 0755); err != nil {
 		p.logger.Error("无法创建本地目录: %v", err)
 		return
@@ -226,7 +227,7 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig config.MonitorsF
 
 // ensureCacheDir 确保本地缓存目录存在
 func (p *FileSyncPoller) ensureCacheDir() error {
-	return ensureDirectory(config.Get().Monitors.FileSync.LocalCacheRoot)
+	return ensureDirectory(paths.CacheDir())
 }
 
 // ensureDirectory 确保目录存在，不存在则创建

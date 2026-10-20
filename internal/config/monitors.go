@@ -25,21 +25,19 @@ type MonitorsInstance struct {
 type MonitorsFileSyncFile struct {
 	RemotePath      string `toml:"remote_path" validate:"required" comment:"远端文件路径"`
 	Id              string `toml:"id" validate:"omitempty,min=1" comment:"用于唯一标识该文件，如果不填则使用LocalPath"`
-	LocalPath       string `toml:"local_path" validate:"required" comment:"本地文件相对路径（相对于 LocalCacheRoot）"`
+	LocalPath       string `toml:"local_path" validate:"required" comment:"本地文件相对路径（相对于 state/cache）"`
 	PollIntervalSec int    `toml:"poll_interval_sec" validate:"required,min=1" comment:"轮询间隔（秒）"`
 }
 
 // MonitorsFileSyncDir 对应 [monitors.file_sync.dirs] 的元素。
 type MonitorsFileSyncDir struct {
 	RemotePath      string `toml:"remote_path" validate:"required" comment:"远端目录路径"`
-	LocalPath       string `toml:"local_path" validate:"required" comment:"本地目录相对路径（相对于 LocalCacheRoot）"`
+	LocalPath       string `toml:"local_path" validate:"required" comment:"本地目录相对路径（相对于 state/cache）"`
 	PollIntervalSec int    `toml:"poll_interval_sec" validate:"required,min=1" comment:"轮询间隔（秒）"`
 }
 
 // MonitorsFileSync 对应 [monitors.file_sync]。
 type MonitorsFileSync struct {
-	LocalCacheRoot string `toml:"local_cache_root" default:"state/cache" comment:"本地缓存根目录"`
-
 	Files []MonitorsFileSyncFile `toml:"files" validate:"dive" comment:"文件同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 10 }"`
 	Dirs  []MonitorsFileSyncDir  `toml:"dirs" validate:"dive" comment:"目录同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 300 }"`
 }
@@ -90,6 +88,4 @@ type MonitorsBestEcsCandidate struct {
 	CpuCoreCountChoices []int `toml:"cpu_core_count_choices" validate:"required,dive,gte=1" comment:"实例可接受的vCPU数量，请使用与实例内存比满足1:2、1:4、1:8的数值，如 [4, 8]"`
 
 	Filters MonitorsBestEcsCandidateFilters `toml:"filters"`
-
-	CacheFile string `toml:"cache_file" default:"state/ecs_candidates.json" comment:"本地缓存文件路径，必须是一个json文件"`
 }

@@ -31,10 +31,10 @@ bundle:
 
 # 运行项目
 dev:
-	@GO_ALIYUNMC_DEV=1 GO_ALIYUNMC_CONFIG_DIR=.dev/config GO_ALIYUNMC_LOG_DIR=.dev/state/logs go run ./cmd/aliyunmc run
+	@GO_ALIYUNMC_DEV=1 GO_ALIYUNMC_STATE_DIR=.dev go run ./cmd/aliyunmc run
 
 run:
-	@GO_ALIYUNMC_CONFIG_DIR=.dev/config GO_ALIYUNMC_LOG_DIR=.dev/state/logs go run ./cmd/aliyunmc run
+	@GO_ALIYUNMC_STATE_DIR=.dev go run ./cmd/aliyunmc run
 
 # 根据 GORM 模型与已有迁移的差量生成 MySQL 迁移（需要 atlas CLI 和 Docker）
 migrate-diff:

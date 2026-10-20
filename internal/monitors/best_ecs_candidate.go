@@ -14,6 +14,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/env"
 	"github.com/Subilan/go-aliyunmc/internal/global_states"
 	"github.com/Subilan/go-aliyunmc/internal/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 	"github.com/Subilan/go-aliyunmc/internal/states"
 
 	ecs20140526 "github.com/alibabacloud-go/ecs-20140526/v7/client"
@@ -47,7 +48,7 @@ func (m *BestEcsCandidateMonitor) run(ctx context.Context) {
 	ticker := time.NewTicker(m.interval)
 	defer ticker.Stop()
 
-	cacheFileContent, err := os.ReadFile(config.Get().Monitors.BestEcsCandidate.CacheFile)
+	cacheFileContent, err := os.ReadFile(paths.EcsCandidatesFile())
 	if err == nil {
 		var cacheFileData []states.EcsCandidate
 		err = json.Unmarshal(cacheFileContent, &cacheFileData)
@@ -97,7 +98,7 @@ func (m *BestEcsCandidateMonitor) pollAndStore(ctx context.Context) {
 			if err != nil {
 				m.logger.Error("无法序列化缓存数据：%s", err.Error())
 			} else {
-				err = os.WriteFile(config.Get().Monitors.BestEcsCandidate.CacheFile, cacheData, 0644)
+				err = os.WriteFile(paths.EcsCandidatesFile(), cacheData, 0644)
 				if err != nil {
 					m.logger.Error("无法写入缓存数据：%s", err.Error())
 				} else {

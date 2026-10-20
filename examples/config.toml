@@ -134,8 +134,6 @@ poll_interval_sec = 5
 poll_interval_sec = 5
 
 [monitors.file_sync]
-# 本地缓存根目录
-local_cache_root = 'state/cache'
 # 文件同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 10 }
 files = []
 # 目录同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 300 }
@@ -176,8 +174,6 @@ poll_interval_sec = 600
 mem_choices = []
 # 实例可接受的vCPU数量，请使用与实例内存比满足1:2、1:4、1:8的数值，如 [4, 8]
 cpu_core_count_choices = []
-# 本地缓存文件路径，必须是一个json文件
-cache_file = 'state/ecs_candidates.json'
 
 [monitors.best_ecs_candidate.filters]
 # 实例最大可接受的交易价格，单位CNY。超过此价格的实例会被过滤

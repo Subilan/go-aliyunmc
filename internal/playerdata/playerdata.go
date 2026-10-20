@@ -10,25 +10,19 @@ import (
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/cache"
-	"github.com/Subilan/go-aliyunmc/internal/config"
 	"github.com/Subilan/go-aliyunmc/internal/mc"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 	"github.com/Subilan/go-aliyunmc/internal/store"
 )
 
 const (
-	defaultCacheRoot = "state/cache"
-
 	// dataCacheTTL 是远端数据缓存的有效期，需短于文件同步的轮询间隔。
 	dataCacheTTL = 30 * time.Second
 )
 
 // CacheRoot 返回远端数据缓存根目录。
-// 配置加载前（例如单元测试）回退到默认值。
 func CacheRoot() string {
-	if cfg := config.TryGet(); cfg != nil && cfg.Monitors.FileSync.LocalCacheRoot != "" {
-		return cfg.Monitors.FileSync.LocalCacheRoot
-	}
-	return defaultCacheRoot
+	return paths.CacheDir()
 }
 
 // StatsDir 返回玩家统计数据目录。

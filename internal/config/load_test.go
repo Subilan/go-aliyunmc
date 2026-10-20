@@ -55,15 +55,18 @@ mem_choices = [8, 16]
 cpu_core_count_choices = [4, 8]
 `
 
-// writeConfigs 把若干配置文件写进同一个临时目录，并把配置目录指向它。
+// writeConfigs 把若干配置文件写进同一个临时目录，并把 STATE_DIR 指向它。
 func writeConfigs(t *testing.T, files map[string]string) {
 	t.Helper()
 
 	dir := t.TempDir()
-	t.Setenv("GO_ALIYUNMC_CONFIG_DIR", dir)
+	if err := os.MkdirAll(filepath.Join(dir, "config"), 0755); err != nil {
+		t.Fatalf("创建 config 目录失败: %v", err)
+	}
+	t.Setenv("GO_ALIYUNMC_STATE_DIR", dir)
 
 	for name, content := range files {
-		if err := os.WriteFile(filepath.Join(dir, name+".toml"), []byte(content), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "config", name+".toml"), []byte(content), 0600); err != nil {
 			t.Fatalf("写入 %s.toml 失败: %v", name, err)
 		}
 	}
@@ -120,8 +123,6 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		want string
 	}{
 		{"store.charset", cfg.Store.Charset, "utf8mb4"},
-		{"monitors.file_sync.local_cache_root", cfg.Monitors.FileSync.LocalCacheRoot, "state/cache"},
-		{"monitors.best_ecs_candidate.cache_file", cfg.Monitors.BestEcsCandidate.CacheFile, "state/ecs_candidates.json"},
 		{"tasks.backup.vars.base_dir", cfg.Tasks.Backup.Vars.BaseDir, "/home/mc/server/archive"},
 	} {
 		if tc.got != tc.want {
@@ -142,9 +143,6 @@ expose = 12345
 [monitors.auto_archive_idle]
 enabled = false
 idle_countdown_sec = 7
-
-[monitors.file_sync]
-local_cache_root = "/srv/cache"
 `)
 	if err != nil {
 		t.Fatalf("加载失败: %v", err)
@@ -161,9 +159,6 @@ local_cache_root = "/srv/cache"
 	}
 	if cfg.Monitors.AutoArchiveIdle.Enabled {
 		t.Error("显式的 enabled = false 被翻转")
-	}
-	if cfg.Monitors.FileSync.LocalCacheRoot != "/srv/cache" {
-		t.Errorf("显式的 local_cache_root 被覆盖: %q", cfg.Monitors.FileSync.LocalCacheRoot)
 	}
 }
 
