@@ -9,7 +9,7 @@ APP_COMMIT="${APP_COMMIT:-$(git -C "$ROOT" rev-parse --short=7 HEAD 2>/dev/null 
 APP_BUILD_TIME="${APP_BUILD_TIME:-$(date -u +%FT%TZ)}"
 
 rm -rf "$OUT"
-mkdir -p "$OUT/assets/rbac" "$OUT/assets/scripts"
+mkdir -p "$OUT"
 
 echo "==> Building linux/amd64 binary"
 (cd "$ROOT" && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
@@ -18,9 +18,7 @@ echo "==> Building linux/amd64 binary"
 	-X github.com/Subilan/go-aliyunmc/internal/version.BuildTime=$APP_BUILD_TIME" \
 	-o "$OUT/go-aliyunmc" ./cmd/aliyunmc)
 
-echo "==> Copying release assets"
-cp "$ROOT/assets/rbac/model.conf" "$ROOT/assets/rbac/policy.csv" "$OUT/assets/rbac/"
-cp -R "$ROOT/assets/scripts/." "$OUT/assets/scripts/"
+echo "==> Copying release scripts"
 cp "$ROOT/release/systemd/go-aliyunmc.service" "$OUT/go-aliyunmc.service"
 cp "$ROOT/release/remote-install.sh" "$OUT/remote-install.sh"
 

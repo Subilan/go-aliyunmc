@@ -2,24 +2,17 @@ package tasks
 
 import (
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/Subilan/go-aliyunmc/internal/config"
 	"github.com/Subilan/go-aliyunmc/internal/remote_util"
-	"github.com/Subilan/go-aliyunmc/internal/testutil"
 )
 
 // 部署脚本必须保持可渲染且语法正确；同时每个步骤都要有名称，失败点才能被清晰记录。
 func TestDeployScriptTemplatesCompile(t *testing.T) {
 	if _, err := exec.LookPath("bash"); err != nil {
 		t.Skip("bash not available")
-	}
-
-	root, err := testutil.ProjectRoot()
-	if err != nil {
-		t.Fatalf("locate project root failed: %v", err)
 	}
 
 	vars := deployTaskVars{
@@ -52,8 +45,7 @@ func TestDeployScriptTemplatesCompile(t *testing.T) {
 			continue
 		}
 
-		templatePath := filepath.Join(root, scriptBasePath, step.script)
-		script, err := remote_util.RenderScriptTemplate(templatePath, vars)
+		script, err := remote_util.RenderScriptTemplate(scriptTemplates, scriptDir+step.script, vars)
 		if err != nil {
 			t.Fatalf("render %s failed: %v", step.script, err)
 		}

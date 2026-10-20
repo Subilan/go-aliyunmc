@@ -4,13 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"sync"
-
-	mcassets "github.com/Subilan/go-aliyunmc/assets/mc"
-)
-
-var (
-	langEnJSON = mcassets.EnUS
-	langZhJSON = mcassets.ZhCN
 )
 
 type enOrZh struct {

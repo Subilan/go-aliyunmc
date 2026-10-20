@@ -23,15 +23,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if err := testutil.ChdirProjectRoot(); err != nil {
-		panic(err)
-	}
-	config.Set(&config.Config{
-		Perms: config.Perms{
-			ModelPath:  "assets/rbac/model.conf",
-			PolicyPath: "assets/rbac/policy.csv",
-		},
-	})
+	config.Set(&config.Config{})
 	tasks.RegisterTaskDefinitions()
 	perms.MustInitialize()
 

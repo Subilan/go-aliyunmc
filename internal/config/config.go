@@ -19,7 +19,6 @@ type Config struct {
 	Base   Base   `toml:"base"`
 	Aliyun Aliyun `toml:"aliyun"`
 	Server Server `toml:"server"`
-	Perms  Perms  `toml:"perms"`
 	SSH    SSH    `toml:"ssh"`
 
 	UserRoutes UserRoutes `toml:"user_routes"`

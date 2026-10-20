@@ -9,7 +9,7 @@
 
 ## 路由权限（Casbin + mid.Perm）
 
-说明：以下规则由 `mid.Perm()` 调用 `role.CanRequest()` 执行，使用 `assets/rbac/model.conf` 的 `keyMatch2` 对路径进行匹配。
+说明：以下规则由 `mid.Perm()` 调用 `role.CanRequest()` 执行，使用 `internal/perms/model.conf` 的 `keyMatch2` 对路径进行匹配。
 
 | 资源 | 方法 | 最低角色 | 含义 |
 | --- | --- | --- | --- |
@@ -39,7 +39,7 @@
 | --- | --- | --- | --- |
 | backup | operator | `internal/tasks/task_definition.go` | 仅 operator 及以上可触发备份任务 |
 | archive | operator | `internal/tasks/task_definition.go` | 仅 operator 及以上可触发归档任务 |
-| create-custom-instance (execute) | operator | `internal/tasks/create_instance.task.go` + `assets/rbac/policy.csv` | 创建实例任务在使用自定义参数时，需要 execute 权限 |
+| create-custom-instance (execute) | operator | `internal/tasks/create_instance.task.go` + `internal/perms/policy.csv` | 创建实例任务在使用自定义参数时，需要 execute 权限 |
 
 ## 公开路由（不走权限中间件）
 

@@ -27,7 +27,7 @@ func TestSectionPaths(t *testing.T) {
 	want := []string{
 		"[base]", "[base.cors]", "[base.tls]",
 		"[aliyun]", "[aliyun.ecs]", "[aliyun.ecs.system_disk]", "[aliyun.ecs.data_disk]",
-		"[server]", "[perms]", "[ssh]",
+		"[server]", "[ssh]",
 		"[user_routes]", "[user_routes.chat_token]",
 		"[tasks]", "[tasks.deploy]", "[tasks.deploy.vars]",
 		"[tasks.backup]", "[tasks.backup.vars]",

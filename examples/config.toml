@@ -66,12 +66,6 @@ rcon_port = 25575
 # MC服务器的RCON密码，可在server.properties中设置和查看
 # rcon_password = ''
 
-[perms]
-# Casbin模型文件路径
-model_path = 'assets/rbac/model.conf'
-# Casbin策略文件路径
-policy_path = 'assets/rbac/policy.csv'
-
 [ssh]
 # 控制器登录实例所用的私钥文件路径，必须是无口令私钥
 # private_key_path = ''
@@ -101,8 +95,6 @@ packages = []
 # wss_cert_dst = ''
 
 [tasks.backup]
-# 备份脚本模板路径
-template_path = 'assets/scripts/backup.tmpl.sh'
 # 任务超时时间（秒）
 timeout_sec = 1800
 # 是否同类互斥执行
@@ -120,8 +112,6 @@ base_dir = '/home/mc/server/archive'
 target_dirs = []
 
 [tasks.archive]
-# 归档脚本模板路径
-template_path = 'assets/scripts/archive.tmpl.sh'
 # 任务超时时间（秒）
 timeout_sec = 600
 

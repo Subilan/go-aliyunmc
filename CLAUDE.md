@@ -69,8 +69,8 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `internal/h/` | Handler wrappers that enforce the `{"data": ...}` / `{"error": ...}` API contract. |
 | `internal/store/` | GORM database layer. `store.DB` is the global MySQL connection pool. Models in `internal/store/models/`. Tests use a temporary MySQL database via `internal/testutil`. |
 | `internal/tasks/` | Task execution system: definitions, execution lifecycle, SSE integration. `TaskDefinitions` map registers task types. |
-| `assets/scripts/` | Shell script templates (`*.tmpl.sh`) executed remotely via SSH during tasks. |
-| `assets/mc/` | Minecraft 语言 JSON 与其 embed 包，编译进二进制，不随 release 分发。 |
+| `internal/tasks/scripts/` | 远程执行的 Shell 脚本模板（`*.tmpl.sh`），由 `internal/tasks/embed.go` 编译进二进制。 |
+| `internal/mc/` | Minecraft 语言 JSON 与翻译表构建，语言文件由 `internal/mc/embed.go` 编译进二进制。 |
 | `internal/sse/` | Server-Sent Events client: event framing, keep-alive, and the blocking write loop for a connection. |
 | `internal/pubsub/` | Generic fan-out hub (`Hub[T]`) with per-subscriber buffers; shared by task event streams and state snapshots. |
 | `internal/states/` | State store + `HubbedStore[T]` built on `pubsub.Hub`, broadcasting state snapshots to SSE clients. |
@@ -83,10 +83,9 @@ This is a Go web application (Gin framework) for managing Alibaba Cloud ECS inst
 | `internal/log_util/` | `log/slog` based logging with named loggers, tint-colorized console output, and lumberjack file rotation. |
 | `internal/env/` | Exposes `env.DEV` bool (set by `GO_ALIYUNMC_DEV=1`). |
 | `internal/context_util/` | Helpers to extract `user`, `user_id`, and `role` from Gin context (set by `mid.Auth`). |
-| `internal/utils/` | Project-root resolution for tests. |
 | `internal/migrations/` | Go embed 包与版本化 SQL；不是运维脚本。 |
 
-仓库级目录：`assets/rbac/` 与 `assets/scripts/` 随 release 发布，`assets/mc/` 编译进二进制；`policy/` 只用于生成 RAM 策略；`release/` 是与 production 仓库之间的发布契约；`tests/api/` 是 hurl 集成测试；`docs/` 是设计文档；`examples/` 是生成的示例配置；`.dev/` 是本地运行时 home。
+仓库内不存在运行时读取的数据文件：权限策略、脚本模板、Minecraft 语言数据一律 embed 进二进制，发布包只有一个可执行文件加 unit 与安装脚本。仓库级目录：`policy/` 只用于生成 RAM 策略；`release/` 是与 production 仓库之间的发布契约；`tests/api/` 是 hurl 集成测试；`docs/` 是设计文档；`examples/` 是生成的示例配置；`.dev/` 是本地运行时 home。
 
 ## Initialization Order
 
@@ -134,9 +133,9 @@ The `h.G` wrapper (used by all others) maps errors to HTTP status codes:
 
 ## Route Registration & RBAC
 
-Each routes sub-package has a `Bind(*gin.Engine)` that registers paths on a router group. Protected routes chain `mid.Auth()` (session-based) and `mid.Perm()` (Casbin). Permissions are defined in `assets/rbac/policy.csv` using `keyMatch2` path matching.
+Each routes sub-package has a `Bind(*gin.Engine)` that registers paths on a router group. Protected routes chain `mid.Auth()` (session-based) and `mid.Perm()` (Casbin). Permissions are defined in `internal/perms/policy.csv` using `keyMatch2` path matching.
 
-Casbin model (`assets/rbac/model.conf`) and policy (`assets/rbac/policy.csv`) live under `assets/rbac/`. Role hierarchy: `superuser` > `operator` > `basic`.
+Casbin model (`internal/perms/model.conf`) and policy (`internal/perms/policy.csv`) are embedded into the binary; `perms.MustInitialize()` loads the policy through Casbin's string adapter. Role hierarchy: `superuser` > `operator` > `basic`.
 
 The `perms.Role.Gt()` / `perms.Role.Gte()` methods provide ordered comparison for task-level permission checks (separate from route-level Casbin checks).
 
@@ -186,7 +185,7 @@ SSH always uses port 22. Authentication is role-based:
 | 文件 | 内容 | 读取者 |
 |---|---|---|
 | `config/store.toml` | MySQL 数据库配置 | `run`、`migrate`、`create_user`、`check_config` |
-| `config/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[perms]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run`、`check_config` |
+| `config/config.toml` | 其余全部：`[base]`、`[aliyun]`、`[server]`、`[ssh]`、`[user_routes]`、`[tasks.*]`、`[monitors.*]`、`[samplers.*]` | `run`、`check_config` |
 
 `store` 单独成文件，是因为另外两个子命令只需要它。`Config.Store` 标了 `toml:"-"`，所以 `config.toml` 里若出现 `[store]` 会被严格解码直接报错，不会形成第二条真相。
 
@@ -236,9 +235,9 @@ The file-sync monitor (`internal/monitors/file_sync.go`) periodically downloads 
 - `config/` holds runtime config; `examples/` holds generated defaults.
 - Dev mode (`GO_ALIYUNMC_DEV=1`): enables auto-migration, auto-creates dev user, runs in debug mode.
 - Tests that need project-root relative files explicitly call `testutil.ChdirProjectRoot()` in `TestMain`; production code no longer changes the working directory.
-- Script templates use `{{.VarName}}` Go template syntax and live under `assets/scripts/`.
+- Script templates use `{{.VarName}}` Go template syntax and live under `internal/tasks/scripts/`; `remote_util.RenderScriptTemplate` renders them from the embedded FS.
 - DB unique constraints are preferred over application-level checks for enforcing uniqueness (e.g. `WhitelistUUID` unique index).
-- Every newly-created or just-updated API route should be configured correctly in `assets/rbac/policy.csv` to prevent access control issues.
+- Every newly-created or just-updated API route should be configured correctly in `internal/perms/policy.csv` to prevent access control issues.
 
 ## 代码注释
 
@@ -253,7 +252,7 @@ The file-sync monitor (`internal/monitors/file_sync.go`) periodically downloads 
 
 ### 不该写什么
 
-- **别处已有单一事实来源的内容**：权限在 `assets/rbac/policy.csv`，路由在 `task_routes.go`，配置默认值在 `config` 的 tag 与 `examples/`。在注释里复述这些事实，等两处不同步时注释就变成了谎言。
+- **别处已有单一事实来源的内容**：权限在 `internal/perms/policy.csv`，路由在 `task_routes.go`，配置默认值在 `config` 的 tag 与 `examples/`。在注释里复述这些事实，等两处不同步时注释就变成了谎言。
 - **可从名称、签名、类型或紧邻代码直接读出的信息**。不要为「完整」而把代码翻译成自然语言。
 - **同一件事说两遍**。例如「等待任务函数退出后才返回」中的「后才返回」只是重复「等待」。
 - **与函数职责无关的背景、用法示例、历史沿革和铺垫性说明**。
@@ -275,4 +274,4 @@ func HandleInterruptTask(c *gin.Context) (any, error)
 func HandleInterruptTask(c *gin.Context) (any, error)
 ```
 
-理由：第二句把 `assets/rbac/policy.csv` 中已有的权限事实复制进了 handler，权限调整后必然失配；而「后才返回」与「等待」表达的是同一件事。注释只保留代码无法表达的契约：这个 handler 会阻塞到任务函数退出。
+理由：第二句把 `internal/perms/policy.csv` 中已有的权限事实复制进了 handler，权限调整后必然失配；而「后才返回」与「等待」表达的是同一件事。注释只保留代码无法表达的契约：这个 handler 会阻塞到任务函数退出。

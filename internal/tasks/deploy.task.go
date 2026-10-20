@@ -45,8 +45,6 @@ type deployStep struct {
 	timeoutSec int
 }
 
-const scriptBasePath = "assets/scripts/"
-
 // 部署状态文件位于实例上，记录最近一次部署的结果与失败步骤。
 const (
 	deployStateDir  = "/var/lib/aliyunmc"
@@ -173,7 +171,7 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 
 		switch step.stepType {
 		case deployStepScript:
-			script, renderErr := remote_util.RenderScriptTemplate(scriptBasePath+step.script, expandedVars)
+			script, renderErr := remote_util.RenderScriptTemplate(scriptTemplates, scriptDir+step.script, expandedVars)
 			if renderErr != nil {
 				cancel()
 				wrapped := fmt.Errorf("部署步骤 %d/%d「%s」渲染脚本失败: %w", stepNo, len(deploySteps), step.name, renderErr)

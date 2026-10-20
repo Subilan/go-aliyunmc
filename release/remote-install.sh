@@ -24,12 +24,10 @@ if [ ! -f "$STAGING/SHA256SUMS" ]; then
   exit 1
 fi
 
-for item in config assets; do
-  if [ -e "$PROD/$item" ] && [ ! -L "$PROD/$item" ]; then
-    echo "unexpected $PROD/$item: expected a symlink" >&2
-    exit 1
-  fi
-done
+if [ -e "$PROD/config" ] && [ ! -L "$PROD/config" ]; then
+  echo "unexpected $PROD/config: expected a symlink" >&2
+  exit 1
+fi
 
 echo "==> Verifying checksums"
 (cd "$STAGING" && sha256sum -c SHA256SUMS)
@@ -53,7 +51,6 @@ if [ "$(id -u)" -eq 0 ]; then
   chown -R gomc:gomc "$PROD/state"
 fi
 ln -sfn current/config "$PROD/config"
-ln -sfn current/assets "$PROD/assets"
 ln -sfn current/go-aliyunmc "$PROD/go-aliyunmc"
 
 echo "==> Installing systemd unit"

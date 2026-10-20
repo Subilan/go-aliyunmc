@@ -38,8 +38,6 @@ type TasksBackupVars struct {
 
 // TasksBackup 对应 [tasks.backup]。
 type TasksBackup struct {
-	TemplatePath string `toml:"template_path" default:"assets/scripts/backup.tmpl.sh" comment:"备份脚本模板路径"`
-
 	TimeoutSec int `toml:"timeout_sec" default:"1800" validate:"min=1" comment:"任务超时时间（秒）"`
 
 	Exclusive bool `toml:"exclusive" comment:"是否同类互斥执行"`
@@ -56,8 +54,6 @@ type TasksArchiveVars struct {
 
 // TasksArchive 对应 [tasks.archive]。
 type TasksArchive struct {
-	TemplatePath string `toml:"template_path" default:"assets/scripts/archive.tmpl.sh" comment:"归档脚本模板路径"`
-
 	TimeoutSec int `toml:"timeout_sec" default:"600" validate:"min=1" comment:"任务超时时间（秒）"`
 
 	Vars TasksArchiveVars `toml:"vars" comment:"归档脚本模板变量"`

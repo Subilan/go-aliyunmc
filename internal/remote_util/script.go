@@ -3,27 +3,27 @@ package remote_util
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"path/filepath"
+	"io/fs"
+	"path"
 	"strings"
 	"text/template"
 )
 
-// RenderScriptTemplate 从指定路径读取脚本模板文件，并使用提供的变量进行渲染，返回渲染后的脚本内容
-func RenderScriptTemplate(templatePath string, vars any) (string, error) {
-	content, err := os.ReadFile(templatePath)
+// RenderScriptTemplate 渲染 fsys 中 name 指向的脚本模板，结果保证以换行结尾
+func RenderScriptTemplate(fsys fs.FS, name string, vars any) (string, error) {
+	content, err := fs.ReadFile(fsys, name)
 	if err != nil {
-		return "", fmt.Errorf("读取模板文件失败(%s): %w", templatePath, err)
+		return "", fmt.Errorf("读取模板文件失败(%s): %w", name, err)
 	}
 
-	tmpl, err := template.New(filepath.Base(templatePath)).Parse(string(content))
+	tmpl, err := template.New(path.Base(name)).Parse(string(content))
 	if err != nil {
-		return "", fmt.Errorf("解析模板失败(%s): %w", templatePath, err)
+		return "", fmt.Errorf("解析模板失败(%s): %w", name, err)
 	}
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, vars); err != nil {
-		return "", fmt.Errorf("渲染模板失败(%s): %w", templatePath, err)
+		return "", fmt.Errorf("渲染模板失败(%s): %w", name, err)
 	}
 
 	script := buf.String()

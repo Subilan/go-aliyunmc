@@ -12,7 +12,7 @@ func archiveTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
-	script, err := remote_util.RenderScriptTemplate(config.Get().Tasks.Archive.TemplatePath, config.Get().Tasks.Archive.Vars)
+	script, err := remote_util.RenderScriptTemplate(scriptTemplates, archiveTemplateName, config.Get().Tasks.Archive.Vars)
 	if err != nil {
 		return err
 	}

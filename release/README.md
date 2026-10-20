@@ -13,11 +13,11 @@ make bundle OUT=/tmp/bundle
 ```text
 /tmp/bundle/
 ├── go-aliyunmc                 # linux/amd64 二进制
-├── assets/rbac/{model.conf,policy.csv}
-├── assets/scripts/
 ├── go-aliyunmc.service
 └── remote-install.sh
 ```
+
+权限策略、脚本模板与 Minecraft 语言数据都编译进二进制，不再随包分发。
 
 production 仓库在 bundle 之上叠加 `config/`，生成 `deploy-manifest.json` 与 `SHA256SUMS`，然后上传远端。
 
@@ -36,17 +36,15 @@ production 仓库在 bundle 之上叠加 `config/`，生成 `deploy-manifest.jso
 ├── releases/<version>/
 │   ├── go-aliyunmc
 │   ├── config/{config.toml,store.toml}
-│   ├── assets/{rbac,scripts}
 │   ├── go-aliyunmc.service
 │   ├── remote-install.sh
 │   ├── deploy-manifest.json
 │   └── SHA256SUMS
 ├── config -> current/config
-├── assets -> current/assets
 ├── go-aliyunmc -> current/go-aliyunmc
 └── state/{logs,cache,ecs_candidates.json}
 ```
 
-`config` 与 `assets` 跟随 `current`，回滚时一并回滚。`state/` 是运行时数据，发布不触碰。
+`config` 跟随 `current`，回滚时一并回滚。`state/` 是运行时数据，发布不触碰。
 
 从旧布局（`configs/`、`scripts/`、`rbac_*`、`minecraft_*`、`logs/`、`remote_data_cache/`）迁移的命令只执行一次，见 production 仓库的 `DEPLOYMENT.md`。安装脚本本身不含任何兼容逻辑。

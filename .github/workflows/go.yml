@@ -48,8 +48,6 @@ jobs:
         run: |
           set -euo pipefail
           test -x "$RUNNER_TEMP/bundle/go-aliyunmc"
-          test -f "$RUNNER_TEMP/bundle/assets/rbac/model.conf"
-          test -f "$RUNNER_TEMP/bundle/assets/rbac/policy.csv"
+          test ! -e "$RUNNER_TEMP/bundle/assets"
           test -f "$RUNNER_TEMP/bundle/go-aliyunmc.service"
           test -f "$RUNNER_TEMP/bundle/remote-install.sh"
-          test -d "$RUNNER_TEMP/bundle/assets/scripts"

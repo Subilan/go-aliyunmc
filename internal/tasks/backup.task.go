@@ -15,7 +15,7 @@ func backupTask(tc *TaskContext, _ map[string]any) error {
 		return err
 	}
 
-	script, err := remote_util.RenderScriptTemplate(config.Get().Tasks.Backup.TemplatePath, config.Get().Tasks.Backup.Vars)
+	script, err := remote_util.RenderScriptTemplate(scriptTemplates, backupTemplateName, config.Get().Tasks.Backup.Vars)
 	if err != nil {
 		return err
 	}
