@@ -1,0 +1,209 @@
+[base]
+# HTTP服务器的监听端口
+expose = 45678
+
+[base.cors]
+# 允许的源地址，例如 ['https://example.com']
+allow_origins = []
+# 允许的请求方法，例如 ['GET', 'POST']
+allow_methods = []
+# 允许的请求头，例如 ['Content-Type', 'Authorization']
+allow_headers = []
+# 是否允许携带凭证信息
+allow_credentials = false
+
+[base.tls]
+# 是否启用HTTPS。如果启用，将覆盖Expose端口，使用443端口
+enabled = false
+# 证书文件路径 (fullchain.cer)
+# cert_file = ''
+# 私钥文件路径
+# key_file = ''
+# HTTP明文端口，供内网服务访问（如DDNS）
+http_port = 80
+
+[aliyun]
+# 实例运行的地域，例如 cn-hangzhou。地域将影响实例与OSS之间的内网连通性，不同地域之间抢占式实例的库存情况也有所不同。
+# region_id = ''
+# 用于访问阿里云服务的AKID，可在阿里云RAM控制台中生成
+# access_key_id = ''
+# 用于访问阿里云服务的AKSecret
+# access_key_secret = ''
+
+[aliyun.ecs]
+# 实例的峰值带宽，单位为Mbps，取值范围1～100，必须为整数
+internet_max_bandwidth_out = 5
+# 实例使用的系统镜像名，决定操作系统类型
+# image_id = ''
+# 实例操作系统的主机名
+hostname = 'aliyunmc-server'
+# 实例操作系统根用户密码
+# root_password = ''
+# 实例操作系统主用户的密码
+# prod_password = ''
+# 实例的中止动作，取值Stop或Terminate
+spot_interruption_behavior = 'Stop'
+# 实例安全组ID
+# security_group_id = ''
+
+[aliyun.ecs.system_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB（系统盘常见 40，数据盘常见 100）
+# size = 0
+
+[aliyun.ecs.data_disk]
+# 云盘类型
+category = 'cloud_essd'
+# 云盘大小，单位GiB（系统盘常见 40，数据盘常见 100）
+# size = 0
+
+[server]
+# MC服务器地址
+port = 25565
+# MC服务器的RCON服务地址，请务必保证server.properties中RCON已开启
+rcon_port = 25575
+# MC服务器的RCON密码，可在server.properties中设置和查看
+# rcon_password = ''
+
+[perms]
+# Casbin模型文件路径
+model_path = 'assets/rbac/model.conf'
+# Casbin策略文件路径
+policy_path = 'assets/rbac/policy.csv'
+
+[ssh]
+# 控制器登录实例所用的私钥文件路径，必须是无口令私钥
+# private_key_path = ''
+
+[user_routes]
+[user_routes.chat_token]
+# JWT签名密钥
+# secret = ''
+# Token有效期（秒）
+expire_seconds = 3600
+
+[tasks]
+[tasks.deploy]
+# 部署脚本模板变量
+[tasks.deploy.vars]
+# 用于SSH访问的公钥
+# ssh_access_public_key = ''
+# JRE版本号，建议使用当前服务端要求的最低版本
+java_version = 21
+# 额外安装的软件包列表，例如 ['zip', 'unzip']
+packages = []
+# 用于部署恢复的OSS归档路径
+# archive_oss_path = ''
+# WSS证书文件路径（.p12格式），留空则跳过证书上传
+# wss_cert_src = ''
+# WSS证书在远程服务器上的目标路径，留空则跳过证书上传
+# wss_cert_dst = ''
+
+[tasks.backup]
+# 备份脚本模板路径
+template_path = 'assets/scripts/backup.tmpl.sh'
+# 任务超时时间（秒）
+timeout_sec = 1800
+# 是否同类互斥执行
+exclusive = false
+
+# 备份脚本模板变量
+[tasks.backup.vars]
+# 备份上传目标OSS目录
+# backup_oss_path = ''
+# 备份保留数量上限，超过后删除最旧的备份
+max_keep_count = 5
+# 需要备份的目录的公共父目录
+base_dir = '/home/mc/server/archive'
+# 需要备份的目录列表（相对于BaseDir），例如 ['world', 'world_nether', 'world_the_end']
+target_dirs = []
+
+[tasks.archive]
+# 归档脚本模板路径
+template_path = 'assets/scripts/archive.tmpl.sh'
+# 任务超时时间（秒）
+timeout_sec = 600
+
+# 归档脚本模板变量
+[tasks.archive.vars]
+# 归档OSS根路径
+# oss_root = ''
+# 归档目录名称
+archive_name = 'archive'
+# 位于远程服务器上的归档目录的绝对路径
+remote_archive_dir = '/home/mc/server/archive'
+
+[monitors]
+[monitors.server]
+# 服务器状态轮询间隔（秒）
+poll_interval_sec = 5
+
+[monitors.instance]
+# 实例状态轮询间隔（秒）
+poll_interval_sec = 5
+
+[monitors.file_sync]
+# 本地缓存根目录
+local_cache_root = 'state/cache'
+# 文件同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 10 }
+files = []
+# 目录同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 300 }
+dirs = []
+
+[monitors.auto_archive_idle]
+# 是否启用空服自动归档回收监控
+enabled = false
+# 空服触发回收的倒计时（秒）
+idle_countdown_sec = 1200
+# 发送stop后等待离线的最长时间（秒）
+stop_wait_timeout_sec = 60
+# 等待离线时的状态检查间隔（秒）
+offline_check_interval_sec = 3
+# 删除active instance时是否忽略不存在错误
+delete_ignore_non_existent = false
+
+[monitors.backup]
+# 是否启用自动备份监控
+enabled = false
+# 自动触发备份任务的轮询间隔（秒）
+poll_interval_sec = 600
+
+[monitors.spot_interruption]
+# 是否启用抢占式实例回收监控
+enabled = false
+# 回收状态轮询间隔（秒）
+poll_interval_sec = 30
+# 发送stop后等待离线的最长时间（秒）
+stop_wait_timeout_sec = 90
+# 等待离线时的状态检查间隔（秒）
+offline_check_interval_sec = 3
+
+[monitors.best_ecs_candidate]
+# 最佳ECS候选监控的轮询间隔（秒）
+poll_interval_sec = 600
+# 实例可接受的内存大小列表，单位GiB，请使用常见内存大小，如 [8, 16]
+mem_choices = []
+# 实例可接受的vCPU数量，请使用与实例内存比满足1:2、1:4、1:8的数值，如 [4, 8]
+cpu_core_count_choices = []
+# 本地缓存文件路径，必须是一个json文件
+cache_file = 'state/ecs_candidates.json'
+
+[monitors.best_ecs_candidate.filters]
+# 实例最大可接受的交易价格，单位CNY。超过此价格的实例会被过滤
+max_trade_price = 0.6
+# 正则表达式，表示对实例规格名（实例类型）的筛选，符合该正则表达式的实例会被过滤，例如 ^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$
+instance_type_exclusion = ''
+
+[samplers]
+[samplers.player_count]
+# 内存中最多存储的数据点数量
+max_data_points = 100
+# 采样间隔（秒）
+sample_interval_sec = 5
+
+[samplers.balance]
+# 内存中最多存储的数据点数量
+max_data_points = 100
+# 采样间隔（秒）
+sample_interval_sec = 300

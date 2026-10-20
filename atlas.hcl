@@ -1,7 +1,7 @@
-# Atlas 配置：从 store/models 的 GORM 实体生成 MySQL 差量 SQL 迁移。
-# 详见 migrations/README.md。
+# Atlas 配置：从 internal/store/models 的 GORM 实体生成 MySQL 差量 SQL 迁移。
+# 详见 internal/migrations/README.md。
 #
-# 注意：tools/atlasloader 是一个独立的 Go module，避免把 Atlas provider
+# 注意：internal/migrations/atlasloader 是一个独立的 Go module，避免把 Atlas provider
 # 的依赖（各数据库驱动、云 SDK）引入主程序。
 
 variable "legacy" {
@@ -12,7 +12,7 @@ variable "legacy" {
 
 data "external_schema" "gorm_mysql" {
   program = [
-    "go", "-C", "tools/atlasloader", "run", "-mod=mod", ".",
+    "go", "-C", "internal/migrations/atlasloader", "run", "-mod=mod", ".",
     "--legacy=${var.legacy}",
   ]
 }
@@ -24,7 +24,7 @@ env "mysql" {
   dev = "docker+maria://_/mariadb:10.11/dev"
 
   migration {
-    dir    = "file://migrations/mysql"
+    dir    = "file://internal/migrations/mysql"
     format = golang-migrate
   }
 }

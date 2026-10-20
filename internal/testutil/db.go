@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Subilan/go-aliyunmc/store"
+	"github.com/Subilan/go-aliyunmc/internal/store"
 
 	mysqlDriver "github.com/go-sql-driver/mysql"
 	"gorm.io/driver/mysql"

@@ -1,0 +1,292 @@
+package monitors
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/internal/config"
+	"github.com/Subilan/go-aliyunmc/internal/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/playerdata"
+	"github.com/Subilan/go-aliyunmc/internal/remote_util"
+	"github.com/Subilan/go-aliyunmc/internal/store"
+	"github.com/Subilan/go-aliyunmc/internal/store/models"
+	"github.com/Subilan/go-aliyunmc/internal/tasks"
+)
+
+const (
+	waitSnapshotTimeout = 10 * time.Second
+	syncFileTimeout     = 60 * time.Second
+	syncDirTimeout      = 120 * time.Second
+	initialJitterMax    = 3 * time.Second
+)
+
+// initialJitter 返回一个随机延迟，用于错开首次同步时的并发连接
+func initialJitter() time.Duration {
+	return time.Duration(rand.Int63n(int64(initialJitterMax)))
+}
+
+// PostSyncHook 是文件同步成功后执行的回调函数，返回 error 表示执行失败
+type PostSyncHook func() error
+
+// FileSyncPoller 是一个定时轮询器，用于定期从远端服务器同步指定文件到本地缓存目录
+type FileSyncPoller struct {
+	stopChans     map[string]chan struct{}
+	postSyncHooks map[string]PostSyncHook // key 为本地文件完整路径
+	mu            sync.Mutex
+	logger        *log_util.NamedLogger
+}
+
+// newFileSyncPoller 创建一个新的 FileSyncPoller 实例
+func newFileSyncPoller() *FileSyncPoller {
+	return &FileSyncPoller{
+		stopChans:     make(map[string]chan struct{}),
+		postSyncHooks: make(map[string]PostSyncHook),
+		logger:        log_util.NewNamedLogger("[monitor/file-sync] ", "file-sync-monitor"),
+	}
+}
+
+// run 为每个配置的文件和目录启动独立的轮询 goroutine，定期从远端服务器同步到本地缓存目录
+func (p *FileSyncPoller) run(ctx context.Context) {
+	// 确保本地缓存目录存在
+	if err := p.ensureCacheDir(); err != nil {
+		p.logger.Error("检查缓存目录失败: %v", err)
+	}
+
+	// 注册白名单同步后钩子：当 whitelist.json 同步完成后，校验并清理失效的绑定关系
+	whitelistLocalPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, "whitelist.json")
+	p.mu.Lock()
+	p.postSyncHooks[whitelistLocalPath] = func() error {
+		return validateAndCleanWhitelistBindings(p.logger)
+	}
+	p.mu.Unlock()
+
+	// 为每个文件创建独立的轮询 goroutine
+	for _, fileConfig := range config.Get().Monitors.FileSync.Files {
+		stopCh := make(chan struct{})
+		p.mu.Lock()
+		p.stopChans[fileConfig.RemotePath] = stopCh
+		p.mu.Unlock()
+
+		go p.pollFile(ctx, fileConfig, stopCh)
+	}
+
+	// 为每个目录创建独立的轮询 goroutine
+	for _, dirConfig := range config.Get().Monitors.FileSync.Dirs {
+		stopCh := make(chan struct{})
+		p.mu.Lock()
+		p.stopChans[dirConfig.RemotePath] = stopCh
+		p.mu.Unlock()
+
+		go p.pollDir(ctx, dirConfig, stopCh)
+	}
+}
+
+// pollFile 为单个文件执行定时轮询
+func (p *FileSyncPoller) pollFile(ctx context.Context, fileConfig config.MonitorsFileSyncFile, stopCh chan struct{}) {
+	ticker := time.NewTicker(time.Duration(fileConfig.PollIntervalSec) * time.Second)
+	defer ticker.Stop()
+
+	time.Sleep(initialJitter())
+	p.syncFile(ctx, fileConfig)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			p.syncFile(ctx, fileConfig)
+		}
+	}
+}
+
+// syncTarget 执行同步前置检查，返回实例 IP；不满足条件时返回空字符串。
+func (p *FileSyncPoller) syncTarget(name string) string {
+	if tasks.IsArchiveTaskRunning() {
+		p.logger.Info("归档流程正在执行，跳过%s同步", name)
+		return ""
+	}
+	instance, err := store.GetActiveInstance()
+	if err != nil {
+		p.logger.Info("无法获取实例，跳过%s同步", name)
+		return ""
+	}
+	if !instance.IsDeployed {
+		p.logger.Info("实例未部署，跳过%s同步", name)
+		return ""
+	}
+	snap, err := instanceMonitor.WaitSnapshot(waitSnapshotTimeout)
+	if err != nil || !snap.IsValid() || snap.Value != "Running" {
+		p.logger.Info("实例未运行或无法获取状态，跳过%s同步", name)
+		return ""
+	}
+	return instance.Ip
+}
+
+// syncFile 执行单次文件同步
+func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig config.MonitorsFileSyncFile) {
+	ip := p.syncTarget("文件")
+	if ip == "" {
+		return
+	}
+
+	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, fileConfig.LocalPath)
+	if err := os.MkdirAll(filepath.Dir(localFullPath), 0755); err != nil {
+		p.logger.Error("无法创建本地目录: %v", err)
+		return
+	}
+
+	syncCtx, cancel := context.WithTimeout(ctx, syncFileTimeout)
+	defer cancel()
+
+	p.logger.Info("开始同步文件 %s", fileConfig.RemotePath)
+	if err := remote_util.Mc(ip).DownloadFile(syncCtx, fileConfig.RemotePath, localFullPath, nil); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			p.logger.Error("文件同步超时(%s)", syncFileTimeout)
+			return
+		}
+		if errors.Is(err, context.Canceled) {
+			p.logger.Error("文件同步取消")
+			return
+		}
+		p.logger.Error("文件同步失败: %v", err)
+		return
+	}
+	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
+
+	// 执行该文件注册的同步后钩子
+	p.mu.Lock()
+	hook, hasHook := p.postSyncHooks[localFullPath]
+	p.mu.Unlock()
+	if hasHook {
+		if err := hook(); err != nil {
+			p.logger.Error("同步后钩子执行失败 (%s): %v", fileConfig.LocalPath, err)
+		}
+	}
+}
+
+// pollDir 为单个目录执行定时轮询
+func (p *FileSyncPoller) pollDir(ctx context.Context, dirConfig config.MonitorsFileSyncDir, stopCh chan struct{}) {
+	ticker := time.NewTicker(time.Duration(dirConfig.PollIntervalSec) * time.Second)
+	defer ticker.Stop()
+
+	time.Sleep(initialJitter())
+	p.syncDir(ctx, dirConfig)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-stopCh:
+			return
+		case <-ticker.C:
+			p.syncDir(ctx, dirConfig)
+		}
+	}
+}
+
+// syncDir 执行单次目录同步
+func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig config.MonitorsFileSyncDir) {
+	ip := p.syncTarget("目录")
+	if ip == "" {
+		return
+	}
+
+	localFullPath := filepath.Join(config.Get().Monitors.FileSync.LocalCacheRoot, dirConfig.LocalPath)
+	if err := os.MkdirAll(localFullPath, 0755); err != nil {
+		p.logger.Error("无法创建本地目录: %v", err)
+		return
+	}
+
+	syncCtx, cancel := context.WithTimeout(ctx, syncDirTimeout)
+	defer cancel()
+
+	p.logger.Info("开始同步目录 %s", dirConfig.RemotePath)
+	if err := remote_util.Mc(ip).DownloadDir(syncCtx, dirConfig.RemotePath, localFullPath, nil); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			p.logger.Error("目录同步超时(%s)", syncDirTimeout)
+			return
+		}
+		if errors.Is(err, context.Canceled) {
+			p.logger.Error("目录同步取消")
+			return
+		}
+		p.logger.Error("目录同步失败: %v", err)
+		return
+	}
+	p.logger.Info("目录同步完成: %s -> %s", dirConfig.RemotePath, localFullPath)
+}
+
+// ensureCacheDir 确保本地缓存目录存在
+func (p *FileSyncPoller) ensureCacheDir() error {
+	return ensureDirectory(config.Get().Monitors.FileSync.LocalCacheRoot)
+}
+
+// ensureDirectory 确保目录存在，不存在则创建
+func ensureDirectory(path string) error {
+	info, err := os.Stat(path)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("路径不是目录: %s", path)
+		}
+		return nil
+	}
+
+	if !os.IsNotExist(err) {
+		return err
+	}
+
+	// 创建目录
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return fmt.Errorf("创建目录失败 %s: %w", path, err)
+	}
+
+	return nil
+}
+
+// validateAndCleanWhitelistBindings 读取当前 whitelist.json 并清理所有已失效的用户绑定。
+// 若某用户的 WhitelistUUID 在当前白名单中已不存在，则将其置为 nil（解绑）。
+func validateAndCleanWhitelistBindings(logger *log_util.NamedLogger) error {
+	entries, err := playerdata.ReadWhitelist()
+	if err != nil {
+		return fmt.Errorf("读取白名单失败: %w", err)
+	}
+
+	// 构建当前白名单 UUID 集合
+	validUUIDs := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		validUUIDs[e.UUID] = true
+	}
+
+	// 查询所有已绑定的用户
+	var users []models.User
+	if err := store.DB.Where("whitelist_uuid IS NOT NULL").Find(&users).Error; err != nil {
+		return fmt.Errorf("查询已绑定用户失败: %w", err)
+	}
+
+	cleared := 0
+	for _, u := range users {
+		if u.WhitelistUUID != nil && !validUUIDs[*u.WhitelistUUID] {
+			logger.Info("用户 %s 的白名单绑定已失效 (UUID: %s)，自动解绑", u.Username, *u.WhitelistUUID)
+			u.WhitelistUUID = nil
+			if err := store.DB.Save(&u).Error; err != nil {
+				logger.Error("解绑用户 %s 失败: %v", u.Username, err)
+				continue
+			}
+			cleared++
+		}
+	}
+
+	if cleared > 0 {
+		logger.Info("白名单绑定校验完成，已自动解绑 %d 个失效绑定", cleared)
+	}
+
+	return nil
+}

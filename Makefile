@@ -1,4 +1,4 @@
-.PHONY: gen-config gen-policy test build dev run migrate-diff
+.PHONY: gen-config gen-policy test build dev run bundle migrate-diff
 
 MIGRATION_NAME ?= change
 
@@ -13,9 +13,9 @@ LDFLAGS := -X github.com/Subilan/go-aliyunmc/internal/version.Version=$(APP_VERS
 gen-config:
 	@go run ./cmd/configgen
 
-# 根据 policies/policy.toml 渲染 RAM 策略并输出到 stdout
+# 根据 policy/policy.toml 渲染 RAM 策略并输出到 stdout
 gen-policy:
-	@go run . gen_policy
+	@go run ./cmd/aliyunmc gen_policy
 
 # 运行测试
 test:
@@ -23,14 +23,18 @@ test:
 
 # 构建项目
 build:
-	@go build -ldflags "$(LDFLAGS)" -o aliyunmc .
+	@go build -ldflags "$(LDFLAGS)" -o aliyunmc ./cmd/aliyunmc
+
+# 生成发布包（linux/amd64），production 仓库的发布流程也使用这个目标
+bundle:
+	@bash release/bundle.sh "$(OUT)"
 
 # 运行项目
 dev:
-	@GO_ALIYUNMC_DEV=1 go run . run
+	@GO_ALIYUNMC_DEV=1 GO_ALIYUNMC_CONFIG_DIR=.dev/config GO_ALIYUNMC_LOG_DIR=.dev/state/logs go run ./cmd/aliyunmc run
 
 run:
-	@go run . run
+	@GO_ALIYUNMC_CONFIG_DIR=.dev/config GO_ALIYUNMC_LOG_DIR=.dev/state/logs go run ./cmd/aliyunmc run
 
 # 根据 GORM 模型与已有迁移的差量生成 MySQL 迁移（需要 atlas CLI 和 Docker）
 migrate-diff:

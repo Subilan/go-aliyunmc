@@ -1,7 +1,7 @@
 // Package policygen 根据策略配置渲染 RAM 自定义策略模板。
 //
 // 模板与 example 配置纳入版本控制；真实配置（账号、地域、bucket 等）位于
-// policies/policy.toml，被 .gitignore 忽略。
+// policy/policy.toml，被 .gitignore 忽略。
 package policygen
 
 import (
@@ -19,11 +19,11 @@ import (
 
 const (
 	// DefaultConfigPath 是真实策略配置的默认路径。
-	DefaultConfigPath = "policies/policy.toml"
+	DefaultConfigPath = "policy/policy.toml"
 	// DefaultTemplatePath 是策略模板的默认路径。
-	DefaultTemplatePath = "policies/templates/policy.json.tmpl"
+	DefaultTemplatePath = "policy/templates/policy.json.tmpl"
 	// ExampleConfigPath 是纳入版本控制的示例配置路径。
-	ExampleConfigPath = "policies/policy.example.toml"
+	ExampleConfigPath = "policy/policy.example.toml"
 )
 
 // Config 是策略配置文件的结构。

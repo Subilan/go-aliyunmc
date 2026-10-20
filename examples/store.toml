@@ -1,0 +1,12 @@
+# 数据库主机地址
+host = 'localhost'
+# 数据库端口，MySQL 常用 3306
+port = 3306
+# 数据库用户名
+user = 'root'
+# 数据库密码
+password = ''
+# 数据库名称
+dbname = 'aliyunmc'
+# 数据库字符集
+charset = 'utf8mb4'

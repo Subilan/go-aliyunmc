@@ -1,20 +1,17 @@
-config.toml
 .idea
 
 *.drawio.bkp
 /go-aliyunmc*
+/aliyunmc
+/internal/migrations/atlasloader/atlasloader
 /dist/
 upload.sh
 *.pem
 playerprofiles
 *.db
-configs/
-example_configs/
 configgen
 .DS_Store
-remote_data_cache/
-logs/
-ecs_candidates.json
-policies/*.toml
-!policies/policy.example.toml
-production/
+.dev/
+/state/
+policy/*.toml
+!policy/policy.example.toml

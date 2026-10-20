@@ -9,7 +9,7 @@
 
 ## 路由权限（Casbin + mid.Perm）
 
-说明：以下规则由 `mid.Perm()` 调用 `role.CanRequest()` 执行，使用 `rbac_model.conf` 的 `keyMatch2` 对路径进行匹配。
+说明：以下规则由 `mid.Perm()` 调用 `role.CanRequest()` 执行，使用 `assets/rbac/model.conf` 的 `keyMatch2` 对路径进行匹配。
 
 | 资源 | 方法 | 最低角色 | 含义 |
 | --- | --- | --- | --- |
@@ -33,13 +33,13 @@
 
 ## 任务权限（任务层）
 
-说明：以下权限不依赖路由中间件，而是在任务触发链路中执行（`tasks/getTaskDefinitionAndCheck` 与任务自定义 enforcer）。
+说明：以下权限不依赖路由中间件，而是在任务触发链路中执行（`internal/tasks/getTaskDefinitionAndCheck` 与任务自定义 enforcer）。
 
 | 任务类型/能力 | 最低角色 | 位置 | 含义 |
 | --- | --- | --- | --- |
-| backup | operator | `tasks/task_definition.go` | 仅 operator 及以上可触发备份任务 |
-| archive | operator | `tasks/task_definition.go` | 仅 operator 及以上可触发归档任务 |
-| create-custom-instance (execute) | operator | `tasks/create_instance.task.go` + `rbac_policy.csv` | 创建实例任务在使用自定义参数时，需要 execute 权限 |
+| backup | operator | `internal/tasks/task_definition.go` | 仅 operator 及以上可触发备份任务 |
+| archive | operator | `internal/tasks/task_definition.go` | 仅 operator 及以上可触发归档任务 |
+| create-custom-instance (execute) | operator | `internal/tasks/create_instance.task.go` + `assets/rbac/policy.csv` | 创建实例任务在使用自定义参数时，需要 execute 权限 |
 
 ## 公开路由（不走权限中间件）
 

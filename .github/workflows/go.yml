@@ -37,3 +37,19 @@ jobs:
 
       - name: Test
         run: make test
+
+      - name: Validate release scripts
+        run: bash -n release/bundle.sh release/remote-install.sh
+
+      - name: Build release bundle
+        run: make bundle OUT="$RUNNER_TEMP/bundle"
+
+      - name: Check bundle contents
+        run: |
+          set -euo pipefail
+          test -x "$RUNNER_TEMP/bundle/go-aliyunmc"
+          test -f "$RUNNER_TEMP/bundle/assets/rbac/model.conf"
+          test -f "$RUNNER_TEMP/bundle/assets/rbac/policy.csv"
+          test -f "$RUNNER_TEMP/bundle/go-aliyunmc.service"
+          test -f "$RUNNER_TEMP/bundle/remote-install.sh"
+          test -d "$RUNNER_TEMP/bundle/assets/scripts"

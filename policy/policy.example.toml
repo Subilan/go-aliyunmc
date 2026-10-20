@@ -1,0 +1,25 @@
+# RAM 策略生成配置示例。
+#
+# 复制为 policy/policy.toml 后填写真实值；policy/policy.toml 已被 gitignore。
+# 模板中不包含账号、地域、bucket 或策略名，这些值全部来自本文件。
+# account_id 是阿里云主账号 ID，同一账号下的生产/开发子用户共用。
+
+[common]
+# 阿里云账号 ID，用于 ECS/VPC/OSS 资源 ARN。
+account_id = "0000000000000000"
+
+[environments.production]
+# 输出时显示的策略名称。
+name = "aliyunmc-prod-policy"
+# ECS/VPC 所在地域。
+region_id = "cn-hangzhou"
+# 生产 OSS bucket，不含 oss:// 前缀。
+oss_bucket = "your-prod-bucket"
+# 可选：只授权 bucket 下的某个前缀；留空表示整个 bucket。
+oss_prefix = ""
+
+[environments.development]
+name = "aliyunmc-dev-policy"
+region_id = "cn-shanghai"
+oss_bucket = "your-dev-bucket"
+oss_prefix = ""

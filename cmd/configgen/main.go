@@ -11,11 +11,11 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/Subilan/go-aliyunmc/config"
+	"github.com/Subilan/go-aliyunmc/internal/config"
 )
 
 func main() {
-	const dir = "example_configs"
+	const dir = "examples"
 
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		fmt.Printf("创建 %s 失败: %v\n", dir, err)
