@@ -39,7 +39,7 @@ jobs:
         run: make test
 
       - name: Validate release scripts
-        run: bash -n release/bundle.sh release/remote-install.sh
+        run: bash -n release/bundle.sh release/remote-install.sh release/version.sh
 
       - name: Build release bundle
         run: make bundle OUT="$RUNNER_TEMP/bundle"

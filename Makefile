@@ -1,6 +1,7 @@
-.PHONY: gen-config gen-policy test build dev run bundle migrate-diff
+.PHONY: gen-config gen-policy test build dev run bundle bump bump-push migrate-diff
 
 MIGRATION_NAME ?= change
+BUMP ?= patch
 
 APP_VERSION := $(shell cat VERSION)
 APP_COMMIT := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
@@ -28,6 +29,14 @@ build:
 # 生成发布包（linux/amd64），production 仓库的发布流程也使用这个目标
 bundle:
 	@bash release/bundle.sh "$(OUT)"
+
+# 按 semver 升级版本并打标签，BUMP 为 major|minor|patch 或具体版本号
+bump:
+	@bash release/version.sh "$(BUMP)"
+
+# 同上，并把提交与标签推送到远端
+bump-push:
+	@bash release/version.sh "$(BUMP)" --push
 
 # 运行项目
 dev:
