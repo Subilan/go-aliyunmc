@@ -20,18 +20,26 @@ type BalanceDataPoint struct {
 	Amount float64   `json:"amount"`
 }
 
-// BalanceStatsMinSpan 是计算平均消耗速率所需的最短观测时长。
+// BalanceStatsMinSpan 是计算平均消耗速率所需的最短累计运行时长。
 // 按小时计费时，窗口过短会让单个计费事件主导结果。
 const BalanceStatsMinSpan = 6 * time.Hour
 
 // BalanceStats 描述采样窗口内的余额消耗统计。
 type BalanceStats struct {
-	// Rate 为平均消耗速率（¥/h）；样本不足或无净消耗时为 nil。
-	Rate             *float64 `json:"rate"`
-	SpanHours        float64  `json:"span_hours"`
-	SampleCount      int      `json:"sample_count"`
-	HasEnoughSamples bool     `json:"has_enough_samples"`
-	MinSpanHours     float64  `json:"min_span_hours"`
+	// Rate 为实例运行期间的平均消耗速率（¥/h）；运行样本不足或无净消耗时为 nil。
+	Rate *float64 `json:"rate"`
+	// SpanHours 是首尾采样点的总跨度。
+	SpanHours float64 `json:"span_hours"`
+	// RunningHours 是参与统计的实例运行时长，即与实例存在时间重叠的采样区间之和。
+	RunningHours     float64 `json:"running_hours"`
+	SampleCount      int     `json:"sample_count"`
+	HasEnoughSamples bool    `json:"has_enough_samples"`
+	MinRunningHours  float64 `json:"min_running_hours"`
+}
+
+type timeRange struct {
+	start time.Time
+	end   time.Time
 }
 
 // BalanceSampler 定期采样阿里云账户余额。
@@ -77,18 +85,45 @@ func (s *BalanceSampler) Snapshot() []BalanceDataPoint {
 	return result
 }
 
-// Stats 返回当前采样窗口内的余额消耗统计。
+// Stats 返回当前采样窗口内、实例运行期间的余额消耗统计。
 func (s *BalanceSampler) Stats() BalanceStats {
-	return calculateBalanceStats(s.Snapshot())
+	points := s.Snapshot()
+	if len(points) < 2 {
+		return calculateBalanceStats(points, nil)
+	}
+	return calculateBalanceStats(points, s.instanceRanges(points[0].Time, points[len(points)-1].Time))
 }
 
-// calculateBalanceStats 以整个观测时长为分母累计所有下降额。
-// 若改为对每个区间的速率取算术平均，短区间会与长区间获得相同权重，
-// 余额不变的区间也会被排除在统计之外。
-func calculateBalanceStats(points []BalanceDataPoint) BalanceStats {
+// instanceRanges 返回与采样窗口有重叠的实例存在区间。
+func (s *BalanceSampler) instanceRanges(from, to time.Time) []timeRange {
+	var instances []models.Instance
+	err := store.DB.Unscoped().
+		Where("created_at <= ? AND (deleted_at IS NULL OR deleted_at >= ?)", to, from).
+		Find(&instances).Error
+	if err != nil {
+		s.logger.Error("查询实例运行时段失败: %v", err)
+		return nil
+	}
+
+	now := time.Now()
+	ranges := make([]timeRange, 0, len(instances))
+	for _, instance := range instances {
+		end := now
+		if instance.DeletedAt.Valid {
+			end = instance.DeletedAt.Time
+		}
+		ranges = append(ranges, timeRange{start: instance.CreatedAt, end: end})
+	}
+	return ranges
+}
+
+// calculateBalanceStats 只统计与实例运行时段重叠的采样区间，并以这些区间的
+// 总时长为分母累计所有下降额。若不按实例存在时间过滤，停机期间的极低消耗
+// 会把速率稀释到与实际运行成本无关的水平。
+func calculateBalanceStats(points []BalanceDataPoint, running []timeRange) BalanceStats {
 	stats := BalanceStats{
-		SampleCount:  len(points),
-		MinSpanHours: BalanceStatsMinSpan.Hours(),
+		SampleCount:     len(points),
+		MinRunningHours: BalanceStatsMinSpan.Hours(),
 	}
 	if len(points) < 2 {
 		return stats
@@ -98,27 +133,67 @@ func calculateBalanceStats(points []BalanceDataPoint) BalanceStats {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Time.Before(sorted[j].Time)
 	})
+	stats.SpanHours = sorted[len(sorted)-1].Time.Sub(sorted[0].Time).Hours()
 
-	span := sorted[len(sorted)-1].Time.Sub(sorted[0].Time)
-	stats.SpanHours = span.Hours()
-	if span < BalanceStatsMinSpan {
-		return stats
-	}
-	stats.HasEnoughSamples = true
+	ranges := mergeTimeRanges(running)
 
-	// 只累计下降额，忽略充值造成的上升，避免充值抵消当期消耗。
-	var totalDrop float64
+	var totalDrop, runningHours float64
 	for i := 1; i < len(sorted); i++ {
+		start, end := sorted[i-1].Time, sorted[i].Time
+		if !end.After(start) || !overlapsAny(start, end, ranges) {
+			continue
+		}
+		runningHours += end.Sub(start).Hours()
+		// 只累计下降额，忽略充值造成的上升，避免充值抵消当期消耗。
 		if drop := sorted[i-1].Amount - sorted[i].Amount; drop > 0 {
 			totalDrop += drop
 		}
 	}
+
+	stats.RunningHours = runningHours
+	if runningHours < BalanceStatsMinSpan.Hours() {
+		return stats
+	}
+	stats.HasEnoughSamples = true
 	if totalDrop > 0 {
-		rate := totalDrop / span.Hours()
+		rate := totalDrop / runningHours
 		stats.Rate = &rate
 	}
 
 	return stats
+}
+
+func mergeTimeRanges(ranges []timeRange) []timeRange {
+	valid := make([]timeRange, 0, len(ranges))
+	for _, r := range ranges {
+		if r.end.After(r.start) {
+			valid = append(valid, r)
+		}
+	}
+	sort.Slice(valid, func(i, j int) bool {
+		return valid[i].start.Before(valid[j].start)
+	})
+
+	merged := make([]timeRange, 0, len(valid))
+	for _, r := range valid {
+		if len(merged) == 0 || r.start.After(merged[len(merged)-1].end) {
+			merged = append(merged, r)
+			continue
+		}
+		if r.end.After(merged[len(merged)-1].end) {
+			merged[len(merged)-1].end = r.end
+		}
+	}
+	return merged
+}
+
+func overlapsAny(start, end time.Time, ranges []timeRange) bool {
+	for _, r := range ranges {
+		if start.Before(r.end) && end.After(r.start) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *BalanceSampler) run(ctx context.Context) {
