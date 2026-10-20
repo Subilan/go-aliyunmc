@@ -20,16 +20,7 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-// SpotInterruptionMonitor 监控抢占式实例的回收通知。
-//
-// 阿里云会在抢占式实例被回收前约 5 分钟，通过实例的 OperationLocks 字段（LockReason 为
-// Recycling）发出待回收通知。本监控器定期调用 DescribeInstances 感知该通知，并在收到
-// 通知后立即保护性停机 Minecraft 服务器（触发全盘保存），避免实例被强制断电导致回档。
-// 归档不在此流程中执行：数据依赖实例磁盘保留（spot_interruption_behavior = Stop），
-// 由管理员在实例被回收后通过 /instance/start 重新开启实例来恢复服务。
-//
-// 停机后系统会进入回收保护状态，期间阻止 start_server 任务触发。当实例通过
-// /instance/start 接口被管理员重新启动并恢复 Running 后，保护状态自动解除。
+// SpotInterruptionMonitor 监控抢占式实例的回收通知并执行保护性停机。
 type SpotInterruptionMonitor struct {
 	enabled              bool
 	interval             time.Duration
@@ -188,9 +179,7 @@ func (m *SpotInterruptionMonitor) handleRecycling(instance *models.Instance) {
 	}()
 }
 
-// executePipeline 执行保护性停机流水线：停止服务器（触发全盘保存）→ 等待离线。
-// 归档不在本流程内执行，数据依赖实例磁盘保留（spot_interruption_behavior = Stop），
-// 由管理员在实例被回收后通过 /instance/start 重新开启实例恢复服务。
+// executePipeline 执行保护性停机流水线，停止服务器并等待离线。
 func (m *SpotInterruptionMonitor) executePipeline() {
 	instance, err := store.GetActiveInstanceDefaultNil()
 	if err != nil || instance == nil {

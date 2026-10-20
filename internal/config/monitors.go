@@ -65,12 +65,7 @@ type MonitorsSpotInterruption struct {
 	OfflineCheckIntervalSec int  `toml:"offline_check_interval_sec" default:"3" validate:"min=1" comment:"等待离线时的状态检查间隔（秒）"`
 }
 
-// MonitorsBestEcsCandidateFilters 对应 [monitors.best_ecs_candidate.filters]，
-// 包含了对获取到的实例设置的筛选条件。
-//
-// InstanceTypeExclusion 主要用于过滤一些性能不佳或者不适合运行 Minecraft 服务器的实例类型，例如共享性实例（ecs.e*）的性能不佳，大数据型实例（ecs.d*）对 Minecraft 服务的运行意义不大。示例：
-//
-//	^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$
+// MonitorsBestEcsCandidateFilters 对应 [monitors.best_ecs_candidate.filters]。
 type MonitorsBestEcsCandidateFilters struct {
 	// MaxTradePrice 表示相关实例的最大交易价格，单位 CNY。超过（>）该交易价格的实例会被筛除。
 	MaxTradePrice float32 `toml:"max_trade_price" default:"0.6" validate:"gte=0" comment:"实例最大可接受的交易价格，单位CNY。超过此价格的实例会被过滤"`

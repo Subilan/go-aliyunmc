@@ -52,11 +52,7 @@ type Task struct {
 	StartAt *time.Time `gorm:"default:null" json:"startAt"`
 	// EndAt 字段记录了任务的结束时间。当任务完成（无论成功还是失败）时，EndAt 将被设置为任务结束的时间戳。对于正在运行或尚未开始的任务，EndAt 将保持为空。
 	EndAt *time.Time `gorm:"default:null" json:"endAt"`
-	// Status 字段表示任务的当前状态。它是一个字符串，通常具有以下几个可能的值：
-	//  - created：表示任务已创建但尚未开始执行。
-	//  - running：表示任务正在执行中。
-	//  - success：表示任务已成功完成。
-	//  - failed：表示任务执行失败。
+	// Status 是任务当前状态，取值为 created、running、success 或 failed。
 	Status TaskStatus `gorm:"not null" json:"status"`
 	// Step 字段表示任务的当前步骤，通常用于多步骤任务，以便前端能够根据步骤信息展示不同的界面或提示用户当前任务的进度。
 	// 对于单步骤任务，Step 保持为 0。
@@ -65,10 +61,7 @@ type Task struct {
 	// 该列仅作为旧库兼容保留，不再随执行过程更新；读取任务详情时由 store.GetTask
 	// 从 task_output_lines 拼接填充。
 	Output string `gorm:"not null" json:"output"`
-	// Error 字段记录了任务执行失败时的错误信息。它可以是一个简短的错误描述，也可能是特殊的字符串：
-	//  - __TIMEOUT__：表示任务因超时而失败。
-	//  - __INTERRUPTED__：表示任务被中断而失败。
-	//  - 空字符串：表示任务没有错误（成功或正在运行中）。
+	// Error 是任务失败原因，可能为 __TIMEOUT__ 或 __INTERRUPTED__，空字符串表示无错误。
 	Error string `gorm:"default:null" json:"error"`
 	// By 字段记录了创建任务的用户ID。如果为空，表示该任务由系统创建。
 	By *uint `gorm:"default:null" json:"by"`

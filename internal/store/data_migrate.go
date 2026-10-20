@@ -16,17 +16,6 @@ import (
 const dataMigrationSuffix = ".addendum.sql"
 
 // applyDataMigrations 执行 migrations/data 下的数据迁移。
-//
-// 文件名以对应的 schema 迁移版本号开头，例如：
-//
-//	migrations/mysql/20261017062544_task_output_lines.up.sql
-//	migrations/data/20261017062544_task_output_lines.addendum.sql
-//
-// 只有版本号不大于当前 schema 版本的数据迁移才会执行，因此它们和 schema 迁移
-// 在同一次 ./aliyunmc migrate 中自动完成。
-//
-// 数据迁移没有独立的版本记录表：每次 migrate 都会重新执行，SQL 必须自身幂等
-// （NOT EXISTS、INSERT IGNORE、带条件的 UPDATE 等），并且只包含 DML。
 func applyDataMigrations(db *sql.DB, schemaVersion uint64) error {
 	entries, err := fs.ReadDir(migrations.FS, "data")
 	if err != nil {

@@ -28,11 +28,7 @@ func Migrate() error {
 	return MigrateDSN(config.Get().Store.DSN())
 }
 
-// MigrateDSN 按版本顺序在 dsn 指向的数据库上应用 migrations/mysql/ 下嵌入的 SQL 迁移。
-//
-// 旧版本的数据库由 GORM AutoMigrate 创建，没有版本记录。为了平滑接入，
-// 首次运行时如果检测到已有 users 表但还没有 schema_migrations，就把基线
-// 版本直接写入版本表，只执行基线之后的迁移。
+// MigrateDSN 按版本顺序在 dsn 指向的数据库上应用嵌入的 SQL 迁移。
 func MigrateDSN(dsn string) error {
 	src, err := iofs.New(migrations.FS, migrationDriver)
 	if err != nil {
@@ -101,10 +97,8 @@ func MigrateDSN(dsn string) error {
 	return nil
 }
 
-// baselineVersion 返回旧库首次接入版本化迁移时应记录的版本号：
-//   - 若库中已有 task_output_lines（本分支曾用 AutoMigrate 跑过），
-//     基线为创建该表的迁移；
-//   - 否则基线为最初的 baseline 迁移。
+// baselineVersion 返回旧库首次接入版本化迁移时应记录的版本号。
+// 有 task_output_lines 时基线为创建该表的迁移，否则为 baseline 迁移。
 func baselineVersion(hasOutputLines bool) (uint64, error) {
 	suffix := "_baseline"
 	if hasOutputLines {

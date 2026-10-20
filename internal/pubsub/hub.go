@@ -3,14 +3,7 @@ package pubsub
 
 import "sync"
 
-// Hub 将值广播给多个订阅者。每个订阅者拥有独立的缓冲 channel。
-//
-// 当订阅者的缓冲已满时，行为由订阅时传入的 onOverflow 决定：
-//   - onOverflow 为 nil：丢弃本次广播的值，保留订阅者（适合状态类数据，后续值会覆盖当前值）；
-//   - onOverflow 不为 nil：移除该订阅者并关闭其 channel，然后在锁外调用 onOverflow
-//     （适合日志流，慢消费者应被断开）。
-//
-// Close 关闭所有订阅 channel，并拒绝后续订阅。Hub 关闭后 Broadcast 不再产生任何效果。
+// Hub 将值广播给多个订阅者，每个订阅者拥有独立的缓冲 channel。
 type Hub[T any] struct {
 	mu     sync.Mutex
 	subs   map[*subscriber[T]]struct{}
@@ -28,11 +21,7 @@ func NewHub[T any]() *Hub[T] {
 }
 
 // Subscribe 创建一个带缓冲的订阅。buffer 小于 0 时按 0 处理。
-//
-// 返回值：
-//   - 只读 channel：订阅事件流；
-//   - unsubscribe：幂等，释放订阅并关闭 channel；
-//   - ok：Hub 已关闭时为 false，此时 channel 已关闭，unsubscribe 为空操作。
+// Hub 已关闭时 ok 为 false，返回的 channel 已经关闭。
 func (h *Hub[T]) Subscribe(buffer int, onOverflow func()) (<-chan T, func(), bool) {
 	if buffer < 0 {
 		buffer = 0

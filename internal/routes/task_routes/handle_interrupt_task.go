@@ -14,10 +14,7 @@ import (
 )
 
 // HandleInterruptTask 请求中止正在执行的任务。
-//
-// 返回 202 Accepted 表示中断请求已经发出，不表示任务已经停止：任务函数的退出与
-// 终态收尾由 monitor 异步完成。调用方应通过该任务的 SSE 流（task_done）或
-// GET /task/:id 确认最终状态。
+// 202 表示请求已发出。
 func HandleInterruptTask(c *gin.Context) {
 	taskID, ok := context_util.ParamUint(c, "id")
 	if !ok {

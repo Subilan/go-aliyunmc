@@ -1,15 +1,4 @@
-// Package config 持有本程序全部配置的结构体定义、加载与全局访问入口。
-//
-// 本包不 import 项目内的任何其他包。各功能包通过 config.Get() 读取配置，
-// 自己只负责副作用（连库、建 client、载 Casbin、读私钥等）。
-//
-// 命名约定：
-//
-//   - 类型名 = 分节路径的驼峰形式：[monitors.file_sync] → MonitorsFileSync
-//   - 聚合字段名 = 顶层分节名，结构体字段名 = 该节里的键
-//   - config.Get().Monitors.FileSync.PollIntervalSec 对应
-//     [monitors.file_sync] 里的 poll_interval_sec
-//   - 每个类型上方注明它对应的 TOML 路径
+// Package config 定义全部配置的结构体、加载流程与全局访问入口。
 package config
 
 import "sync/atomic"

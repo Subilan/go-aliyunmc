@@ -7,8 +7,6 @@ import (
 )
 
 // SpotInterruptionState 描述抢占式实例回收保护状态。
-// 当检测到当前活跃实例进入待回收状态（OperationLocks 中的 LockReason 为 Recycling）时，
-// 系统会保护性停机 Minecraft 服务器并阻止再次启动，直到实例重新恢复运行。
 type SpotInterruptionState struct {
 	// Active 表示是否正处于抢占式实例回收保护状态。
 	Active bool `json:"active"`

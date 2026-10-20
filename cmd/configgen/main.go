@@ -1,7 +1,4 @@
-// Command configgen 依据 config 包里的结构体与它们的 tag 生成示例配置。
-//
-// 示例完全由 tag 驱动：comment tag 变成注释，default tag 变成默认值，
-// commented 选项把必须自行填写的字段（凭证、密钥路径、资源 ID 等）注释掉。
+// Command configgen 依据 config 包结构体上的 tag 生成示例配置。
 package main
 
 import (

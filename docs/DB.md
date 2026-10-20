@@ -1,3 +1,8 @@
+---
+title: 数据库变更与迁移
+description: 数据库框架、版本化迁移的生成与应用，以及数据迁移与测试库。
+---
+
 # 数据库变更与迁移
 
 本文说明项目的数据库访问框架、schema 的管理方式，以及修改实体后如何生成和应用迁移。
@@ -178,6 +183,19 @@ atlas migrate hash --env mysql
 # 查看当前数据库版本
 mysql -e "SELECT * FROM schema_migrations"
 ```
+
+## 测试数据库
+
+`internal/testutil.OpenMySQLTestDB()` 在测试 MySQL 上创建临时库，应用版本化迁移后安装到 `store.DB`。连接信息来自环境变量，未设置时使用默认值。
+
+| 变量 | 默认值 |
+|---|---|
+| `GO_ALIYUNMC_TEST_MYSQL_HOST` | `127.0.0.1` |
+| `GO_ALIYUNMC_TEST_MYSQL_PORT` | `3306` |
+| `GO_ALIYUNMC_TEST_MYSQL_USER` | `root` |
+| `GO_ALIYUNMC_TEST_MYSQL_PASSWORD` | 空 |
+
+账号需要 `CREATE DATABASE` 与 `DROP DATABASE` 权限。返回的 cleanup 会关闭连接并删除临时库。
 
 ## 注意事项
 

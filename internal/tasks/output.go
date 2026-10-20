@@ -17,11 +17,8 @@ const (
 	taskOutputReplayChunk = 500
 )
 
-// SubscribeFrom 将 client 注册为当前任务的事件订阅者，并先回放 seq > afterSeq
-// 的持久化输出，再继续转发实时事件。
-//
-// 实现要点：先订阅再请求 monitor 刷盘。订阅之后产生的输出一定在 live 通道中；
-// 订阅之前产生的输出由刷盘保证已经写入数据库，因此两者拼接不会丢失或重复。
+// SubscribeFrom 将 client 注册为当前任务的事件订阅者，回放 seq > afterSeq
+// 的持久化输出，再转发实时事件。
 func (e *Executor) SubscribeFrom(client *sse.Client, afterSeq uint64) (func(), bool) {
 	if e.hub == nil {
 		return func() {}, false
@@ -113,8 +110,7 @@ func streamPersistedOutput(out chan<- sse.Event, taskID uint, afterSeq uint64, m
 }
 
 // relayEvents 把回放事件和实时事件合并为一条有序事件流。
-// 回放完成前先缓存实时事件，避免历史与实时事件交错；回放结束后再按序转发。
-// replayMax 是回放覆盖到的最大序号，序号不大于它的实时输出事件会被丢弃（已回放过）。
+// 回放完成前缓存实时事件，回放结束后按序转发并丢弃已回放覆盖的输出。
 func relayEvents(client *sse.Client, replay, live <-chan sse.Event, replayMax uint64) <-chan sse.Event {
 	out := make(chan sse.Event, taskEventBuffer)
 

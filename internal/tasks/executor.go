@@ -18,10 +18,7 @@ import (
 var ErrTaskInterrupted = errors.New("任务中断")
 var ErrTaskTypeExecuting = errors.New("互斥任务正在执行中，请稍后再试")
 
-// Executor 的生命周期由三个按序发生的信号描述：
-//  1. tc.ctx.Done()：任务已确定结局（done/throw/超时），monitor 开始收尾；
-//  2. taskFuncDone：任务函数 F 已返回，不会再产生副作用；
-//  3. Done()：monitor 收尾完毕（落库、广播 task_done、注销执行器），任务真正停止。
+// Executor 的生命周期由三个按序发生的信号描述。
 type Executor struct {
 	// hub 用于管理当前任务的 SSE 订阅者，并向连接中的客户端广播任务状态更新和输出。
 	hub *pubsub.Hub[sse.Event]
@@ -67,9 +64,8 @@ func (e *Executor) Interrupt() {
 	e.tc.throw(ErrTaskInterrupted)
 }
 
-// Subscribe 将 client 注册为当前任务的事件订阅者，并把订阅 channel 接入客户端。
-// 返回的 unsubscribe 用于在连接结束后释放订阅；
-// 如果执行器尚未初始化广播器，或广播器已经关闭，则返回 false。
+// Subscribe 将 client 注册为当前任务的事件订阅者。
+// 执行器未初始化广播器或广播器已关闭时返回 false。
 func (e *Executor) Subscribe(client *sse.Client) (func(), bool) {
 	if e.hub == nil {
 		return func() {}, false
@@ -84,9 +80,8 @@ func (e *Executor) Subscribe(client *sse.Client) (func(), bool) {
 	return unsubscribe, true
 }
 
-// RunTask 创建并开始执行一个任务，并将任务的触发者设置为 by（可以为 nil，表示由系统触发）。
-//   - 如果返回的 error 不为 nil，则说明任务未能成功启动，调用者可以认为这个任务没有被执行；
-//   - 如果 error 为 nil，则说明任务已成功启动，调用者可以通过返回的 *models.Task 获取到这个任务的 ID 以及其他相关信息。
+// RunTask 创建并开始执行任务，触发者为 by（nil 表示系统触发）。
+// 返回的 error 非 nil 表示任务未能启动，否则返回任务的初始快照。
 func (e *Executor) RunTask(by *uint, args map[string]any) (*models.Task, error) {
 	// 互斥检查与占位是同一个原子操作：并发触发时只有一个执行器能抢到 key。
 	exclusiveReserved := false

@@ -31,11 +31,7 @@ const (
 	testDBPrefix = "aliyunmc_test_"
 )
 
-// OpenMySQLTestDB 在测试 MySQL 服务器上创建临时数据库，应用版本化迁移后安装到 store.DB。
-//
-// 返回的 cleanup 会关闭连接并删除该数据库。连接信息取自 GO_ALIYUNMC_TEST_MYSQL_HOST、
-// _PORT、_USER、_PASSWORD，未设置时分别默认为 127.0.0.1、3306、root、空密码；
-// 账号需要 CREATE DATABASE 与 DROP DATABASE 权限。
+// OpenMySQLTestDB 在测试 MySQL 上创建临时库并应用版本化迁移。
 func OpenMySQLTestDB() (cleanup func(), err error) {
 	cfg, err := testMySQLConfig()
 	if err != nil {
