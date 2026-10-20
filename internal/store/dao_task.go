@@ -75,19 +75,18 @@ func CountTasks(status *models.TaskStatus) (int64, error) {
 
 // TaskStats 包含任务概览统计数据。
 type TaskStats struct {
-	Total               int64                          `json:"total"`
-	SuccessCount        int64                          `json:"successCount"`
-	LastCompletedAt     *time.Time                     `json:"lastCompletedAt"`
-	LastCreatedBy       *uint                          `json:"lastCreatedBy"`
-	LastCreatedUser     *models.User                   `json:"lastCreatedUser"`
-	TotalRuntimeSec     int64                          `json:"totalRuntimeSec"`
-	LastCompletedByType map[models.TaskType]*time.Time `json:"lastCompletedByType"`
+	Total           int64        `json:"total"`
+	SuccessCount    int64        `json:"successCount"`
+	LastCompletedAt *time.Time   `json:"lastCompletedAt"`
+	LastStartedAt   *time.Time   `json:"lastStartedAt"`
+	LastStartedBy   *uint        `json:"lastStartedBy"`
+	LastStartedUser *models.User `json:"lastStartedUser"`
+	TotalRuntimeSec int64        `json:"totalRuntimeSec"`
 }
 
 // GetTaskStats 返回任务概览统计数据。
 func GetTaskStats() (TaskStats, error) {
 	var stats TaskStats
-	stats.LastCompletedByType = make(map[models.TaskType]*time.Time)
 
 	if err := DB.Model(&models.Task{}).Count(&stats.Total).Error; err != nil {
 		return stats, err
@@ -103,10 +102,17 @@ func GetTaskStats() (TaskStats, error) {
 		stats.LastCompletedAt = lastCompleted.EndAt
 	}
 
-	var lastCreated models.Task
-	if err := DB.Preload("User").Order("created_at DESC").First(&lastCreated).Error; err == nil {
-		stats.LastCreatedBy = lastCreated.By
-		stats.LastCreatedUser = lastCreated.User
+	// 最近一次成功启动游戏的任务，启动时间与发起人取自同一条记录。
+	var lastStarted models.Task
+	if err := DB.Preload("User").
+		Where("status = ? AND type IN ? AND end_at IS NOT NULL", successStatus, []models.TaskType{
+			models.TaskTypeStartServer,
+			models.TaskTypeOneClickStartGame,
+		}).
+		Order("end_at DESC").First(&lastStarted).Error; err == nil {
+		stats.LastStartedAt = lastStarted.EndAt
+		stats.LastStartedBy = lastStarted.By
+		stats.LastStartedUser = lastStarted.User
 	}
 
 	// 计算总运行时长：按 启动服务器—archive 配对。
@@ -129,21 +135,6 @@ func GetTaskStats() (TaskStats, error) {
 		}
 	}
 	stats.TotalRuntimeSec = int64(totalRuntime.Seconds())
-
-	// 按任务类别统计最近完成时间
-	type typeLastCompleted struct {
-		Type  models.TaskType
-		EndAt *time.Time
-	}
-	var typeResults []typeLastCompleted
-	DB.Model(&models.Task{}).
-		Select("type, MAX(end_at) as end_at").
-		Where("status = ?", successStatus).
-		Group("type").
-		Find(&typeResults)
-	for _, r := range typeResults {
-		stats.LastCompletedByType[r.Type] = r.EndAt
-	}
 
 	return stats, nil
 }
