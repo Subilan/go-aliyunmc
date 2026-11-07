@@ -6,6 +6,7 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/internal/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/h"
+	"github.com/Subilan/go-aliyunmc/internal/monitors"
 	"github.com/Subilan/go-aliyunmc/internal/store"
 	"github.com/Subilan/go-aliyunmc/internal/store/models"
 	"github.com/Subilan/go-aliyunmc/internal/tasks"
@@ -47,6 +48,9 @@ func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	if monitor := monitors.GetAutoArchiveIdleMonitor(); monitor != nil && monitor.Countdown() != nil {
+		monitor.Countdown().Cancel()
 	}
 
 	return nil, nil

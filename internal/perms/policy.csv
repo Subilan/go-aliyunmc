@@ -26,6 +26,11 @@ p, basic, /state/watch/server-status, GET
 p, basic, /state/snapshot/instance-status, GET
 p, basic, /state/watch/instance-status, GET
 p, basic, /monitor/auto-archive-idle/remaining-secs, GET
+p, basic, /monitor/auto-archive-idle, GET
+p, operator, /monitor/auto-archive-idle, POST
+p, operator, /monitor/auto-archive-idle/pause, POST
+p, operator, /monitor/auto-archive-idle/resume, POST
+p, operator, /monitor/auto-archive-idle/reset, POST
 p, basic, /instance/candidates, GET
 p, basic, /instance/active, GET
 p, basic, /instance/best-candidate, GET

@@ -1,7 +1,6 @@
 package monitor_routes
 
 import (
-	"github.com/Subilan/go-aliyunmc/internal/global_states"
 	"github.com/Subilan/go-aliyunmc/internal/h"
 	"github.com/Subilan/go-aliyunmc/internal/mid"
 
@@ -15,6 +14,11 @@ func Bind(router *gin.Engine) {
 	authorized.Use(mid.Perm())
 	aai := authorized.Group("/auto-archive-idle")
 	{
-		aai.GET("/remaining-secs", h.V(global_states.GetApproxIdleRemaningSecs))
+		aai.GET("", h.G(HandleGetIdleCountdown))
+		aai.POST("", h.B(HandleSetIdleCountdown))
+		aai.POST("/pause", h.G(HandlePauseIdleCountdown))
+		aai.POST("/resume", h.G(HandleResumeIdleCountdown))
+		aai.POST("/reset", h.G(HandleResetIdleCountdown))
+		aai.GET("/remaining-secs", h.V(HandleGetIdleCountdownRemainingSecs))
 	}
 }

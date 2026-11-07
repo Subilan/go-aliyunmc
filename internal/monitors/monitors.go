@@ -38,6 +38,11 @@ func GetServerStatusMonitor() *ServerStatusMonitor {
 	return serverMonitor
 }
 
+// GetAutoArchiveIdleMonitor 返回空服自动归档监控器实例。
+func GetAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
+	return autoArchiveIdle
+}
+
 // GetInstanceStatusMonitor 返回实例状态监控器实例。
 func GetInstanceStatusMonitor() *InstanceStatusMonitor {
 	return instanceMonitor

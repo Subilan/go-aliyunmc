@@ -43,7 +43,8 @@ type UserPermissions struct {
 	CanViewBalanceHistory bool `json:"can_view_balance_history"`
 
 	// 其他
-	CanViewAutoArchiveIdle bool `json:"can_view_auto_archive_idle"`
+	CanViewAutoArchiveIdle   bool `json:"can_view_auto_archive_idle"`
+	CanManageServerCountdown bool `json:"can_manage_server_countdown"`
 }
 
 // HandleGetPermissions 获取当前用户的权限信息
@@ -88,7 +89,8 @@ func HandleGetPermissions(c *gin.Context) (any, error) {
 		CanViewBalanceHistory: checkEnforce(role, "/samples/account-balance-history", "GET"),
 
 		// 其他
-		CanViewAutoArchiveIdle: checkEnforce(role, "/monitor/auto-archive-idle/remaining-secs", "GET"),
+		CanViewAutoArchiveIdle:   checkEnforce(role, "/monitor/auto-archive-idle", "GET"),
+		CanManageServerCountdown: checkEnforce(role, "/monitor/auto-archive-idle/pause", "POST"),
 	}, nil
 }
 

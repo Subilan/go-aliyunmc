@@ -8,7 +8,6 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/internal/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/config"
-	"github.com/Subilan/go-aliyunmc/internal/global_states"
 	"github.com/Subilan/go-aliyunmc/internal/log_util"
 	"github.com/Subilan/go-aliyunmc/internal/server"
 	"github.com/Subilan/go-aliyunmc/internal/states"
@@ -23,24 +22,31 @@ import (
 
 type AutoArchiveIdleMonitor struct {
 	enabled               bool
-	idleCountdown         time.Duration
 	stopWaitTimeout       time.Duration
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
+	countdown             *IdleCountdownController
 	logger                *log_util.NamedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	logger := log_util.NewNamedLogger("[monitor/auto-archive-idle] ", "auto-archive-idle-monitor")
+	enabled := config.Get().Monitors.AutoArchiveIdle.Enabled
+	idleCountdown := time.Duration(config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec) * time.Second
 
 	return &AutoArchiveIdleMonitor{
-		enabled:               config.Get().Monitors.AutoArchiveIdle.Enabled,
-		idleCountdown:         time.Duration(config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec) * time.Second,
+		enabled:               enabled,
 		stopWaitTimeout:       time.Duration(config.Get().Monitors.AutoArchiveIdle.StopWaitTimeoutSec) * time.Second,
 		offlineCheckInterval:  time.Duration(config.Get().Monitors.AutoArchiveIdle.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: config.Get().Monitors.AutoArchiveIdle.DeleteIgnoreNonExistent,
+		countdown:             newIdleCountdownController(enabled, idleCountdown),
 		logger:                logger,
 	}
+}
+
+// Countdown 返回关服倒计时控制器，供管理接口读取和操作。
+func (m *AutoArchiveIdleMonitor) Countdown() *IdleCountdownController {
+	return m.countdown
 }
 
 // run 是AutoArchiveIdleMonitor的主循环，监听服务器状态快照更新并根据配置自动执行归档回收流程。
@@ -49,46 +55,29 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		m.logger.Info("disabled")
 		return
 	}
-
-	var (
-		countdownTimer *time.Timer
-		countdownC     <-chan time.Time
-		running        bool
-	)
+	go m.countdown.run(ctx)
 
 	cancelCountdown := func(reason string) {
-		if countdownTimer == nil {
-			return
+		if m.countdown.Cancel() {
+			m.logger.Info("倒计时取消，原因：%s", reason)
 		}
-		if !countdownTimer.Stop() {
-			select {
-			// 消费
-			case <-countdownTimer.C:
-			default:
-			}
-		}
-		countdownTimer = nil
-		countdownC = nil
-		global_states.ResetApproxIdleCountdown()
-		m.logger.Info("倒计时取消，原因：%s", reason)
 	}
 
 	startCountdown := func() {
-		if countdownTimer != nil || running {
-			return
-		}
 		if !store.HasActiveInstance() {
 			return
 		}
-		countdownTimer = time.NewTimer(m.idleCountdown)
-		countdownC = countdownTimer.C
-		global_states.BeginApproxIdleCountdown(int64(m.idleCountdown.Seconds()))
-		m.logger.Info("倒计时开始：%d", int(m.idleCountdown.Seconds()))
+		if m.countdown.StartIfInactive() {
+			m.logger.Info("倒计时开始：%d", m.countdown.State().ConfiguredSeconds)
+		}
 	}
 
 	// 根据当前快照状态决定是否取消倒计时或者开启倒计时
 	handleSnapshot := func(s states.State[states.ServerStatusState]) {
 		if s.Error != nil {
+			if !store.HasActiveInstance() {
+				cancelCountdown("status_error_active_instance_missing")
+			}
 			return
 		}
 
@@ -132,25 +121,19 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			}
 			current = s
 			handleSnapshot(s)
-		case <-countdownC:
-			countdownTimer = nil
-			countdownC = nil
-			if running {
-				continue
-			}
-			running = true
+		case <-m.countdown.Expired():
 			m.logger.Info("倒计时结束，开始执行归档流程")
 			go func() {
 				err := m.executeArchivePipeline(ctx)
 				doneCh <- err
 			}()
 		case err := <-doneCh:
-			running = false
 			if err != nil {
 				m.logger.Error("归档流程失败：%v", err)
 			} else {
 				m.logger.Info("归档流程完成")
 			}
+			m.countdown.Complete()
 			handleSnapshot(current)
 		}
 	}

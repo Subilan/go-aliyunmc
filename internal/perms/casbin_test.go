@@ -21,6 +21,10 @@ func TestEmbeddedPolicyLoads(t *testing.T) {
 		{RoleBasic, "/task/42/interrupt", "POST", false},
 		{RoleOperator, createCustomInstanceObj, "execute", true},
 		{RoleBasic, createCustomInstanceObj, "execute", false},
+		{RoleBasic, "/monitor/auto-archive-idle", "GET", true},
+		{RoleBasic, "/monitor/auto-archive-idle/pause", "POST", false},
+		{RoleOperator, "/monitor/auto-archive-idle/pause", "POST", true},
+		{RoleOperator, "/monitor/auto-archive-idle", "POST", true},
 	}
 
 	for _, c := range cases {
