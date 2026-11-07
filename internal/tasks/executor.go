@@ -344,7 +344,7 @@ func (e *Executor) monitor() {
 				e.task.Status = models.TaskStatusSuccess
 			} else {
 				e.task.Status = models.TaskStatusFailed
-				e.task.Error = cause.Error()
+				e.task.Error = limitTaskError(cause.Error())
 			}
 			now := time.Now()
 			e.task.EndAt = &now

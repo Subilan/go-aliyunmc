@@ -62,7 +62,8 @@ type Task struct {
 	// 从 task_output_lines 拼接填充。
 	Output string `gorm:"not null" json:"output"`
 	// Error 是任务失败原因，可能为 __TIMEOUT__ 或 __INTERRUPTED__，空字符串表示无错误。
-	Error string `gorm:"default:null" json:"error"`
+	// 失败原因中可能包含远端命令输出和诊断信息，因此使用 longtext。
+	Error string `gorm:"type:longtext;default:null" json:"error"`
 	// By 字段记录了创建任务的用户ID。如果为空，表示该任务由系统创建。
 	By *uint `gorm:"default:null" json:"by"`
 	// User 字段是一个关联字段，表示创建任务的用户信息。它通过外键 By 关联到 User 模型。当 By 为空时，User 也将为 nil。

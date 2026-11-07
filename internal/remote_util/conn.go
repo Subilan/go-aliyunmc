@@ -12,6 +12,81 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+const (
+	maxCommandOutputLines = 200
+	maxCommandStdoutBytes = 32 * 1024
+	maxCommandStderrBytes = 64 * 1024
+	maxScannerTokenBytes  = 1024 * 1024
+)
+
+// CommandError 保留远端命令退出的实际输出。Error 包含诊断信息，Unwrap
+// 返回底层错误，调用方可通过 errors.Is/errors.As 判断错误类型。
+type CommandError struct {
+	Err      error
+	ExitCode int
+	Stdout   string
+	Stderr   string
+}
+
+func (e *CommandError) Error() string {
+	var b strings.Builder
+	b.WriteString("远程命令执行失败")
+	if e.ExitCode >= 0 {
+		fmt.Fprintf(&b, "（退出码 %d）", e.ExitCode)
+	}
+	if e.Err != nil {
+		fmt.Fprintf(&b, ": %v", e.Err)
+	}
+	if e.Stdout != "" {
+		b.WriteString("\nstdout:\n")
+		b.WriteString(e.Stdout)
+	}
+	if e.Stderr != "" {
+		b.WriteString("\nstderr:\n")
+		b.WriteString(e.Stderr)
+	}
+	return b.String()
+}
+
+func (e *CommandError) Unwrap() error {
+	return e.Err
+}
+
+type outputTail struct {
+	maxLines int
+	maxBytes int
+	lines    []string
+	bytes    int
+}
+
+func (t *outputTail) Add(line string) {
+	t.lines = append(t.lines, line)
+	t.bytes += len(line) + 1
+
+	for len(t.lines) > t.maxLines || t.bytes > t.maxBytes {
+		if len(t.lines) == 0 {
+			break
+		}
+		t.bytes -= len(t.lines[0]) + 1
+		t.lines = t.lines[1:]
+	}
+}
+
+func (t *outputTail) String() string {
+	if len(t.lines) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	for _, line := range t.lines {
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(line)
+	}
+	return b.String()
+}
+
 // Conn 是一条已建立的 SSH 连接，可被多个 goroutine 并发使用。
 type Conn struct {
 	target Target
@@ -96,14 +171,19 @@ func (c *Conn) runSession(ctx context.Context, onLine func(string), startFn func
 		return fmt.Errorf("启动远程命令失败: %w", err)
 	}
 
-	scanPipe := func(r io.Reader) error {
+	scanPipe := func(r io.Reader, tail *outputTail) error {
 		scanner := bufio.NewScanner(r)
-		scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		scanner.Buffer(make([]byte, 0, 64*1024), maxScannerTokenBytes)
 		for scanner.Scan() {
-			onLine(scanner.Text())
+			line := scanner.Text()
+			onLine(line)
+			tail.Add(line)
 		}
 		return scanner.Err()
 	}
+
+	stdoutTail := &outputTail{maxLines: maxCommandOutputLines, maxBytes: maxCommandStdoutBytes}
+	stderrTail := &outputTail{maxLines: maxCommandOutputLines, maxBytes: maxCommandStderrBytes}
 
 	var wg sync.WaitGroup
 	scanErrCh := make(chan error, 2)
@@ -111,13 +191,13 @@ func (c *Conn) runSession(ctx context.Context, onLine func(string), startFn func
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		if err := scanPipe(stdout); err != nil {
+		if err := scanPipe(stdout, stdoutTail); err != nil {
 			scanErrCh <- fmt.Errorf("读取SSH标准输出失败: %w", err)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		if err := scanPipe(stderr); err != nil {
+		if err := scanPipe(stderr, stderrTail); err != nil {
 			scanErrCh <- fmt.Errorf("读取SSH错误输出失败: %w", err)
 		}
 	}()
@@ -132,14 +212,24 @@ func (c *Conn) runSession(ctx context.Context, onLine func(string), startFn func
 		wg.Wait()
 		close(scanErrCh)
 
-		for scanErr := range scanErrCh {
-			if scanErr != nil {
-				return scanErr
+		var scanErr error
+		for err := range scanErrCh {
+			if err != nil && scanErr == nil {
+				scanErr = err
 			}
 		}
 
-		if waitErr != nil {
-			return fmt.Errorf("远程命令执行失败: %w", waitErr)
+		if waitErr != nil || scanErr != nil {
+			cause := waitErr
+			if cause == nil {
+				cause = scanErr
+			}
+			return &CommandError{
+				Err:      cause,
+				ExitCode: exitCode(waitErr),
+				Stdout:   stdoutTail.String(),
+				Stderr:   stderrTail.String(),
+			}
 		}
 
 		return nil
@@ -149,6 +239,14 @@ func (c *Conn) runSession(ctx context.Context, onLine func(string), startFn func
 		wg.Wait()
 		return ctx.Err()
 	}
+}
+
+func exitCode(err error) int {
+	var exitErr *ssh.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitStatus()
+	}
+	return -1
 }
 
 // clientOrDial 返回底层连接；若连接尚未建立或已被丢弃，则重新拨号。
