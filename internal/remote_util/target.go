@@ -2,8 +2,10 @@ package remote_util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/config"
@@ -141,6 +143,29 @@ func (t Target) ExecScript(ctx context.Context, script string, onLine func(strin
 	defer conn.Close()
 
 	return conn.ExecScript(ctx, script, onLine)
+}
+
+// PathExists 检查远端路径是否存在。只有 test(1) 明确返回“不存在”时才返回
+// false；SSH、权限或命令执行异常仍作为 error 返回。
+func (t Target) PathExists(ctx context.Context, remotePath string) (bool, error) {
+	err := t.Exec(ctx, pathExistsCommand(remotePath), nil)
+	if err == nil {
+		return true, nil
+	}
+
+	var commandErr *CommandError
+	if errors.As(err, &commandErr) && commandErr.ExitCode == 1 {
+		return false, nil
+	}
+	return false, err
+}
+
+func pathExistsCommand(remotePath string) string {
+	return "test -e " + shellQuote(remotePath)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }
 
 // Upload 将本地文件上传到远端。

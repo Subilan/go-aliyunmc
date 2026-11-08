@@ -157,7 +157,7 @@ func (p *FileSyncPoller) syncFile(ctx context.Context, fileConfig config.Monitor
 			p.logger.Error("文件同步取消")
 			return
 		}
-		p.logger.Error("文件同步失败: %v", err)
+		p.reportSyncFailure(syncCtx, ip, "文件", fileConfig.RemotePath, err)
 		return
 	}
 	p.logger.Info("文件同步完成: %s -> %s", fileConfig.RemotePath, localFullPath)
@@ -219,10 +219,31 @@ func (p *FileSyncPoller) syncDir(ctx context.Context, dirConfig config.MonitorsF
 			p.logger.Error("目录同步取消")
 			return
 		}
-		p.logger.Error("目录同步失败: %v", err)
+		p.reportSyncFailure(syncCtx, ip, "目录", dirConfig.RemotePath, err)
 		return
 	}
 	p.logger.Info("目录同步完成: %s -> %s", dirConfig.RemotePath, localFullPath)
+}
+
+// reportSyncFailure 区分“远端数据尚未生成”和真实同步故障。前者在空服或
+// 插件首次运行前很常见，不应持续输出 ERROR。
+func (p *FileSyncPoller) reportSyncFailure(
+	ctx context.Context,
+	ip string,
+	kind string,
+	remotePath string,
+	syncErr error,
+) {
+	exists, checkErr := remote_util.Mc(ip).PathExists(ctx, remotePath)
+	if checkErr == nil && !exists {
+		p.logger.Info("远端%s尚未生成，跳过同步: %s", kind, remotePath)
+		return
+	}
+	if checkErr != nil {
+		p.logger.Error("%s同步失败: %v；检查远端路径失败: %v", kind, syncErr, checkErr)
+		return
+	}
+	p.logger.Error("%s同步失败: %v", kind, syncErr)
 }
 
 // ensureCacheDir 确保本地缓存目录存在
