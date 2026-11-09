@@ -16,6 +16,8 @@ type UserPermissions struct {
 	CanUnbindWhitelist bool `json:"can_unbind_whitelist"`
 	CanGetPreferences  bool `json:"can_get_preferences"`
 	CanSetPreferences  bool `json:"can_set_preferences"`
+	CanCreateUser      bool `json:"can_create_user"`
+	CanChangeUserRole  bool `json:"can_change_user_role"`
 
 	// 服务器
 	CanQueryServer      bool `json:"can_query_server"`
@@ -62,6 +64,8 @@ func HandleGetPermissions(c *gin.Context) (any, error) {
 		CanUnbindWhitelist: checkEnforce(role, "/user/whitelist/unbind", "POST"),
 		CanGetPreferences:  checkEnforce(role, "/user/preferences", "GET"),
 		CanSetPreferences:  checkEnforce(role, "/user/preferences", "PUT"),
+		CanCreateUser:      checkEnforce(role, "/user/create", "POST"),
+		CanChangeUserRole:  checkEnforce(role, "/user/role", "POST"),
 
 		// 服务器
 		CanQueryServer:      checkEnforce(role, "/server/query", "GET"),

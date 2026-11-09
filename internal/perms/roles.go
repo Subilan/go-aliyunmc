@@ -28,6 +28,12 @@ func (r Role) Normal() string {
 	return string(r)
 }
 
+// IsValid 判断角色是否为系统支持的角色。
+func (r Role) IsValid() bool {
+	_, ok := levelMap[r]
+	return ok
+}
+
 // CanRequest 判断该权限等级是否可以以 c.Request.Method 方法访问 c.Request.URL.Path 路径
 func (r Role) CanRequest(c *gin.Context) (bool, error) {
 	obj := c.Request.URL.Path

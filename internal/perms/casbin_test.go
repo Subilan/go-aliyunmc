@@ -15,7 +15,11 @@ func TestEmbeddedPolicyLoads(t *testing.T) {
 	}{
 		{RoleBasic, "/user/profile", "GET", true},
 		{RoleBasic, "/user/s", "GET", false},
+		{RoleBasic, "/user/create", "POST", false},
 		{RoleOperator, "/user/s", "GET", true},
+		{RoleOperator, "/user/create", "POST", true},
+		{RoleOperator, "/user/role", "POST", false},
+		{RoleSuperuser, "/user/role", "POST", true},
 		{RoleOperator, "/task/:id", "GET", true},
 		{RoleBasic, "/task/42/output", "GET", true},
 		{RoleBasic, "/task/42/interrupt", "POST", false},

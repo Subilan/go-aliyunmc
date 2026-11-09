@@ -13,6 +13,8 @@ p, basic, /user/chat-token, GET
 p, operator, /user/s, GET
 p, operator, /user/ban, POST
 p, operator, /user/unban, POST
+p, operator, /user/create, POST
+p, superuser, /user/role, POST
 p, basic, /server/advancements/:uuid, GET
 p, basic, /server/stats/:uuid, GET
 p, basic, /task, GET

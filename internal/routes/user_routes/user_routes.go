@@ -45,6 +45,8 @@ func Bind(router *gin.Engine) {
 			authorized.GET("/s", h.Q(HandleListUsers))
 			authorized.POST("/ban", h.B(HandleBanUser))
 			authorized.POST("/unban", h.B(HandleUnbanUser))
+			authorized.POST("/create", h.B(HandleCreateUser))
+			authorized.POST("/role", h.B(HandleChangeUserRole))
 		}
 	}
 }
