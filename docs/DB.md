@@ -184,6 +184,38 @@ atlas migrate hash --env mysql
 mysql -e "SELECT * FROM schema_migrations"
 ```
 
+## 本地开发数据库
+
+本地 MySQL 的业务库为 `gomc`，开发账号：
+
+| 用户名 | 密码 | 数据库 |
+|---|---|---|
+| `gomcdev` | `123` | `gomc` |
+
+`.dev/config/store.toml` 已按此配置，`make dev` 会直接连接该库。对应的连接配置为：
+
+```toml
+host = '127.0.0.1'
+port = 3306
+user = 'gomcdev'
+password = '123'
+dbname = 'gomc'
+charset = 'utf8mb4'
+```
+
+`store.toml` 的默认值已经是 `gomcdev` / `123` / `gomc`，测试默认值同样是 `gomcdev` / `123`，
+需要覆盖时使用 `GO_ALIYUNMC_TEST_MYSQL_*` 环境变量。测试不会使用业务库 `gomc`：
+`OpenMySQLTestDB()` 会为每个测试包临时创建 `aliyunmc_test_<随机后缀>` 库并在结束后删除，
+因此该账号还需要临时库的建库/删库与读写权限。新机器可用管理员账号初始化：
+
+```sql
+CREATE DATABASE IF NOT EXISTS `gomc` CHARACTER SET utf8mb4;
+CREATE USER IF NOT EXISTS 'gomcdev'@'localhost' IDENTIFIED BY '123';
+GRANT ALL PRIVILEGES ON `gomc`.* TO 'gomcdev'@'localhost';
+GRANT CREATE, DROP ON *.* TO 'gomcdev'@'localhost';
+GRANT ALL PRIVILEGES ON `aliyunmc\_test\_%`.* TO 'gomcdev'@'localhost';
+```
+
 ## 测试数据库
 
 `internal/testutil.OpenMySQLTestDB()` 在测试 MySQL 上创建临时库，应用版本化迁移后安装到 `store.DB`。连接信息来自环境变量，未设置时使用默认值。
@@ -192,10 +224,10 @@ mysql -e "SELECT * FROM schema_migrations"
 |---|---|
 | `GO_ALIYUNMC_TEST_MYSQL_HOST` | `127.0.0.1` |
 | `GO_ALIYUNMC_TEST_MYSQL_PORT` | `3306` |
-| `GO_ALIYUNMC_TEST_MYSQL_USER` | `root` |
-| `GO_ALIYUNMC_TEST_MYSQL_PASSWORD` | 空 |
+| `GO_ALIYUNMC_TEST_MYSQL_USER` | `gomcdev` |
+| `GO_ALIYUNMC_TEST_MYSQL_PASSWORD` | `123` |
 
-账号需要 `CREATE DATABASE` 与 `DROP DATABASE` 权限。返回的 cleanup 会关闭连接并删除临时库。
+账号需要创建/删除临时库，以及在这些库内建表、读写和执行迁移的权限。本地默认使用 `gomcdev`；返回的 cleanup 会关闭连接并删除临时库。
 
 ## 注意事项
 
