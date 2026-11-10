@@ -12,30 +12,22 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Subilan/go-aliyunmc/internal/aliyun"
-	"github.com/Subilan/go-aliyunmc/internal/config"
-	"github.com/Subilan/go-aliyunmc/internal/env"
-	"github.com/Subilan/go-aliyunmc/internal/h"
-	"github.com/Subilan/go-aliyunmc/internal/log_util"
-	"github.com/Subilan/go-aliyunmc/internal/mc"
-	"github.com/Subilan/go-aliyunmc/internal/monitors"
-	"github.com/Subilan/go-aliyunmc/internal/perms"
-	"github.com/Subilan/go-aliyunmc/internal/policygen"
-	"github.com/Subilan/go-aliyunmc/internal/remote_util"
-	"github.com/Subilan/go-aliyunmc/internal/routes/bss_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/changelog_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/instance_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/monitor_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/sample_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/server_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/simple_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/state_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/task_routes"
-	"github.com/Subilan/go-aliyunmc/internal/routes/user_routes"
-	"github.com/Subilan/go-aliyunmc/internal/session"
-	"github.com/Subilan/go-aliyunmc/internal/store"
-	"github.com/Subilan/go-aliyunmc/internal/store/models"
-	"github.com/Subilan/go-aliyunmc/internal/tasks"
+	"github.com/Subilan/go-aliyunmc/internal/common/config"
+	"github.com/Subilan/go-aliyunmc/internal/common/env"
+	"github.com/Subilan/go-aliyunmc/internal/common/h"
+	"github.com/Subilan/go-aliyunmc/internal/common/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/perm_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/session_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/store"
+	"github.com/Subilan/go-aliyunmc/internal/common/store/models"
+	"github.com/Subilan/go-aliyunmc/internal/modules"
+	"github.com/Subilan/go-aliyunmc/internal/modules/forum"
+	forumsession "github.com/Subilan/go-aliyunmc/internal/modules/forum/session"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab/monitors"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab/policygen"
+	labsession "github.com/Subilan/go-aliyunmc/internal/modules/lab/session"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab/tasks"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -77,17 +69,14 @@ func runServer() {
 	config.MustLoad()
 
 	store.MustInitialize()
-	if err := store.AutoMigrate(); err != nil {
+	if err := store.AutoMigrate(modules.Entities()...); err != nil {
 		log_util.Fatal("初始化开发数据库失败: %v", err)
 	}
-	if err := session.InitStore(store.DB); err != nil {
+	if err := session_util.InitStore(store.DB, labsession.Manager, forumsession.Manager); err != nil {
 		log_util.Fatal("初始化 session 存储失败: %v", err)
 	}
-	perms.MustInitialize()
-	aliyun.MustInitialize()
-	remote_util.MustInitialize()
-	tasks.RegisterTaskDefinitions()
-	mc.MustLoadData()
+	lab.MustInitialize()
+	forum.MustInitialize()
 
 	if env.DEV {
 		if _, err := store.EnsureDevUser(); err != nil {
@@ -103,35 +92,11 @@ func runServer() {
 
 	engine.GET("/", h.V(func() string { return "Hello, World!" }))
 
-	// 注册任务路由
-	task_routes.Bind(engine)
+	// 注册 lab 模块路由（/lab-v1）。
+	lab.Bind(engine)
 
-	// 注册状态路由
-	state_routes.Bind(engine)
-
-	// 注册监控路由
-	monitor_routes.Bind(engine)
-
-	// 注册用户路由
-	user_routes.Bind(engine)
-
-	// 注册实例管理路由
-	instance_routes.Bind(engine)
-
-	// 注册服务器管理路由
-	server_routes.Bind(engine)
-
-	// 注册采样路由
-	sample_routes.Bind(engine)
-
-	// 注册财务账单路由
-	bss_routes.Bind(engine)
-
-	// 注册更新日志路由
-	changelog_routes.Bind(engine)
-
-	// 注册简单数据路由
-	simple_routes.Bind(engine)
+	// 注册 forum 模块路由（/forum-v1，当前为空骨架）。
+	forum.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -142,11 +107,13 @@ func runServer() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	handler := labsession.Manager.LoadAndSave(forumsession.Manager.LoadAndSave(engine))
+
 	if env.DEV || !config.Get().Base.TLS.Enabled {
-		run(engine, config.Get().Base.Expose, stop)
+		run(handler, config.Get().Base.Expose, stop)
 	} else {
-		runTLS(engine, stop)
-		run(engine, config.Get().Base.TLS.HttpPort, stop)
+		runTLS(handler, stop)
+		run(handler, config.Get().Base.TLS.HttpPort, stop)
 	}
 
 	<-ctx.Done()
@@ -223,10 +190,10 @@ func runCreateUser() {
 		os.Exit(1)
 	}
 
-	validRoles := map[string]perms.Role{
-		"basic":     perms.RoleBasic,
-		"operator":  perms.RoleOperator,
-		"superuser": perms.RoleSuperuser,
+	validRoles := map[string]perm_util.Role{
+		"basic":     perm_util.RoleBasic,
+		"operator":  perm_util.RoleOperator,
+		"superuser": perm_util.RoleSuperuser,
 	}
 	r, ok := validRoles[*role]
 	if !ok {
@@ -259,19 +226,19 @@ func runCreateUser() {
 	fmt.Printf("用户 '%s' 创建成功，角色: %s\n", *username, *role)
 }
 
-func runTLS(engine *gin.Engine, cancel context.CancelFunc) {
+func runTLS(handler http.Handler, cancel context.CancelFunc) {
 	go func() {
 		tlsCfg := config.Get().Base.TLS
-		if err := http.ListenAndServeTLS(":443", tlsCfg.CertFile, tlsCfg.KeyFile, session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServeTLS(":443", tlsCfg.CertFile, tlsCfg.KeyFile, handler); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}
 	}()
 }
 
-func run(engine *gin.Engine, port int, cancel context.CancelFunc) {
+func run(handler http.Handler, port int, cancel context.CancelFunc) {
 	go func() {
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), session.LoadAndSave(engine)); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), handler); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Println(err)
 			cancel()
 		}

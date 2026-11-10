@@ -20,7 +20,7 @@ description: 在本项目的 .dev 开发环境执行端到端验证，覆盖后�
 - 后端仓库通常位于当前工作区，前端仓库为 `../go-aliyunmc-client-web`。
 - 后端开发入口为 `make dev`，默认监听 `http://127.0.0.1:45678`。
 - 前端使用 Vite；`/api` 代理到后端。开发端口必须先检查，不能假定 `5173` 空闲。
-- 后端普通接口返回 `{"data": ...}`，错误返回 `{"details": "..."}`。任务输出优先通过 `/task/:id`、`/task/:id/output` 和 SSE 校验。
+- 后端普通接口返回 `{"data": ...}`，错误返回 `{"details": "..."}`。任务输出优先通过 `/lab-v1/task/:id`、`/lab-v1/task/:id/output` 和 SSE 校验。
 
 ## 验证顺序
 
@@ -54,7 +54,7 @@ description: 在本项目的 .dev 开发环境执行端到端验证，覆盖后�
 
 ## 资源清理
 
-- 删除开发实例使用已授权的 `DELETE /instance/active`，随后请求 `/instance/active` 并确认返回 404。
+- 删除开发实例使用已授权的 `DELETE /lab-v1/instance/active`，随后请求 `/lab-v1/instance/active` 并确认返回 404。
 - 删除实例前确认没有创建、部署、启动、启动游戏、备份或归档任务仍在运行。
 - 停止自己启动的后端、前端和 Playwright 进程；不要使用宽泛的 `pkill`。
 - 临时 Cookie、响应、浏览器快照和日志必须清理。macOS 优先使用 `trash`，不要使用 `rm -rf`。

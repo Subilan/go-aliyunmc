@@ -8,7 +8,7 @@ import (
 	"github.com/creasty/defaults"
 	"github.com/pelletier/go-toml/v2"
 
-	"github.com/Subilan/go-aliyunmc/internal/config"
+	"github.com/Subilan/go-aliyunmc/internal/common/config"
 )
 
 func main() {

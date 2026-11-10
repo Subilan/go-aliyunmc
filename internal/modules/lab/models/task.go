@@ -1,0 +1,73 @@
+package labmodels
+
+import (
+	"time"
+
+	"github.com/Subilan/go-aliyunmc/internal/common/store/models"
+
+	"gorm.io/gorm"
+)
+
+type TaskType string
+
+const (
+	// TaskTypeTest 是测试任务，用于验证任务执行框架。
+	TaskTypeTest TaskType = "test"
+
+	// TaskTypeDeploy 是部署任务，用于在远程服务器上初始化环境、拉取存档等操作。
+	TaskTypeDeploy TaskType = "deploy"
+
+	// TaskTypeBackup 是备份任务，用于备份服务器数据到OSS。
+	TaskTypeBackup TaskType = "backup"
+
+	// TaskTypeArchive 是归档任务，用于轮转归档服务器备份。
+	TaskTypeArchive TaskType = "archive"
+
+	// TaskTypeCreateInstance 是创建实例任务，用于在阿里云上创建一个新的ECS实例。
+	TaskTypeCreateInstance TaskType = "create_instance"
+
+	// TaskTypeOneClickStartGame 是启动游戏任务，在一条任务记录内依次完成创建实例、部署环境和启动服务器。
+	TaskTypeOneClickStartGame TaskType = "oneclick_start_game"
+
+	// TaskTypeStartServer 是启动服务器任务。当服务器启动完成后正常返回。
+	TaskTypeStartServer TaskType = "start_server"
+
+	// TaskTypeStopServer 是停止服务器任务。当服务器关闭完成后正常返回。
+	TaskTypeStopServer TaskType = "stop_server"
+)
+
+type TaskStatus string
+
+const (
+	TaskStatusCreated TaskStatus = "created"
+	TaskStatusRunning TaskStatus = "running"
+	TaskStatusSuccess TaskStatus = "success"
+	TaskStatusFailed  TaskStatus = "failed"
+)
+
+// Task 模型表示一个异步执行的任务。它包含了任务的类型、状态、输出、错误信息以及与创建任务的用户的关联等字段。
+type Task struct {
+	gorm.Model
+	// Type 字段表示任务的类型，它是一个字符串，用于唯一标识一种任务。Type 与任务函数 F 一一对应，可以理解为任务函数的标识符。
+	Type TaskType `gorm:"not null" json:"type"`
+	// StartAt 字段记录了任务的开始时间。当任务开始执行时，StartAt 将被设置为任务开始的时间戳。对于尚未开始的任务，StartAt 将保持为空。
+	StartAt *time.Time `gorm:"default:null" json:"startAt"`
+	// EndAt 字段记录了任务的结束时间。当任务完成（无论成功还是失败）时，EndAt 将被设置为任务结束的时间戳。对于正在运行或尚未开始的任务，EndAt 将保持为空。
+	EndAt *time.Time `gorm:"default:null" json:"endAt"`
+	// Status 是任务当前状态，取值为 created、running、success 或 failed。
+	Status TaskStatus `gorm:"not null" json:"status"`
+	// Step 字段表示任务的当前步骤，通常用于多步骤任务，以便前端能够根据步骤信息展示不同的界面或提示用户当前任务的进度。
+	// 对于单步骤任务，Step 保持为 0。
+	Step uint `gorm:"not null,default:0" json:"step"`
+	// Output 是任务执行过程中的输出文本。输出实际按行存放在 TaskOutputLine 表中，
+	// 该列仅作为旧库兼容保留，不再随执行过程更新；读取任务详情时由 store.GetTask
+	// 从 task_output_lines 拼接填充。
+	Output string `gorm:"not null" json:"output"`
+	// Error 是任务失败原因，可能为 __TIMEOUT__ 或 __INTERRUPTED__，空字符串表示无错误。
+	// 失败原因中可能包含远端命令输出和诊断信息，因此使用 longtext。
+	Error string `gorm:"type:longtext;default:null" json:"error"`
+	// By 字段记录了创建任务的用户ID。如果为空，表示该任务由系统创建。
+	By *uint `gorm:"default:null" json:"by"`
+	// User 字段是一个关联字段，表示创建任务的用户信息。它通过外键 By 关联到 User 模型。当 By 为空时，User 也将为 nil。
+	User *models.User `gorm:"foreignKey:By" json:"user"`
+}

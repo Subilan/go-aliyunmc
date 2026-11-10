@@ -11,13 +11,13 @@ description: 数据库框架、版本化迁移的生成与应用，以及数据�
 
 | 组件 | 职责 |
 |---|---|
-| GORM（`internal/store/models/`） | 定义实体与 schema 的唯一事实来源；运行时读写数据库 |
+| GORM（`internal/common/store/models/`、`internal/modules/*/store/models/`） | 定义实体与 schema 的唯一事实来源；运行时读写数据库 |
 | Atlas CLI + `atlas-provider-gorm` | 读取 GORM 实体，与已有迁移做差量，自动生成 SQL |
 | golang-migrate | 运行时按版本顺序执行 SQL，并在 `schema_migrations` 表记录已应用版本 |
 
 系统只支持 **MySQL**。生产环境的 schema 变更走版本化迁移；DEV 模式在启动时由
 `store.AutoMigrate()` 调用 GORM AutoMigrate 直接补表，不要求每次改模型都生成迁移。
-测试通过 `internal/testutil.OpenMySQLTestDB()` 在 MySQL 上创建临时数据库，并调用
+测试通过 `internal/common/testutil.OpenMySQLTestDB()` 在 MySQL 上创建临时数据库，并调用
 `store.MigrateDSN()` 应用同一套版本化迁移，因此测试使用的 schema 与生产一致。
 
 生产实际运行的是 **MariaDB**（Debian 12 自带 10.11），因此 Atlas 的 dev 数据库也必须是 MariaDB：
@@ -28,16 +28,18 @@ description: 数据库框架、版本化迁移的生成与应用，以及数据�
 
 ```
 atlas.hcl                     # Atlas 配置（MariaDB dev 库）
-internal/migrations/atlasloader/   # 独立 Go module，把 GORM 模型输出为 MySQL DDL
-internal/migrations/
+internal/common/migrations/atlasloader/   # 独立 Go module，把 GORM 模型输出为 MySQL DDL
+internal/common/migrations/
   embed.go                    # //go:embed mysql/*.sql
   README.md                   # 迁移目录的详细说明
   mysql/
     <version>_<name>.up.sql
     <version>_<name>.down.sql
     atlas.sum                 # Atlas 完整性校验
-internal/store/migrate.go     # store.Migrate()：运行时应用迁移 + 旧库基线
-internal/store/models/entities.go      # Entities()：参与迁移的模型列表
+internal/common/store/migrate.go     # store.Migrate()：运行时应用迁移 + 旧库基线
+internal/common/store/models/entities.go             # 共享实体 Entities()（User）
+internal/modules/lab/models/entities.go        # lab 实体 Entities()
+internal/modules/entities.go                         # 合并全部模块的 Entities()
 ```
 
 ## 为什么生产不使用 AutoMigrate
@@ -55,27 +57,27 @@ DEV 模式不追求可审计性，`store.AutoMigrate()` 会在启动时直接按
 
 ### 1. 修改 GORM 模型
 
-在 `internal/store/models/` 中修改或新增实体。
+共享实体（目前只有 `User`）放在 `internal/common/store/models/`，lab 专属实体放在
+`internal/modules/lab/models/`。论坛未来的实体应放在 `internal/modules/forum/models/`。
 
-新增实体时，必须把它加入 `internal/store/models/entities.go` 的 `Entities()`：
+新增实体时，必须把它加入对应包 `entities.go` 的 `Entities()`：
 
 ```go
 func Entities() []any {
     return []any{
-        &User{},
-        &Task{},
-        // ...
         &YourNewModel{},
     }
 }
 ```
 
-`internal/migrations/atlasloader` 通过这个列表读取 schema；遗漏会导致 Atlas 看不到新表。
+`internal/modules/entities.go` 的 `modules.Entities()` 负责合并共享层与各业务模块的实体列表，
+DEV 启动时的 `store.AutoMigrate(modules.Entities()...)` 与 Atlas 的 atlasloader 都使用这一份列表。
+遗漏会导致 DEV 缺表，或让 Atlas 看不到新表并生成删表差量。
 
 ### 2. 生成差量迁移
 
 ```bash
-make migrate-diff NAME=add_your_change
+make migrate-diff MIGRATION_NAME=add_your_change
 ```
 
 等价于：
@@ -87,8 +89,8 @@ atlas migrate diff --env mysql add_your_change
 Atlas 会：
 
 1. 启动临时 MariaDB 10.11 dev 数据库（Docker）；
-2. 在该库中回放 `internal/migrations/mysql/` 的已有迁移；
-3. 通过 `internal/migrations/atlasloader` 读取当前 GORM 模型；
+2. 在该库中回放 `internal/common/migrations/mysql/` 的已有迁移；
+3. 通过 `internal/common/migrations/atlasloader` 读取当前 GORM 模型；
 4. 对比两者，把差量写入新的 `<version>_<name>.up.sql` / `.down.sql`。
 
 生成前需要本机有 `atlas` CLI，并确保 Docker 正在运行。
@@ -124,11 +126,11 @@ atlas migrate hash --env mysql
 
 ## 数据迁移（SQL）
 
-一次性数据回填放在 `internal/migrations/data/`，文件名与对应的 schema 迁移同名，只把后缀换成
+一次性数据回填放在 `internal/common/migrations/data/`，文件名与对应的 schema 迁移同名，只把后缀换成
 `.addendum.sql`：
 
 ```
-internal/migrations/
+internal/common/migrations/
   mysql/20261017062544_task_output_lines.up.sql
   data/20261017062544_task_output_lines.addendum.sql
 ```
@@ -142,8 +144,8 @@ internal/migrations/
 - 数据迁移**没有独立版本表**：每次 migrate 都会重新执行，SQL 必须幂等
   （`NOT EXISTS`、`INSERT IGNORE`、带条件的 `UPDATE` 等）。
 - 只放 DML，不要放 DDL；DDL 会让事务失去原子性。
-- 文件必须能对应到 `internal/migrations/mysql/` 下的 `<name>.up.sql`，由 `migrations` 包的测试守护。
-- 数据迁移不参与 Atlas 的差量和 `atlas.sum`；Atlas 只管理 `internal/migrations/mysql/`。
+- 文件必须能对应到 `internal/common/migrations/mysql/` 下的 `<name>.up.sql`，由 `migrations` 包的测试守护。
+- 数据迁移不参与 Atlas 的差量和 `atlas.sum`；Atlas 只管理 `internal/common/migrations/mysql/`。
 
 当前的回填 `20261017062544_task_output_lines.addendum.sql` 把旧版 `tasks.output` 作为单行
 （`seq=1`）写入 `task_output_lines`，保留原始换行。`GetTaskOutputString` 会在行尾补一个
@@ -170,6 +172,7 @@ internal/migrations/
 |---|---|
 | `..._baseline` | 引入版本化迁移前的完整 schema |
 | `..._task_output_lines` | 任务输出按行分表 |
+| `..._task_error_longtext` | 任务错误信息改为 longtext |
 
 ## 常见操作
 
@@ -218,7 +221,7 @@ GRANT ALL PRIVILEGES ON `aliyunmc\_test\_%`.* TO 'gomcdev'@'localhost';
 
 ## 测试数据库
 
-`internal/testutil.OpenMySQLTestDB()` 在测试 MySQL 上创建临时库，应用版本化迁移后安装到 `store.DB`。连接信息来自环境变量，未设置时使用默认值。
+`internal/common/testutil.OpenMySQLTestDB()` 在测试 MySQL 上创建临时库，应用版本化迁移后安装到 `store.DB`。连接信息来自环境变量，未设置时使用默认值。
 
 | 变量 | 默认值 |
 |---|---|
@@ -237,4 +240,4 @@ GRANT ALL PRIVILEGES ON `aliyunmc\_test\_%`.* TO 'gomcdev'@'localhost';
 - 每个迁移文件可能包含多条 SQL，运行时连接会自动附加 `multiStatements=true`。
 - 迁移失败时 golang-migrate 会把 `schema_migrations` 标记为 dirty。此时需要先手工确认并修复数据库状态，再按需执行 `migrate force <version>`（CLI），不要直接删除版本表。
 - 运行迁移前建议先备份数据库。
-- 更详细的迁移目录说明见 `internal/migrations/README.md`。
+- 更详细的迁移目录说明见 `internal/common/migrations/README.md`。

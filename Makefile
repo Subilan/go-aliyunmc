@@ -6,9 +6,9 @@ BUMP ?= patch
 APP_VERSION := $(shell cat VERSION)
 APP_COMMIT := $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
 APP_BUILD_TIME := $(shell date -u +%FT%TZ)
-LDFLAGS := -X github.com/Subilan/go-aliyunmc/internal/version.Version=$(APP_VERSION) \
-	-X github.com/Subilan/go-aliyunmc/internal/version.Commit=$(APP_COMMIT) \
-	-X github.com/Subilan/go-aliyunmc/internal/version.BuildTime=$(APP_BUILD_TIME)
+LDFLAGS := -X github.com/Subilan/go-aliyunmc/internal/common/version.Version=$(APP_VERSION) \
+	-X github.com/Subilan/go-aliyunmc/internal/common/version.Commit=$(APP_COMMIT) \
+	-X github.com/Subilan/go-aliyunmc/internal/common/version.BuildTime=$(APP_BUILD_TIME)
 
 # 生成配置文件
 gen-config:

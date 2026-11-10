@@ -21,11 +21,30 @@ go-aliyunmc 是 [Seatide](https://seatide.net) 服务器的运行基石，是该
 
 如果你对 go-aliyunmc 的代码感兴趣，欢迎来协助开发或捉虫。代码中涉及的并发代码可能有许多我未发现的严重问题，代码质量、注释详细程度有待提高，文档也有待完善。
 
+## 模块与 API 前缀
+
+同一个进程内同时承载两个相对独立的系统，代码按模块组织：
+
+| 目录 | 内容 |
+|---|---|
+| `internal/common` | 两者共用的基础设施：配置、数据库连接与共享 `User` 模型、session 工厂、Casbin 模型、响应与日志等 |
+| `internal/modules/lab` | lab 控制台（lab.seatide.net）的业务逻辑、路由、RBAC 策略 |
+| `internal/modules/forum` | 论坛（moon.seatide.net）的骨架，当前尚未实现具体功能 |
+
+约定：
+
+- 账号与凭据共用同一张 `users` 表，注册统一在 lab。
+- 登录态独立：lab 使用 `lab_session` cookie，forum 使用 `forum_session` cookie。
+- RBAC：`users.role` 是共用的用户角色，各模块维护自己的策略文件；只有在确实需要时才新增角色枚举。
+- API 以模块前缀区分：lab 的全部接口位于 `/lab-v1/...`，forum 位于 `/forum-v1/...`，不提供旧路径兼容。
+
 ## 前端
 
 当前项目中的代码承担 go-aliyunmc 的主要功能，作为一个完整系统的后端存在。支持本后端的前端包括：
 - [go-aliyunmc-client-web-next](https://github.com/Subilan/go-aliyunmc-client-web-next)
 - ~~[go-aliyunmc-client-web](https://github.com/Subilan/go-aliyunmc-client-web)~~
+
+前端调用后端时应带上模块前缀（例如 `/lab-v1/user/profile`）。
 
 ## 协议 & 鸣谢
 

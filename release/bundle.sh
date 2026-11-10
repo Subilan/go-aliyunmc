@@ -13,9 +13,9 @@ mkdir -p "$OUT"
 
 echo "==> Building linux/amd64 binary"
 (cd "$ROOT" && GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath \
-	-ldflags "-X github.com/Subilan/go-aliyunmc/internal/version.Version=$APP_VERSION \
-	-X github.com/Subilan/go-aliyunmc/internal/version.Commit=$APP_COMMIT \
-	-X github.com/Subilan/go-aliyunmc/internal/version.BuildTime=$APP_BUILD_TIME" \
+	-ldflags "-X github.com/Subilan/go-aliyunmc/internal/common/version.Version=$APP_VERSION \
+	-X github.com/Subilan/go-aliyunmc/internal/common/version.Commit=$APP_COMMIT \
+	-X github.com/Subilan/go-aliyunmc/internal/common/version.BuildTime=$APP_BUILD_TIME" \
 	-o "$OUT/go-aliyunmc" ./cmd/aliyunmc)
 
 echo "==> Copying release scripts"

@@ -5,7 +5,7 @@ description: Hub 的订阅、缓冲溢出处理与关闭语义，以及状态存
 
 # 订阅广播
 
-`internal/pubsub` 提供泛型广播内核，状态分发与 SSE 事件流共用。
+`internal/common/pubsub` 提供泛型广播内核，状态分发与 SSE 事件流共用。
 
 ## 订阅
 

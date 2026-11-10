@@ -22,12 +22,12 @@ description: Makefile 的常用目标与通过 ldflags 注入版本、提交和�
 
 ## 版本信息
 
-`internal/version` 的三个变量由构建脚本通过 `-ldflags` 注入。
+`internal/common/version` 的三个变量由构建脚本通过 `-ldflags` 注入。
 
 ```
--X github.com/Subilan/go-aliyunmc/internal/version.Version=1.0.0
--X github.com/Subilan/go-aliyunmc/internal/version.Commit=<git sha>
--X github.com/Subilan/go-aliyunmc/internal/version.BuildTime=<RFC3339>
+-X github.com/Subilan/go-aliyunmc/internal/common/version.Version=1.0.0
+-X github.com/Subilan/go-aliyunmc/internal/common/version.Commit=<git sha>
+-X github.com/Subilan/go-aliyunmc/internal/common/version.BuildTime=<RFC3339>
 ```
 
 `make build` 从 `VERSION` 文件、`git rev-parse` 与当前 UTC 时间取值。`make dev` 等未注入的入口保持 `dev`、`unknown` 默认值。

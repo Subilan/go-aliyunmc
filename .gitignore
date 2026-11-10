@@ -3,7 +3,7 @@
 *.drawio.bkp
 /go-aliyunmc*
 /aliyunmc
-/internal/migrations/atlasloader/atlasloader
+/internal/common/migrations/atlasloader/atlasloader
 /dist/
 upload.sh
 *.pem

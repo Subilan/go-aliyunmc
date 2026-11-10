@@ -7,7 +7,7 @@ description: 任务定义的字段、Executor 的生命周期信号、互斥分�
 
 ## 任务定义
 
-每个任务在 `internal/tasks` 注册一个 `TaskDefinition`。
+每个任务在 `internal/modules/lab/tasks` 注册一个 `TaskDefinition`。
 
 | 字段 | 作用 |
 |---|---|
