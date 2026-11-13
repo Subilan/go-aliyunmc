@@ -87,8 +87,14 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 
 		if s.Value.PlayerCount > 0 {
-			// 服务器一定在线
-			cancelCountdown("players_back")
+			// 服务器一定在线。空服周期结束，运行中的倒计时应取消；
+			// 但管理员手动暂停的状态必须保留，否则玩家进出会让暂停静默失效，
+			// 玩家离开后又会以完整时长重新开始倒计时并最终归档。
+			if m.countdown.CancelUnlessPaused() {
+				m.logger.Info("倒计时取消，原因：players_back")
+			} else if m.countdown.State().Status == IdleCountdownPaused {
+				m.logger.Info("玩家回到服务器，保留已暂停的倒计时")
+			}
 			return
 		}
 

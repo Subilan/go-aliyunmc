@@ -101,6 +101,38 @@ func TestIdleCountdownCancelDoesNotOverridePause(t *testing.T) {
 	}
 }
 
+func TestIdleCountdownCancelUnlessPausedKeepsPause(t *testing.T) {
+	controller, clock := newTestIdleCountdown(20 * time.Minute)
+	controller.StartIfInactive()
+	clock.Advance(5 * time.Minute)
+
+	if _, err := controller.Pause(); err != nil {
+		t.Fatalf("Pause() error = %v", err)
+	}
+
+	// 玩家回到服务器时，暂停不应被取消。
+	if controller.CancelUnlessPaused() {
+		t.Fatal("CancelUnlessPaused() = true, want false for paused countdown")
+	}
+	if got := controller.State(); got.Status != IdleCountdownPaused || got.RemainingSeconds != 900 {
+		t.Fatalf("state after CancelUnlessPaused = %+v, want paused with 900 seconds", got)
+	}
+
+	// 玩家离开后监控器会调用 StartIfInactive，暂停不能被覆盖。
+	clock.Advance(10 * time.Minute)
+	if controller.StartIfInactive() {
+		t.Fatal("StartIfInactive() restarted a paused countdown")
+	}
+
+	resumed, err := controller.Resume()
+	if err != nil {
+		t.Fatalf("Resume() error = %v", err)
+	}
+	if resumed.Status != IdleCountdownRunning || resumed.RemainingSeconds != 900 {
+		t.Fatalf("Resume() = %+v, want running with frozen 900 seconds", resumed)
+	}
+}
+
 func TestIdleCountdownExpiresOnce(t *testing.T) {
 	controller, clock := newTestIdleCountdown(2 * time.Second)
 	controller.StartIfInactive()
