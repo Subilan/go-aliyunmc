@@ -26,7 +26,7 @@ func HandleGetIdleCountdown(c *gin.Context) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newIdleCountdownResponse(countdown.State()), nil
+	return newIdleCountdownResponse(countdown.State())
 }
 
 // HandleGetIdleCountdownRemainingSecs 保留首页使用的旧接口；未启动时返回 -1。
@@ -89,14 +89,18 @@ func runCountdownControl(
 	if err != nil {
 		return nil, countdownControlError(err)
 	}
-	return newIdleCountdownResponse(state), nil
+	return newIdleCountdownResponse(state)
 }
 
-func newIdleCountdownResponse(state monitors.IdleCountdownState) idleCountdownResponse {
+func newIdleCountdownResponse(state monitors.IdleCountdownState) (idleCountdownResponse, error) {
+	hasActiveInstance, err := store.HasActiveInstance()
+	if err != nil {
+		return idleCountdownResponse{}, h.HttpError(http.StatusServiceUnavailable, "无法确认活跃实例状态")
+	}
 	return idleCountdownResponse{
 		IdleCountdownState: state,
-		HasActiveInstance:  store.HasActiveInstance(),
-	}
+		HasActiveInstance:  hasActiveInstance,
+	}, nil
 }
 
 func getIdleCountdown() (*monitors.IdleCountdownController, error) {
@@ -112,7 +116,11 @@ func ensureCountdownCanStart(countdown *monitors.IdleCountdownController) error 
 	if !state.Enabled {
 		return h.HttpError(http.StatusConflict, "关服倒计时未启用")
 	}
-	if !store.HasActiveInstance() {
+	hasActiveInstance, err := store.HasActiveInstance()
+	if err != nil {
+		return h.HttpError(http.StatusServiceUnavailable, "无法确认活跃实例状态")
+	}
+	if !hasActiveInstance {
 		return h.HttpError(http.StatusConflict, "暂无活跃实例，无法设置关服倒计时")
 	}
 

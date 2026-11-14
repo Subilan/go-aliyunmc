@@ -18,16 +18,17 @@ func GetActiveInstanceDefaultNil() (*models.Instance, error) {
 	return instance, err
 }
 
-// HasActiveInstance 检查是否存在活跃实例，存在返回 true，否则返回 false。
-// 注意如果数据库查询出现错误，此函数也会返回 false。
-func HasActiveInstance() bool {
+// HasActiveInstance 检查是否存在活跃实例。
+// 查询失败会返回 error，调用方必须区分“确定没有实例”与“无法确认”，
+// 后者不应被当作没有实例处理。
+func HasActiveInstance() (bool, error) {
 	instance, err := GetActiveInstanceDefaultNil()
 
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return instance != nil
+	return instance != nil, nil
 }
 
 // GetActiveInstance 获取当前活跃的实例，如果没有则返回错误。

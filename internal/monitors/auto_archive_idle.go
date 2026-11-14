@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/config"
 	"github.com/Subilan/go-aliyunmc/internal/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/paths"
 	"github.com/Subilan/go-aliyunmc/internal/server"
 	"github.com/Subilan/go-aliyunmc/internal/states"
 	"github.com/Subilan/go-aliyunmc/internal/store"
@@ -34,12 +36,20 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	enabled := config.Get().Monitors.AutoArchiveIdle.Enabled
 	idleCountdown := time.Duration(config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec) * time.Second
 
+	countdown := newIdleCountdownController(enabled, idleCountdown)
+	if enabled {
+		countdown.AttachPersistence(paths.IdleCountdownFile(), logger)
+	} else {
+		// 功能关闭时清除旧的持久化状态，避免重新启用后恢复过期状态。
+		_ = os.Remove(paths.IdleCountdownFile())
+	}
+
 	return &AutoArchiveIdleMonitor{
 		enabled:               enabled,
 		stopWaitTimeout:       time.Duration(config.Get().Monitors.AutoArchiveIdle.StopWaitTimeoutSec) * time.Second,
 		offlineCheckInterval:  time.Duration(config.Get().Monitors.AutoArchiveIdle.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: config.Get().Monitors.AutoArchiveIdle.DeleteIgnoreNonExistent,
-		countdown:             newIdleCountdownController(enabled, idleCountdown),
+		countdown:             countdown,
 		logger:                logger,
 	}
 }
@@ -63,8 +73,19 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 	}
 
+	// activeInstanceExists 查询活跃实例。查询失败表示“无法确认”，
+	// 与“确定没有实例”不同，调用方不应据此改动倒计时状态。
+	activeInstanceExists := func() (bool, error) {
+		exists, err := store.HasActiveInstance()
+		if err != nil {
+			m.logger.Error("查询活跃实例失败，保留当前倒计时状态：%v", err)
+		}
+		return exists, err
+	}
+
 	startCountdown := func() {
-		if !store.HasActiveInstance() {
+		exists, err := activeInstanceExists()
+		if err != nil || !exists {
 			return
 		}
 		if m.countdown.StartIfInactive() {
@@ -75,13 +96,18 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	// 根据当前快照状态决定是否取消倒计时或者开启倒计时
 	handleSnapshot := func(s states.State[states.ServerStatusState]) {
 		if s.Error != nil {
-			if !store.HasActiveInstance() {
+			exists, err := activeInstanceExists()
+			if err == nil && !exists {
 				cancelCountdown("status_error_active_instance_missing")
 			}
 			return
 		}
 
-		if !store.HasActiveInstance() {
+		exists, err := activeInstanceExists()
+		if err != nil {
+			return
+		}
+		if !exists {
 			cancelCountdown("active_instance_missing")
 			return
 		}
@@ -118,7 +144,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			cancelCountdown("context_done")
+			// 程序退出时保留已持久化的倒计时状态，重启后可恢复暂停/剩余时间。
 			return
 		case s, ok := <-updates:
 			if !ok {

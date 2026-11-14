@@ -3,6 +3,7 @@ package monitors
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -133,6 +134,81 @@ func TestIdleCountdownCancelUnlessPausedKeepsPause(t *testing.T) {
 	}
 }
 
+func TestIdleCountdownPersistenceRestoresPausedAcrossRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "idle_countdown.json")
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+
+	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller.now = clock.Now
+	controller.AttachPersistence(path, nil)
+	controller.StartIfInactive()
+	clock.Advance(5 * time.Minute)
+	if _, err := controller.Pause(); err != nil {
+		t.Fatalf("Pause() error = %v", err)
+	}
+
+	// 模拟进程重启：新控制器从同一文件恢复。
+	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored.now = clock.Now
+	restored.AttachPersistence(path, nil)
+
+	state := restored.State()
+	if state.Status != IdleCountdownPaused || state.RemainingSeconds != 900 {
+		t.Fatalf("restored state = %+v, want paused with 900 seconds", state)
+	}
+	if restored.StartIfInactive() {
+		t.Fatal("StartIfInactive() overwrote restored paused state")
+	}
+}
+
+func TestIdleCountdownPersistenceRestoresRunning(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "idle_countdown.json")
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+
+	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller.now = clock.Now
+	controller.AttachPersistence(path, nil)
+	controller.StartIfInactive()
+	clock.Advance(5 * time.Minute)
+
+	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored.now = clock.Now
+	restored.AttachPersistence(path, nil)
+
+	state := restored.State()
+	if state.Status != IdleCountdownRunning || state.RemainingSeconds != 900 {
+		t.Fatalf("restored state = %+v, want running with 900 seconds", state)
+	}
+}
+
+func TestIdleCountdownPersistenceDropsExpiredRunningAndClearedState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "idle_countdown.json")
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+
+	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller.now = clock.Now
+	controller.AttachPersistence(path, nil)
+	controller.StartIfInactive()
+
+	// 停机时间超过截止时间：不恢复运行中的倒计时，交给快照逻辑重新判断。
+	clock.Advance(30 * time.Minute)
+	expired := newIdleCountdownController(true, 20*time.Minute)
+	expired.now = clock.Now
+	expired.AttachPersistence(path, nil)
+	if got := expired.State().Status; got != IdleCountdownInactive {
+		t.Fatalf("status after expired restore = %s, want inactive", got)
+	}
+
+	// 显式取消会清空持久化文件。
+	controller.Cancel()
+	cleared := newIdleCountdownController(true, 20*time.Minute)
+	cleared.now = clock.Now
+	cleared.AttachPersistence(path, nil)
+	if got := cleared.State(); got.Status != IdleCountdownInactive {
+		t.Fatalf("status after cancel restore = %s, want inactive", got.Status)
+	}
+}
+
 func TestIdleCountdownExpiresOnce(t *testing.T) {
 	controller, clock := newTestIdleCountdown(2 * time.Second)
 	controller.StartIfInactive()
@@ -143,8 +219,8 @@ func TestIdleCountdownExpiresOnce(t *testing.T) {
 	controller.mu.Unlock()
 
 	state := controller.State()
-	if state.Status != IdleCountdownTriggering || state.RemainingSeconds != 0 {
-		t.Fatalf("state after expiry = %+v, want triggering with 0 seconds", state)
+	if state.Status != IdleCountdownFinalizing || state.RemainingSeconds != 0 {
+		t.Fatalf("state after expiry = %+v, want finalizing with 0 seconds", state)
 	}
 	select {
 	case <-controller.Expired():
@@ -165,10 +241,10 @@ func TestIdleCountdownExpiresOnce(t *testing.T) {
 		t.Fatalf("Reset() error = %v, want ErrIdleCountdownBusy", err)
 	}
 	if controller.Cancel() {
-		t.Fatal("Cancel() = true while triggering")
+		t.Fatal("Cancel() = true while finalizing")
 	}
 	if controller.StartIfInactive() {
-		t.Fatal("StartIfInactive() = true while triggering")
+		t.Fatal("StartIfInactive() = true while finalizing")
 	}
 	controller.Complete()
 	if got := controller.State().Status; got != IdleCountdownInactive {
@@ -192,8 +268,8 @@ func TestIdleCountdownBackgroundExpiry(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("background countdown did not expire")
 	}
-	if got := controller.State().Status; got != IdleCountdownTriggering {
-		t.Fatalf("status after background expiry = %s, want triggering", got)
+	if got := controller.State().Status; got != IdleCountdownFinalizing {
+		t.Fatalf("status after background expiry = %s, want finalizing", got)
 	}
 }
 

@@ -43,3 +43,8 @@ func CacheDir() string {
 func EcsCandidatesFile() string {
 	return filepath.Join(RuntimeDir(), "ecs_candidates.json")
 }
+
+// IdleCountdownFile 返回关服倒计时状态的持久化文件路径。
+func IdleCountdownFile() string {
+	return filepath.Join(RuntimeDir(), "idle_countdown.json")
+}
