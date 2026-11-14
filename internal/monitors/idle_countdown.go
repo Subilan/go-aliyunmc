@@ -124,10 +124,12 @@ func (c *IdleCountdownController) Cancel() bool {
 // CancelUnlessPaused 与 Cancel 相同，但会保留管理员手动暂停的状态。
 // 空服倒计时因玩家回到服务器而结束时使用：运行中的倒计时应取消，
 // 而暂停是管理员显式表达的意图，不应被玩家进出静默重置。
-func (c *IdleCountdownController) CancelUnlessPaused() bool {
+// 返回值是是否发生了取消，以及调用后的状态，便于调用方区分“取消”与“保留暂停”。
+func (c *IdleCountdownController) CancelUnlessPaused() (bool, IdleCountdownStatus) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.cancelLocked(true)
+	changed := c.cancelLocked(true)
+	return changed, c.status
 }
 
 func (c *IdleCountdownController) cancelLocked(preservePause bool) bool {

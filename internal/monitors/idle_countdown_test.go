@@ -112,8 +112,12 @@ func TestIdleCountdownCancelUnlessPausedKeepsPause(t *testing.T) {
 	}
 
 	// 玩家回到服务器时，暂停不应被取消。
-	if controller.CancelUnlessPaused() {
+	changed, status := controller.CancelUnlessPaused()
+	if changed {
 		t.Fatal("CancelUnlessPaused() = true, want false for paused countdown")
+	}
+	if status != IdleCountdownPaused {
+		t.Fatalf("status after CancelUnlessPaused = %s, want paused", status)
 	}
 	if got := controller.State(); got.Status != IdleCountdownPaused || got.RemainingSeconds != 900 {
 		t.Fatalf("state after CancelUnlessPaused = %+v, want paused with 900 seconds", got)

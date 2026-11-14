@@ -83,9 +83,8 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		return exists, err
 	}
 
-	startCountdown := func() {
-		exists, err := activeInstanceExists()
-		if err != nil || !exists {
+	startCountdown := func(hasActiveInstance bool) {
+		if !hasActiveInstance {
 			return
 		}
 		if m.countdown.StartIfInactive() {
@@ -116,16 +115,17 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			// 服务器一定在线。空服周期结束，运行中的倒计时应取消；
 			// 但管理员手动暂停的状态必须保留，否则玩家进出会让暂停静默失效，
 			// 玩家离开后又会以完整时长重新开始倒计时并最终归档。
-			if m.countdown.CancelUnlessPaused() {
+			changed, status := m.countdown.CancelUnlessPaused()
+			if changed {
 				m.logger.Info("倒计时取消，原因：players_back")
-			} else if m.countdown.State().Status == IdleCountdownPaused {
+			} else if status == IdleCountdownPaused {
 				m.logger.Info("玩家回到服务器，保留已暂停的倒计时")
 			}
 			return
 		}
 
 		// 此时，要么服务器不在线，要么服务器在线但没有玩家。
-		startCountdown()
+		startCountdown(exists)
 	}
 
 	updates, unsubscribe := serverMonitor.Subscribe()
