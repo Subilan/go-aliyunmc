@@ -36,6 +36,11 @@ func HandleLogin(req LoginRequest, c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusUnauthorized, "用户名或密码错误")
 	}
 
+	// 记录一次成功登录
+	if err := store.DB.Create(&models.LoginRecord{UserID: user.ID}).Error; err != nil {
+		return nil, err
+	}
+
 	session.Set(c, session.KeyUserId, user.ID)
 	session.Set(c, session.KeyUsername, user.Username)
 

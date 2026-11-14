@@ -151,6 +151,22 @@ func TestHandleLogin(t *testing.T) {
 		t.Errorf("Expected data to be nil, got %v", response["data"])
 	}
 
+	var loginRecord models.LoginRecord
+	if err := store.DB.Where("user_id = ?", testUser.ID).Order("created_at DESC").First(&loginRecord).Error; err != nil {
+		t.Fatalf("Failed to load login record: %v", err)
+	}
+
+	users, err := store.ListUsers(nil, testUser.Username, "last_login_at", "desc", 10, 0)
+	if err != nil {
+		t.Fatalf("Failed to list users: %v", err)
+	}
+	if len(users) != 1 {
+		t.Fatalf("Expected 1 user, got %d", len(users))
+	}
+	if users[0].LastLoginAt == nil {
+		t.Error("Expected last_login_at to be derived from login_records")
+	}
+
 	// 测试错误密码
 	loginReq.Password = "wrongpassword"
 	reqBody, _ = json.Marshal(loginReq)

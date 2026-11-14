@@ -4,6 +4,7 @@ package models
 func Entities() []any {
 	return []any{
 		&User{},
+		&LoginRecord{},
 		&Task{},
 		&TaskOutputLine{},
 		&Instance{},

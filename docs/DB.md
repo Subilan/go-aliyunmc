@@ -170,6 +170,7 @@ internal/migrations/
 |---|---|
 | `..._baseline` | 引入版本化迁移前的完整 schema |
 | `..._task_output_lines` | 任务输出按行分表 |
+| `..._add_login_records` | 登录记录表（最近登录时间由此派生） |
 
 ## 常见操作
 
