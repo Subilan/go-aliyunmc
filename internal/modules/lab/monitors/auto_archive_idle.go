@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
@@ -12,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/models"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab/paths"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/server"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/tasks"
 
@@ -34,12 +36,20 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 	enabled := config.Get().Monitors.AutoArchiveIdle.Enabled
 	idleCountdown := time.Duration(config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec) * time.Second
 
+	countdown := newIdleCountdownController(enabled, idleCountdown)
+	if enabled {
+		countdown.AttachPersistence(paths.IdleCountdownFile(), logger)
+	} else {
+		// 功能关闭时清除旧的持久化状态，避免重新启用后恢复过期状态。
+		_ = os.Remove(paths.IdleCountdownFile())
+	}
+
 	return &AutoArchiveIdleMonitor{
 		enabled:               enabled,
 		stopWaitTimeout:       time.Duration(config.Get().Monitors.AutoArchiveIdle.StopWaitTimeoutSec) * time.Second,
 		offlineCheckInterval:  time.Duration(config.Get().Monitors.AutoArchiveIdle.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: config.Get().Monitors.AutoArchiveIdle.DeleteIgnoreNonExistent,
-		countdown:             newIdleCountdownController(enabled, idleCountdown),
+		countdown:             countdown,
 		logger:                logger,
 	}
 }
@@ -63,8 +73,18 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		}
 	}
 
-	startCountdown := func() {
-		if !dao.HasActiveInstance() {
+	// activeInstanceExists 查询活跃实例。查询失败表示“无法确认”，
+	// 与“确定没有实例”不同，调用方不应据此改动倒计时状态。
+	activeInstanceExists := func() (bool, error) {
+		exists, err := dao.HasActiveInstance()
+		if err != nil {
+			m.logger.Error("查询活跃实例失败，保留当前倒计时状态：%v", err)
+		}
+		return exists, err
+	}
+
+	startCountdown := func(hasActiveInstance bool) {
+		if !hasActiveInstance {
 			return
 		}
 		if m.countdown.StartIfInactive() {
@@ -75,25 +95,37 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	// 根据当前快照状态决定是否取消倒计时或者开启倒计时
 	handleSnapshot := func(s states.State[states.ServerStatusState]) {
 		if s.Error != nil {
-			if !dao.HasActiveInstance() {
+			exists, err := activeInstanceExists()
+			if err == nil && !exists {
 				cancelCountdown("status_error_active_instance_missing")
 			}
 			return
 		}
 
-		if !dao.HasActiveInstance() {
+		exists, err := activeInstanceExists()
+		if err != nil {
+			return
+		}
+		if !exists {
 			cancelCountdown("active_instance_missing")
 			return
 		}
 
 		if s.Value.PlayerCount > 0 {
-			// 服务器一定在线
-			cancelCountdown("players_back")
+			// 服务器一定在线。空服周期结束，运行中的倒计时应取消；
+			// 但管理员手动暂停的状态必须保留，否则玩家进出会让暂停静默失效，
+			// 玩家离开后又会以完整时长重新开始倒计时并最终归档。
+			changed, status := m.countdown.CancelUnlessPaused()
+			if changed {
+				m.logger.Info("倒计时取消，原因：players_back")
+			} else if status == IdleCountdownPaused {
+				m.logger.Info("玩家回到服务器，保留已暂停的倒计时")
+			}
 			return
 		}
 
 		// 此时，要么服务器不在线，要么服务器在线但没有玩家。
-		startCountdown()
+		startCountdown(exists)
 	}
 
 	updates, unsubscribe := serverMonitor.Subscribe()
@@ -112,7 +144,7 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			cancelCountdown("context_done")
+			// 程序退出时保留已持久化的倒计时状态，重启后可恢复暂停/剩余时间。
 			return
 		case s, ok := <-updates:
 			if !ok {

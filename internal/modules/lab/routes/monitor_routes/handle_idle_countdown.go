@@ -26,10 +26,14 @@ func HandleGetIdleCountdown(c *gin.Context) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newIdleCountdownResponse(countdown.State()), nil
+	hasActiveInstance, err := dao.HasActiveInstance()
+	if err != nil {
+		return nil, h.HttpError(http.StatusServiceUnavailable, "无法确认活跃实例状态")
+	}
+	return newIdleCountdownResponse(countdown.State(), hasActiveInstance), nil
 }
 
-// HandleGetIdleCountdownRemainingSecs 保留首页使用的旧接口；未启动时返回 -1。
+// HandleGetIdleCountdownRemainingSecs 供外部服务（如插件）调用；未启动时返回 -1。
 func HandleGetIdleCountdownRemainingSecs() int64 {
 	countdown, err := getIdleCountdown()
 	if err != nil {
@@ -78,8 +82,12 @@ func runCountdownControl(
 	if err != nil {
 		return nil, err
 	}
+	hasActiveInstance, err := dao.HasActiveInstance()
+	if err != nil {
+		return nil, h.HttpError(http.StatusServiceUnavailable, "无法确认活跃实例状态")
+	}
 	if checkCanStart {
-		if err := ensureCountdownCanStart(countdown); err != nil {
+		if err := ensureCountdownCanStart(countdown, hasActiveInstance); err != nil {
 			return nil, err
 		}
 	} else if !countdown.State().Enabled {
@@ -89,13 +97,13 @@ func runCountdownControl(
 	if err != nil {
 		return nil, countdownControlError(err)
 	}
-	return newIdleCountdownResponse(state), nil
+	return newIdleCountdownResponse(state, hasActiveInstance), nil
 }
 
-func newIdleCountdownResponse(state monitors.IdleCountdownState) idleCountdownResponse {
+func newIdleCountdownResponse(state monitors.IdleCountdownState, hasActiveInstance bool) idleCountdownResponse {
 	return idleCountdownResponse{
 		IdleCountdownState: state,
-		HasActiveInstance:  dao.HasActiveInstance(),
+		HasActiveInstance:  hasActiveInstance,
 	}
 }
 
@@ -107,12 +115,12 @@ func getIdleCountdown() (*monitors.IdleCountdownController, error) {
 	return monitor.Countdown(), nil
 }
 
-func ensureCountdownCanStart(countdown *monitors.IdleCountdownController) error {
+func ensureCountdownCanStart(countdown *monitors.IdleCountdownController, hasActiveInstance bool) error {
 	state := countdown.State()
 	if !state.Enabled {
 		return h.HttpError(http.StatusConflict, "关服倒计时未启用")
 	}
-	if !dao.HasActiveInstance() {
+	if !hasActiveInstance {
 		return h.HttpError(http.StatusConflict, "暂无活跃实例，无法设置关服倒计时")
 	}
 

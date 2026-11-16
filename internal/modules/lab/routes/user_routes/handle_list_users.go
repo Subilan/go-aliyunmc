@@ -5,7 +5,6 @@ import (
 
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
 	"github.com/Subilan/go-aliyunmc/internal/common/store"
-	"github.com/Subilan/go-aliyunmc/internal/common/store/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,8 +21,8 @@ type ListUsersQuery struct {
 
 // ListUsersResponse 用户列表响应
 type ListUsersResponse struct {
-	Users []models.User `json:"users"`
-	Total int64         `json:"total"`
+	Users []store.UserWithLastLogin `json:"users"`
+	Total int64                     `json:"total"`
 }
 
 // HandleListUsers 查询用户列表（仅 operator 及以上可访问）

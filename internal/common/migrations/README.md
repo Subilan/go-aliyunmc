@@ -33,6 +33,7 @@ internal/common/migrations/
 | `..._baseline` | 引入版本化迁移前的完整 schema |
 | `..._task_output_lines` | 任务输出分表 |
 | `..._task_error_longtext` | 任务错误信息改为 longtext |
+| `..._add_login_records` | 登录记录表（最近登录时间由此派生） |
 
 ## 生成一次变更
 

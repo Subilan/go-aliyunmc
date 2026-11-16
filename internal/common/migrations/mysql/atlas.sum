@@ -1,4 +1,5 @@
-h1:fm6L8k0VZgAucUuD6c17P/OdSolfGPTCBm185YgpG+E=
+h1:xNrgvcTi2ZCXqgqgJibPW+cFyUzcvPOMj9iclItJhBk=
 20261017062536_baseline.up.sql h1:e4+RMa7DJFdoZlz1R3EDU6HdDuwebuoi9TK0r9UWUWE=
 20261017062544_task_output_lines.up.sql h1:8KetWYN8QuoXMYM+Uyh1DQvyESam1jIV8k4eQvvr8EE=
 20261107203219_task_error_longtext.up.sql h1:gvRq2ZTKnUGucZbpI4Jv1EafTIwb60CxMkuyevatRwE=
+20261114054845_add_login_records.up.sql h1:kL9/0Vt4FHCuEKRRVEiNxX/5ymSNkcqLFFNmPOxfUwY=
