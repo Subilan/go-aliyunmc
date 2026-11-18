@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS `forum_login_records`;
+DROP TABLE IF EXISTS `forum_audit_logs`;
+DROP TABLE IF EXISTS `forum_settings`;
+DROP TABLE IF EXISTS `forum_user_permissions`;
+DROP TABLE IF EXISTS `forum_uploads`;
+DROP TABLE IF EXISTS `forum_notifications`;
+DROP TABLE IF EXISTS `forum_board_follows`;
+DROP TABLE IF EXISTS `forum_user_likes`;
+DROP TABLE IF EXISTS `forum_reply_likes`;
+DROP TABLE IF EXISTS `forum_thread_likes`;
+DROP TABLE IF EXISTS `forum_thread_tags`;
+DROP TABLE IF EXISTS `forum_tags`;
+DROP TABLE IF EXISTS `forum_replies`;
+DROP TABLE IF EXISTS `forum_threads`;
+DROP TABLE IF EXISTS `forum_boards`;
+DROP TABLE IF EXISTS `forum_profiles`;

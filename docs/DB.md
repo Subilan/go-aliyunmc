@@ -58,7 +58,7 @@ DEV 模式不追求可审计性，`store.AutoMigrate()` 会在启动时直接按
 ### 1. 修改 GORM 模型
 
 共享实体（目前只有 `User`）放在 `internal/common/store/models/`，lab 专属实体放在
-`internal/modules/lab/models/`。论坛未来的实体应放在 `internal/modules/forum/models/`。
+`internal/modules/lab/models/`，论坛实体放在 `internal/modules/forum/models/`（已包含 `forum_*` 全部表）。
 
 新增实体时，必须把它加入对应包 `entities.go` 的 `Entities()`：
 

@@ -1,6 +1,10 @@
 [base]
 # HTTP服务器的监听端口
 expose = 45678
+# 可信反向代理的 IP/CIDR 列表；留空表示不信任任何代理头
+trusted_proxies = []
+# 即使未启用本地 TLS，也强制 Cookie 使用 Secure（TLS 在上游终止时开启）
+secure_cookie = false
 
 [base.cors]
 # 允许的源地址，例如 ['https://example.com']
@@ -193,3 +197,51 @@ sample_interval_sec = 5
 max_data_points = 100
 # 采样间隔（秒）
 sample_interval_sec = 300
+
+[forum]
+# 上传文件根目录；留空表示 $STATE_DIR/state/forum/uploads
+upload_dir = ''
+# 正文图片上传的最大字节数
+max_upload_bytes = 10485760
+# 头像上传的最大字节数
+max_avatar_bytes = 2097152
+# 主页背景上传的最大字节数
+max_background_bytes = 8388608
+# 主题正文 HTML 的最大字节数
+max_thread_html_bytes = 131072
+# 跟帖正文 HTML 的最大字节数
+max_reply_html_bytes = 65536
+# 单张图片允许的最大总像素数
+max_image_pixels = 24000000
+# 单篇正文允许的最大图片数
+max_images_per_post = 20
+# 单篇正文允许的最大提及数
+max_mentions_per_post = 20
+# 单篇主题允许的最大标签数；0 表示不限制
+max_tags_per_post = 20
+# 每个用户上传文件占用的磁盘上限（字节）；0 表示不限制
+user_quota_bytes = 268435456
+
+[forum.rate_limit]
+# 是否启用论坛接口限流
+enabled = true
+# 登录：每分钟每 IP+用户名的请求数
+login_per_minute = 5
+# 登录：每分钟每 IP 的总请求数，防止跨用户名爆破
+login_ip_per_minute = 30
+# 发主题：每分钟每用户的请求数
+thread_per_minute = 10
+# 编辑主题/跟帖：每分钟每用户的请求数
+edit_per_minute = 20
+# 发跟帖：每分钟每用户的请求数
+reply_per_minute = 20
+# 上传：每分钟每用户的请求数
+upload_per_minute = 20
+# 点赞/关注：每分钟每用户的请求数
+like_per_minute = 60
+# 提及候选搜索：每分钟每用户的请求数
+mention_search_per_minute = 60
+# 全文搜索：每分钟每用户（游客按 IP）的请求数
+search_per_minute = 30
+# 后台写操作：每分钟每用户的请求数
+admin_write_per_minute = 60

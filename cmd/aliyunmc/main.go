@@ -72,9 +72,15 @@ func runServer() {
 	if err := store.AutoMigrate(modules.Entities()...); err != nil {
 		log_util.Fatal("初始化开发数据库失败: %v", err)
 	}
-	if err := session_util.InitStore(store.DB, labsession.Manager, forumsession.Manager); err != nil {
+	if err := session_util.InitStore(store.DB, labsession.Manager, forumsession.Manager, forumsession.AdminManager); err != nil {
 		log_util.Fatal("初始化 session 存储失败: %v", err)
 	}
+
+	// 三个 manager 共用同一套 cookie 安全策略：本地 TLS 或上游终止 TLS 时启用 Secure。
+	secureCookie := config.Get().Base.TLS.Enabled || config.Get().Base.SecureCookie
+	labsession.Manager.SetSecure(secureCookie)
+	forumsession.Manager.SetSecure(secureCookie)
+	forumsession.AdminManager.SetSecure(secureCookie)
 	lab.MustInitialize()
 	forum.MustInitialize()
 
@@ -85,17 +91,22 @@ func runServer() {
 	}
 
 	engine := gin.New()
+	if err := engine.SetTrustedProxies(config.Get().Base.TrustedProxies); err != nil {
+		log_util.Fatal("配置可信代理失败: %v", err)
+	}
 	engine.Use(gin.Logger())
 	engine.Use(gin.Recovery())
 
 	engine.Use(cors.New(config.Get().Base.Cors.GinCorsConfig()))
+	// 所有模块的 JSON 写请求统一限制请求体大小；forum 会在模块内再施加更严格的上限。
+	engine.Use(h.BodyLimit(4 << 20))
 
 	engine.GET("/", h.V(func() string { return "Hello, World!" }))
 
 	// 注册 lab 模块路由（/lab-v1）。
 	lab.Bind(engine)
 
-	// 注册 forum 模块路由（/forum-v1，当前为空骨架）。
+	// 注册 forum 模块路由（/forum-v1）。
 	forum.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -107,7 +118,11 @@ func runServer() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	handler := labsession.Manager.LoadAndSave(forumsession.Manager.LoadAndSave(engine))
+	handler := labsession.Manager.LoadAndSave(
+		forumsession.Manager.LoadAndSave(
+			forumsession.AdminManager.LoadAndSave(engine),
+		),
+	)
 
 	if env.DEV || !config.Get().Base.TLS.Enabled {
 		run(handler, config.Get().Base.Expose, stop)

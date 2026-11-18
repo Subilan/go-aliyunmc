@@ -72,6 +72,43 @@ instance_type_exclusion = "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$"
 
 `mem_choices` 与 `cpu_core_count_choices` 不提供默认值，必须显式配置，并且应使用常见的内存大小和与内存比匹配的 vCPU 数量。
 
+## 网络、代理与 Cookie
+
+`[base]` 的 `trusted_proxies` 决定是否采信反向代理传来的客户端 IP。留空表示不信任任何代理头，
+此时 `ClientIP()` 恒为直连地址；如果服务部署在反向代理之后，必须把代理的 IP/CIDR 写进这个列表，
+否则登录限流会把所有用户当成同一个 IP，审计与登录记录也会失真。不要把该字段配置为 `0.0.0.0/0`，
+那会让 `X-Forwarded-For` 可被客户端伪造，从而绕过 IP 限流。
+
+`[base.tls].enabled` 为真时 Cookie 自动带 `Secure`。如果 TLS 在上游反向代理终止，请设置
+`secure_cookie = true`，避免浏览器把登录 Cookie 发送到明文连接。
+
+## 论坛参数
+
+`[forum]` 控制论坛上传与正文限制：
+
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `upload_dir` | `""` | 留空时为 `$STATE_DIR/state/forum/uploads` |
+| `max_upload_bytes` | 10 MiB | 正文图片上限 |
+| `max_avatar_bytes` | 2 MiB | 头像上限 |
+| `max_background_bytes` | 8 MiB | 主页背景上限 |
+| `max_thread_html_bytes` | 128 KiB | 主题正文 HTML 上限 |
+| `max_reply_html_bytes` | 64 KiB | 跟帖正文 HTML 上限 |
+| `max_image_pixels` | 24000000 | 单张图片总像素上限 |
+| `max_images_per_post` | 20 | 单篇图片数上限 |
+| `max_mentions_per_post` | 20 | 单篇提及数上限 |
+| `max_tags_per_post` | 20 | 单篇主题标签数上限，`0` 表示不限制 |
+| `user_quota_bytes` | 256 MiB | 每用户上传占用上限，`0` 表示不限制 |
+
+`[forum.rate_limit]` 控制进程内限流，`enabled=false` 时全部关闭；其余字段均为“每分钟每用户”
+（登录为每 IP+username，另有 `login_ip_per_minute` 限制单 IP 的总登录尝试）的请求数；
+`edit_per_minute` 控制主题/跟帖编辑。
+默认值见 `examples/config.toml`。
+
+论坛写接口会校验 `Origin`：同源请求直接放行，跨源请求必须出现在 `[base.cors] allow_origins` 中；
+该列表中的 `*` 不会被当作通配。JSON 写接口要求 `Content-Type: application/json`，请求体上限
+按 `max_thread_html_bytes` 推导（至少 1 MiB）。
+
 ## 示例配置
 
 `examples/config.toml` 与 `examples/store.toml` 由结构体 tag 生成：

@@ -53,6 +53,21 @@ func (m *Manager) LoadAndSave(next http.Handler) http.Handler {
 	return m.scs.LoadAndSave(next)
 }
 
+// SetSecure 设置 cookie 的 Secure 属性。生产环境启用 TLS 后应为 true。
+func (m *Manager) SetSecure(secure bool) {
+	m.scs.Cookie.Secure = secure
+}
+
+// RenewToken 为当前 session 生成新的 token，登录成功后必须调用，避免会话固定攻击。
+func (m *Manager) RenewToken(c *gin.Context) error {
+	return m.scs.RenewToken(c.Request.Context())
+}
+
+// Destroy 删除当前 session 并清除 cookie。
+func (m *Manager) Destroy(c *gin.Context) error {
+	return m.scs.Destroy(c.Request.Context())
+}
+
 func (m *Manager) Remove(c *gin.Context, key string) {
 	m.scs.Remove(c.Request.Context(), key)
 }

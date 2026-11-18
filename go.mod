@@ -12,10 +12,16 @@ require (
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/lmittmann/tint v1.2.1
 	github.com/mcstatus-io/mcutil/v4 v4.0.1
+	github.com/microcosm-cc/bluemonday v1.0.27
+	golang.org/x/image v0.32.0
+	golang.org/x/time v0.15.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
-require golang.org/x/time v0.15.0 // indirect
+require (
+	github.com/aymerick/douceur v0.2.0 // indirect
+	github.com/gorilla/css v1.0.1 // indirect
+)
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
@@ -67,7 +73,7 @@ require (
 	go.mongodb.org/mongo-driver/v2 v2.6.0 // indirect
 	golang.org/x/arch v0.27.0 // indirect
 	golang.org/x/crypto v0.53.0
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/net v0.56.0
 	golang.org/x/sync v0.21.0
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect

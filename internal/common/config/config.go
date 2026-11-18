@@ -15,6 +15,8 @@ type Config struct {
 	Monitors   Monitors   `toml:"monitors"`
 	Samplers   Samplers   `toml:"samplers"`
 
+	Forum Forum `toml:"forum"`
+
 	// Store 来自 config/store.toml，不参与 config.toml 的解析。
 	Store Store `toml:"-"`
 }

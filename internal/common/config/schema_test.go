@@ -36,6 +36,7 @@ func TestSectionPaths(t *testing.T) {
 		"[monitors.auto_archive_idle]", "[monitors.backup]", "[monitors.spot_interruption]",
 		"[monitors.best_ecs_candidate]", "[monitors.best_ecs_candidate.filters]",
 		"[samplers]", "[samplers.player_count]", "[samplers.balance]",
+		"[forum]", "[forum.rate_limit]",
 	}
 
 	slices.Sort(got)

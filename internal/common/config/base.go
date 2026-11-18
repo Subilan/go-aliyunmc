@@ -12,6 +12,12 @@ type Base struct {
 
 	// TLS 是 HTTPS 配置，使用本地证书文件
 	TLS BaseTLS `toml:"tls"`
+
+	// TrustedProxies 是可信反向代理的 IP/CIDR 列表；留空表示不信任任何代理头。
+	TrustedProxies []string `toml:"trusted_proxies" comment:"可信反向代理的 IP/CIDR 列表；留空表示不信任任何代理头"`
+
+	// SecureCookie 强制 Cookie 使用 Secure 属性；TLS 在上游反向代理终止时开启。
+	SecureCookie bool `toml:"secure_cookie" comment:"即使未启用本地 TLS，也强制 Cookie 使用 Secure（TLS 在上游终止时开启）"`
 }
 
 // BaseCors 对应 [base.cors]，字段解释见 https://pkg.go.dev/github.com/gin-contrib/cors#Config

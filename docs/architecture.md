@@ -12,7 +12,7 @@ internal/
   common/          # 共用：配置、DB、共享 User、session 工厂、Casbin 模型、日志、HTTP 包装
   modules/
     lab/           # lab 业务：路由、任务、监控、阿里云、lab RBAC 策略
-    forum/         # 论坛骨架：空路由组、独立 session 与 RBAC 策略
+    forum/         # 论坛业务：forum_* 表、权限节点、内容管线、上传与后台 API
     entities.go    # 合并各模块的 GORM 实体，供 DEV AutoMigrate 与 Atlas 使用
 ```
 
@@ -23,8 +23,8 @@ internal/
 | 项目 | 共享方式 |
 |---|---|
 | 用户与凭据 | 同一张 `users` 表；注册只在 lab 提供 |
-| 登录态 | 独立。lab 使用 `lab_session` cookie（Path `/lab-v1`），forum 使用 `forum_session`（Path `/forum-v1`） |
-| RBAC | 共用 `users.role` 与 `internal/common/perm_util` 的 `Role`；各模块维护自己的策略文件与 enforcer，只有在确实需要时才新增角色枚举 |
+| 登录态 | 独立。lab 使用 `lab_session`（Path `/lab-v1`）；forum 前台使用 `forum_session`（Path `/forum-v1`），后台使用 `forum_admin_session`（Path `/forum-v1/admin`） |
+| RBAC | lab 使用共享 `perm_util` 的角色模型；forum 自持 `sub,dom,perm` 模型，权限节点直接授予用户并支持板块级范围，`users.role == superuser` 作为破窗兜底 |
 | 数据库 | 同一个库、同一份迁移版本序列（`internal/common/migrations`） |
 | 配置 | 同一个 `config.toml` / `store.toml`，由 `internal/common/config` 加载 |
 
@@ -41,8 +41,8 @@ internal/
 1. 在 `internal/modules/<name>` 下创建入口：`Prefix`、`MustInitialize()`、`Bind(*gin.Engine)`。
 2. 需要独立登录态时，用 `internal/common/session_util.New(cookieName, cookiePath)` 创建自己的 manager，
    并在 `cmd/aliyunmc/main.go` 的 `session_util.InitStore` 中注册。
-3. 需要独立 RBAC 时，在模块内维护自己的 `policy.csv` 与 enforcer；Casbin 模型和角色类型
-   共享自 `internal/common/perm_util`，只有在确实需要时才新增角色枚举。
+3. 需要独立 RBAC 时，在模块内维护自己的 Casbin 模型、权限点目录与 enforcer。
+   forum 的做法（`internal/modules/forum/perms`）可直接参考：权限节点存数据库，启动时同步。
 4. 有自己的表时，创建 `modules/<name>/models` 并实现 `Entities()`，
    再由 `internal/modules/entities.go` 合并。
 5. 在 `cmd/aliyunmc/main.go` 中调用模块的 `MustInitialize()` 与 `Bind()`。

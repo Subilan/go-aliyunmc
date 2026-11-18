@@ -4,11 +4,13 @@ package modules
 
 import (
 	"github.com/Subilan/go-aliyunmc/internal/common/store/models"
-	"github.com/Subilan/go-aliyunmc/internal/modules/lab/models"
+	forummodels "github.com/Subilan/go-aliyunmc/internal/modules/forum/models"
+	labmodels "github.com/Subilan/go-aliyunmc/internal/modules/lab/models"
 )
 
 // Entities 返回共享层与所有业务模块的 GORM 实体。
 func Entities() []any {
 	entities := models.Entities()
-	return append(entities, labmodels.Entities()...)
+	entities = append(entities, labmodels.Entities()...)
+	return append(entities, forummodels.Entities()...)
 }
