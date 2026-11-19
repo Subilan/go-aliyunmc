@@ -1,6 +1,6 @@
 # Moon 项目论坛后端实现方案（站点名默认 Tide）
 
-> 状态：已评审，可开始实施  
+> 状态：已实施并验收（后端 API 契约已冻结，可交付前端会话）  
 > 适用范围：`internal/modules/forum/`、`internal/common` 配置与迁移  
 > 目标：在现有 Go 后端上落地一个可运营、可授权、无演示数据依赖的论坛系统；API 契约以本文为准。  
 > 实施方式：本文对应后端任务会话；先完成后端、单元测试与 API 级 E2E，再另开前端会话。后端任务不实施任何前端代码。  
@@ -1852,23 +1852,25 @@ mention_search_per_minute = 60
 
 ### 16.4 实现检查清单
 
-- [ ] 迁移包含全部 `forum_*` 表，空库/旧库均可执行
-- [ ] `modules.Entities()` 已合并 forum 实体
-- [ ] 两套 session manager 已注册，cookie Path 正确
-- [ ] 服务端 sanitize 覆盖全部正文写入路径
-- [ ] 服务端拒绝 `data:` 图片，正文只接受已上传 URL
-- [ ] 楼层唯一且删除不重排
-- [ ] 点赞/关注 PUT/DELETE 幂等
-- [ ] 通知写入/清理/未读数/已读完整（`reply` / `like_*` / `mention`）
-- [ ] @ 提及解析、规范化、去重与通知测试通过
-- [ ] 楼层引用与提及 chip 均以 `data-tag-type` 区分，`class` 仅用于样式
-- [ ] mention chip 保留 `data-tag-type="mention"` 与 `data-user-id`，非法提及降级为纯文本
-- [ ] 权限节点全局/板块级/破窗/防锁死测试通过
-- [ ] 管理后台四类能力接口完整并审计
-- [ ] 上传目录备份与静态缓存头配置
-- [ ] 单元测试、MySQL 集成测试、API 级 E2E 全部通过
-- [ ] API 契约冻结并交付前端会话
-- [ ] `atlas migrate validate --env mysql` 通过
+- [x] 迁移包含全部 `forum_*` 表，空库/旧库均可执行
+- [x] `modules.Entities()` 已合并 forum 实体
+- [x] 两套 session manager 已注册，cookie Path 正确
+- [x] 服务端 sanitize 覆盖全部正文写入路径
+- [x] 服务端拒绝 `data:` 图片，正文只接受已上传 URL
+- [x] 楼层唯一且删除不重排
+- [x] 点赞/关注 PUT/DELETE 幂等
+- [x] 通知写入/清理/未读数/已读完整（`reply` / `like_*` / `mention`）
+- [x] @ 提及解析、规范化、去重与通知测试通过
+- [x] 楼层引用与提及 chip 均以 `data-tag-type` 区分，`class` 仅用于样式
+- [x] mention chip 保留 `data-tag-type="mention"` 与 `data-user-id`，非法提及降级为纯文本
+- [x] 权限节点全局/板块级/破窗/防锁死测试通过
+- [x] 管理后台四类能力接口完整并审计
+- [x] 上传目录备份与静态缓存头配置
+- [x] 单元测试、MySQL 集成测试、API 级 E2E 全部通过
+- [x] API 契约冻结并交付前端会话
+- [x] `atlas migrate validate --env mysql` 通过
+
+> 验收记录：2026-11-19 按本清单逐项核对代码与测试；`go test ./...`（含 MySQL 集成测试与 `TestForumE2E`）通过，`atlas migrate validate --env mysql` 通过。前端可按 `moon-front-plan.md` 开始实施。
 
 ---
 
