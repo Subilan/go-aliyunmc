@@ -170,7 +170,8 @@ chip 契约：
 - 板块：`GET/POST /boards`、`PATCH/DELETE /boards/:id`、`POST /boards/reorder`、
   `POST /boards/:id/restore`
 - 内容：`GET/PATCH/DELETE /threads...`、`POST /threads/batch`、
-  `GET/PATCH/DELETE /replies...`、`POST /replies/batch`、`POST .../restore`
+  `GET/PATCH/DELETE /replies...`、`GET /replies/:id`、`POST /replies/batch`、`POST .../restore`；
+  `GET /replies/:id` 返回完整 `contentHtml`（含已删除跟帖），列表接口只返回摘要。
 - 用户：`GET /users`、`GET /users/:id`、`PATCH /users/:id/profile`、
   `POST /users/:id/ban|unban`、`GET/PUT /users/:id/permissions`、
   `GET /users/:id/login-records`

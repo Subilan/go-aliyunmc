@@ -38,6 +38,7 @@ func bindContent(admin *gin.RouterGroup) {
 	admin.POST("/threads/:id/restore", h.G(restoreAdminThread))
 
 	admin.GET("/replies", h.G(listAdminReplies))
+	admin.GET("/replies/:id", h.G(adminReplyDetail))
 	admin.POST("/replies/batch", h.B(batchAdminReplies))
 	admin.PATCH("/replies/:id", h.B(updateAdminReply))
 	admin.DELETE("/replies/:id", h.G(deleteAdminReply))
@@ -139,6 +140,16 @@ func listAdminReplies(c *gin.Context) (any, error) {
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
 
 	return service.AdminListReplies(user, uint(threadID), uint(authorID), c.Query("status"), c.Query("keyword"), page, pageSize)
+}
+
+// adminReplyDetail 返回后台跟帖详情，包含完整 contentHtml，供审核编辑使用。
+func adminReplyDetail(c *gin.Context) (any, error) {
+	id, err := routeutil.UintParam(c, "id")
+	if err != nil {
+		return nil, err
+	}
+	user, _ := mid.CurrentUser(c)
+	return service.AdminReplyDetail(user, id)
 }
 
 func updateAdminReply(req updateAdminReplyRequest, c *gin.Context) (any, error) {

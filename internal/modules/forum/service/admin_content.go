@@ -230,6 +230,31 @@ func AdminListReplies(user *models.User, threadID uint, authorID uint, status, k
 	return dto.NewPage(items, total, page, pageSize), nil
 }
 
+// AdminReplyDetail 返回后台跟帖详情（含已删除与完整正文）。
+// 与列表使用相同的板块范围校验，避免板块级管理员读取未授权板块的内容。
+func AdminReplyDetail(user *models.User, replyID uint) (*dto.AdminReply, error) {
+	reply, err := dao.ReplyByID(replyID, true)
+	if err != nil {
+		return nil, h.HttpError(http.StatusNotFound, "跟帖不存在")
+	}
+
+	thread, err := dao.ThreadByID(reply.ThreadID, true)
+	if err != nil {
+		return nil, h.HttpError(http.StatusNotFound, "主题不存在")
+	}
+
+	all, boardIDs, err := contentScope(user)
+	if err != nil {
+		return nil, err
+	}
+	if !all && !slices.Contains(boardIDs, thread.BoardID) {
+		return nil, h.HttpError(http.StatusForbidden, "无权访问该板块")
+	}
+
+	item := AdminReplyDTOFromReply(*reply)
+	return &item, nil
+}
+
 // maxBatchIDs 限制单次批量操作的对象数量，避免超长循环与超大 SQL。
 const maxBatchIDs = 100
 

@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"time"
+	"database/sql"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/store"
 	forummodels "github.com/Subilan/go-aliyunmc/internal/modules/forum/models"
@@ -167,8 +167,10 @@ func LikedReplyIDs(userID uint, replyIDs []uint) map[uint]bool {
 }
 
 // RecalculateLastReplyAt 重算主题最近回复时间。
+// 主题下已无未删除跟帖时 MAX(created_at) 为 NULL，必须用 sql.NullTime 承接，
+// 否则 MySQL 驱动会返回扫描错误。
 func RecalculateLastReplyAt(tx *gorm.DB, threadID uint) error {
-	var last *time.Time
+	var last sql.NullTime
 	if err := tx.Model(&forummodels.Reply{}).
 		Where("thread_id = ?", threadID).
 		Select("MAX(created_at)").
@@ -176,7 +178,12 @@ func RecalculateLastReplyAt(tx *gorm.DB, threadID uint) error {
 		return err
 	}
 
+	var value any
+	if last.Valid {
+		value = last.Time
+	}
+
 	return tx.Model(&forummodels.Thread{}).
 		Where("id = ?", threadID).
-		Update("last_reply_at", last).Error
+		Update("last_reply_at", value).Error
 }

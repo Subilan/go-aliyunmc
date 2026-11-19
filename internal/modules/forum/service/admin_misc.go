@@ -271,13 +271,16 @@ func dailyCounts(model any, since time.Time, condition string) map[string]int64 
 	}
 
 	db := store.DB.Model(model).
-		Select("DATE(created_at) AS day, COUNT(*) AS count").
+		// parseTime=True 时 DATE() 会被驱动解析为 time.Time，再扫描进 string 会得到
+		// "2026-11-19 00:00:00 +0000 UTC" 这类值，无法与 "2006-01-02" 对齐。
+		// 直接用 DATE_FORMAT 返回字符串，保证趋势表的日期键一致。
+		Select("DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS count").
 		Where("created_at >= ?", since)
 	if condition != "" {
 		db = db.Where(condition)
 	}
 
-	if err := db.Group("DATE(created_at)").Scan(&rows).Error; err != nil {
+	if err := db.Group("DATE_FORMAT(created_at, '%Y-%m-%d')").Scan(&rows).Error; err != nil {
 		return result
 	}
 	for _, row := range rows {

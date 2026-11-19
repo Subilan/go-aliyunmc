@@ -477,7 +477,16 @@ func TestForumE2E(t *testing.T) {
 	if len(items(t, permissionsPayload)) != 34 {
 		t.Fatalf("permission catalog = %v", permissionsPayload)
 	}
-	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/dashboard?days=7", nil, http.StatusOK)
+	dashboardPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/dashboard?days=7", nil, http.StatusOK)
+	dashboard := dataMap(t, dashboardPayload)
+	trend, ok := dashboard["trend"].([]any)
+	if !ok || len(trend) != 7 {
+		t.Fatalf("dashboard trend = %v", dashboard["trend"])
+	}
+	todayTrend, ok := trend[len(trend)-1].(map[string]any)
+	if !ok || num(t, todayTrend, "threads") < 1 || num(t, todayTrend, "replies") < 1 {
+		t.Fatalf("dashboard today trend = %v", trend[len(trend)-1])
+	}
 	auditPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/audit-logs", nil, http.StatusOK)
 	if len(items(t, auditPayload)) == 0 {
 		t.Fatalf("audit logs empty: %v", auditPayload)
@@ -548,7 +557,20 @@ func TestForumE2E(t *testing.T) {
 	adminClient.mustDo(http.MethodPatch, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), map[string]any{
 		"contentHtml": "<p>后台编辑</p>",
 	}, http.StatusOK)
+
+	replyDetail := dataMap(t, adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), nil, http.StatusOK))
+	if !strings.Contains(str(t, replyDetail, "contentHtml"), "后台编辑") {
+		t.Fatalf("admin reply detail = %v", replyDetail)
+	}
+	// 没有 content.view_admin 的管理员不能读取跟帖详情。
+	modAdmin.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), nil, http.StatusForbidden)
+	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/replies/9999999", nil, http.StatusNotFound)
+
 	adminClient.mustDo(http.MethodDelete, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), nil, http.StatusOK)
+	deletedDetail := dataMap(t, adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), nil, http.StatusOK))
+	if deletedDetail["deleted"] != true || !strings.Contains(str(t, deletedDetail, "contentHtml"), "后台编辑") {
+		t.Fatalf("deleted admin reply detail = %v", deletedDetail)
+	}
 	adminClient.mustDo(http.MethodDelete, fmt.Sprintf("/forum-v1/admin/replies/%d", reply2ID), nil, http.StatusConflict)
 	adminClient.mustDo(http.MethodPost, fmt.Sprintf("/forum-v1/admin/replies/%d/restore", reply2ID), nil, http.StatusOK)
 	adminClient.mustDo(http.MethodPost, "/forum-v1/admin/threads/batch", map[string]any{
@@ -573,6 +595,25 @@ func TestForumE2E(t *testing.T) {
 	}
 	if num(t, superProfile, "likeCount") != 1 {
 		t.Fatalf("content likeCount = %v", superProfile)
+	}
+
+	// 回归：删除主题下最后一条跟帖时 MAX(created_at) 为 NULL，
+	// 后台必须能正常删除并把 lastReplyAt 清空，而不是 500。
+	lastThread := dataMap(t, memberClient.mustDo(http.MethodPost, "/forum-v1/threads", map[string]any{
+		"boardId":     boardID,
+		"title":       "最后一条跟帖",
+		"contentHtml": "<p>主题正文</p>",
+	}, http.StatusOK))
+	lastThreadID := uint(num(t, lastThread, "id"))
+	lastReply := dataMap(t, memberClient.mustDo(http.MethodPost, fmt.Sprintf("/forum-v1/threads/%d/replies", lastThreadID), map[string]any{
+		"contentHtml": "<p>唯一跟帖</p>",
+	}, http.StatusOK))
+	lastReplyID := uint(num(t, lastReply, "id"))
+	memberClient.mustDo(http.MethodDelete, fmt.Sprintf("/forum-v1/replies/%d", lastReplyID), nil, http.StatusOK)
+
+	lastThreadAdmin := dataMap(t, adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/threads/%d", lastThreadID), nil, http.StatusOK))
+	if lastThreadAdmin["lastReplyAt"] != nil {
+		t.Fatalf("lastReplyAt = %v, want nil", lastThreadAdmin["lastReplyAt"])
 	}
 }
 
