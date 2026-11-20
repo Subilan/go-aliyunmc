@@ -71,6 +71,16 @@ func BoardThreadCounts(boardIDs []uint) map[uint]int64 {
 	})
 }
 
+// BoardFollowerIDs 返回板块关注者 ID，按 user_id 排序。
+func BoardFollowerIDs(tx *gorm.DB, boardID uint) ([]uint, error) {
+	var ids []uint
+	err := tx.Model(&forummodels.BoardFollow{}).
+		Where("board_id = ?", boardID).
+		Order("user_id ASC").
+		Pluck("user_id", &ids).Error
+	return ids, err
+}
+
 // BoardFollowerCounts 返回板块关注数。
 func BoardFollowerCounts(boardIDs []uint) map[uint]int64 {
 	return groupCount(boardIDs, "board_id", func(ids []uint) *gorm.DB {

@@ -237,6 +237,10 @@ max_images_per_post = 20
 max_mentions_per_post = 20
 # 单篇主题允许的最大标签数；0 表示不限制
 max_tags_per_post = 20
+# 单篇正文允许的最大楼层引用数；0 表示不限制
+max_quote_refs_per_post = 20
+# 点赞通知抑制窗口（分钟）；0 表示不抑制
+like_notification_cooldown_minutes = 10
 # 每个用户上传文件占用的磁盘上限（字节）；0 表示不限制
 user_quota_bytes = 268435456
 

@@ -335,7 +335,7 @@ func TestForumE2E(t *testing.T) {
 	}
 	memberClient.mustDo(http.MethodPut, fmt.Sprintf("/forum-v1/replies/%d/like", reply1ID), nil, http.StatusOK)
 
-	// 取消点赞应删除通知。
+	// 取消点赞保留通知（点赞关系被删除，通知不做撤回）。
 	superClient.mustDo(http.MethodDelete, fmt.Sprintf("/forum-v1/replies/%d/like", reply1ID), nil, http.StatusOK)
 
 	// 搜索与标签。

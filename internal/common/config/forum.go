@@ -32,6 +32,13 @@ type Forum struct {
 	// MaxTagsPerPost 是单篇主题允许的最大标签数；0 表示不限制。
 	MaxTagsPerPost int `toml:"max_tags_per_post" default:"20" comment:"单篇主题允许的最大标签数；0 表示不限制"`
 
+	// MaxQuoteRefsPerPost 是单篇正文允许的最大楼层引用数；0 表示不限制。
+	MaxQuoteRefsPerPost int `toml:"max_quote_refs_per_post" default:"20" comment:"单篇正文允许的最大楼层引用数；0 表示不限制"`
+
+	// LikeNotificationCooldownMinutes 是点赞通知的抑制窗口：
+	// 未读且在该窗口内重复点赞不再通知；已读或超窗则刷新同一条通知。0 表示不抑制。
+	LikeNotificationCooldownMinutes int `toml:"like_notification_cooldown_minutes" default:"10" comment:"点赞通知抑制窗口（分钟）；0 表示不抑制"`
+
 	// UserQuotaBytes 是每个用户上传文件占用的磁盘上限；0 表示不限制。
 	UserQuotaBytes int64 `toml:"user_quota_bytes" default:"268435456" comment:"每个用户上传文件占用的磁盘上限（字节）；0 表示不限制"`
 

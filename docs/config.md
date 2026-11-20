@@ -113,6 +113,8 @@ instance_type_exclusion = "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$"
 | `max_images_per_post` | 20 | 单篇图片数上限 |
 | `max_mentions_per_post` | 20 | 单篇提及数上限 |
 | `max_tags_per_post` | 20 | 单篇主题标签数上限，`0` 表示不限制 |
+| `max_quote_refs_per_post` | 20 | 单篇正文楼层引用数上限，`0` 表示不限制 |
+| `like_notification_cooldown_minutes` | 10 | 点赞通知抑制窗口（分钟），`0` 表示不抑制 |
 | `user_quota_bytes` | 256 MiB | 每用户上传占用上限，`0` 表示不限制 |
 
 `[forum.rate_limit]` 控制进程内限流，`enabled=false` 时全部关闭；其余字段均为“每分钟每用户”

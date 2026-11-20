@@ -120,14 +120,24 @@ chip 契约：
 
 ## 通知
 
-类型：`reply`、`like_thread`、`like_reply`、`mention`。
+类型：`reply`、`quote`、`mention`、`like_thread`、`like_reply`、`like_user`、`board_thread`。
 
 - 回复主题通知主题作者；自回复不通知。
-- 点赞通知内容作者；自赞不通知；取消点赞删除对应通知。
-- 提及通知被提及者；同一内容已向主题作者发送 `reply` 通知时不再重复发送 `mention`。
-- 编辑内容同步通知摘要，只为新增提及补写通知；移除提及不删除历史通知。
-- 删除主题/跟帖清理对应通知；恢复内容不恢复通知。
-- 未读数走 `GET /notifications/unread-count`，客户端轮询即可。
+- 引用楼层（`re#x`）通知被引用楼层作者，`quotedFloor` 记录被引用楼层；同一回复内优先级为
+  `quote > reply(主题作者) > mention`，每个接收者只产生一条内容类通知。引用已删除楼层不通知。
+- 提及通知被提及者；已被 `quote` 或 `reply` 覆盖的接收者不再重复发送 `mention`。
+- 编辑内容同步通知摘要，只为新增引用/提及补写通知；已存在内容类通知的接收者不重复提醒。
+  移除引用/提及不删除历史通知，`quotedFloor` 保持创建时快照。
+- 点赞主题/回复/主页分别产生 `like_thread` / `like_reply` / `like_user` 通知；自赞不通知。
+  点赞通知永久保留：取消点赞只删除点赞关系。同一点赞通知在
+  `like_notification_cooldown_minutes` 分钟内创建且未读时，取消再点赞不重复提醒；已读或超窗则
+  刷新同一条通知为未读并置顶。
+- 板块关注者收到该板块新主题的 `board_thread` 通知；同一主题内 `mention` 优先于
+  `board_thread`；取消关注只影响未来主题。
+- 通知不做删除/撤回：删除主题或跟帖不会删除通知。通知指向的内容消失后，打开链接可能返回
+  404，这是预期行为；主题标题仍由通知接口返回。
+- 未读数初始值走 `GET /notifications/unread-count`；后续变化通过统一 SSE 通道
+  `GET /events` 推送（见 `docs/realtime.md`）。
 
 ## API 摘要
 
@@ -157,7 +167,7 @@ chip 契约：
 `POST /threads/:id/replies`、`PATCH/DELETE /replies/:id`、
 `PUT/DELETE /replies/:id/like`、`POST /replies/:id/restore`；
 `GET /notifications`、`GET /notifications/unread-count`、`POST /notifications/read`；
-`POST /uploads`（multipart，字段 `kind`、`file`）。
+`GET /events`（SSE，单连接实时事件）；`POST /uploads`（multipart，字段 `kind`、`file`）。
 
 删除用户自己的内容记录 `deleted_by`；审核删除写审计（含 `reason`）。
 

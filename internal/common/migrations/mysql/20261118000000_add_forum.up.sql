@@ -146,6 +146,7 @@ CREATE TABLE `forum_notifications` (
   `type` varchar(16) NOT NULL,
   `thread_id` bigint unsigned NOT NULL,
   `reply_id` bigint unsigned NOT NULL DEFAULT 0,
+  `quoted_floor` int unsigned NOT NULL DEFAULT 0,
   `excerpt` varchar(500) NOT NULL DEFAULT '',
   `read_at` datetime(3) NULL,
   `created_at` datetime(3) NOT NULL,

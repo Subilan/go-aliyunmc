@@ -145,6 +145,29 @@ func ReplyByFloor(tx *gorm.DB, threadID, floor uint) (*forummodels.Reply, error)
 	return &reply, nil
 }
 
+// QuoteTarget 是引用通知需要的楼层信息。
+type QuoteTarget struct {
+	Floor    uint
+	ReplyID  uint
+	AuthorID uint
+}
+
+// QuoteTargets 返回主题内指定楼层对应的未删除回复。
+// 与 ReplyByFloor 不同，这里不包含已删除回复，避免向已删除内容的作者发通知。
+func QuoteTargets(tx *gorm.DB, threadID uint, floors []uint) ([]QuoteTarget, error) {
+	if len(floors) == 0 {
+		return nil, nil
+	}
+
+	var rows []QuoteTarget
+	err := tx.Model(&forummodels.Reply{}).
+		Select("floor, id AS reply_id, author_id").
+		Where("thread_id = ? AND floor IN ?", threadID, floors).
+		Order("floor ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
 // ReplyLikeCounts 返回跟帖点赞数。
 func ReplyLikeCounts(replyIDs []uint) map[uint]int64 {
 	return groupCount(replyIDs, "reply_id", func(ids []uint) *gorm.DB {

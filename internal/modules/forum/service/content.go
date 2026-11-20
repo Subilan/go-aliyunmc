@@ -71,12 +71,17 @@ func processContent(raw string, maxBytes int, wantTags bool) (*processedContent,
 		}
 	}
 
+	floors := doc.Floors()
+	if maxQuotes := config.Get().Forum.MaxQuoteRefsPerPost; maxQuotes > 0 && len(floors) > maxQuotes {
+		return nil, h.HttpError(http.StatusBadRequest, fmt.Sprintf("单篇正文最多引用 %d 个楼层", maxQuotes))
+	}
+
 	return &processedContent{
 		HTML:       cleaned,
 		Text:       text,
 		Tags:       tags,
 		MentionIDs: validIDs,
-		Floors:     doc.Floors(),
+		Floors:     floors,
 	}, nil
 }
 
@@ -152,6 +157,7 @@ func CreateThread(user *models.User, boardID uint, title, rawHTML string) (*foru
 		ContentText: processed.Text,
 	}
 
+	var created []forummodels.Notification
 	err = store.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(thread).Error; err != nil {
 			return err
@@ -159,10 +165,52 @@ func CreateThread(user *models.User, boardID uint, title, rawHTML string) (*foru
 		if err := syncThreadTags(tx, thread.ID, processed.Tags); err != nil {
 			return err
 		}
+
 		excerpt := content.Excerpt(processed.Text, 160)
+		seen := map[uint]bool{user.ID: true}
+
+		// 提及优先于板块关注通知。
 		for _, recipient := range processed.MentionIDs {
-			if err := addNotification(tx, recipient, user.ID, forummodels.NotificationTypeMention, thread.ID, 0, excerpt); err != nil {
+			if seen[recipient] {
+				continue
+			}
+			n, err := addNotification(tx, notificationInput{
+				RecipientID: recipient,
+				ActorID:     user.ID,
+				Type:        forummodels.NotificationTypeMention,
+				ThreadID:    thread.ID,
+				Excerpt:     excerpt,
+			})
+			if err != nil {
 				return err
+			}
+			seen[recipient] = true
+			if n != nil {
+				created = append(created, *n)
+			}
+		}
+
+		followers, err := dao.BoardFollowerIDs(tx, board.ID)
+		if err != nil {
+			return err
+		}
+		for _, follower := range followers {
+			if seen[follower] {
+				continue
+			}
+			n, err := addNotification(tx, notificationInput{
+				RecipientID: follower,
+				ActorID:     user.ID,
+				Type:        forummodels.NotificationTypeBoardThread,
+				ThreadID:    thread.ID,
+				Excerpt:     excerpt,
+			})
+			if err != nil {
+				return err
+			}
+			seen[follower] = true
+			if n != nil {
+				created = append(created, *n)
 			}
 		}
 		return nil
@@ -171,6 +219,7 @@ func CreateThread(user *models.User, boardID uint, title, rawHTML string) (*foru
 		return nil, err
 	}
 
+	publishNotifications(created)
 	return thread, nil
 }
 
@@ -202,6 +251,7 @@ func UpdateThread(user *models.User, threadID uint, title *string, rawHTML *stri
 		}
 	}
 
+	var created []forummodels.Notification
 	err = store.DB.Transaction(func(tx *gorm.DB) error {
 		updates := map[string]any{}
 		if titleChanged {
@@ -224,8 +274,18 @@ func UpdateThread(user *models.User, threadID uint, title *string, rawHTML *stri
 			}
 
 			for _, recipient := range newMentionIDs(oldMentions, processed.MentionIDs) {
-				if err := addNotification(tx, recipient, user.ID, forummodels.NotificationTypeMention, thread.ID, 0, excerpt); err != nil {
+				n, err := addNotification(tx, notificationInput{
+					RecipientID: recipient,
+					ActorID:     user.ID,
+					Type:        forummodels.NotificationTypeMention,
+					ThreadID:    thread.ID,
+					Excerpt:     excerpt,
+				})
+				if err != nil {
 					return err
+				}
+				if n != nil {
+					created = append(created, *n)
 				}
 			}
 		}
@@ -240,6 +300,8 @@ func UpdateThread(user *models.User, threadID uint, title *string, rawHTML *stri
 	if err != nil {
 		return nil, err
 	}
+
+	publishNotifications(created)
 
 	return dao.ThreadByID(thread.ID, false)
 }
@@ -256,7 +318,7 @@ func normalizeReason(reason string) string {
 	return reason
 }
 
-// DeleteThread 软删除主题及其跟帖，并清理通知。
+// DeleteThread 软删除主题及其跟帖；通知刻意保留，指向已删除内容时由前端展示 404。
 // asAdmin 表示操作来自管理入口，即使操作者是作者本人也需要审计。
 func DeleteThread(user *models.User, threadID uint, reason string, asAdmin bool, c *gin.Context) error {
 	thread, err := dao.ThreadByID(threadID, false)
@@ -280,10 +342,7 @@ func DeleteThread(user *models.User, threadID uint, reason string, asAdmin bool,
 			Updates(map[string]any{"deleted_at": time.Now(), "deleted_by": user.ID}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("thread_id = ?", thread.ID).Delete(&forummodels.Reply{}).Error; err != nil {
-			return err
-		}
-		return tx.Where("thread_id = ?", thread.ID).Delete(&forummodels.Notification{}).Error
+		return tx.Where("thread_id = ?", thread.ID).Delete(&forummodels.Reply{}).Error
 	})
 	if err != nil {
 		return err
@@ -340,7 +399,10 @@ func CreateReply(user *models.User, threadID uint, rawHTML string) (*forummodels
 		return nil, err
 	}
 
-	var reply *forummodels.Reply
+	var (
+		reply   *forummodels.Reply
+		created []forummodels.Notification
+	)
 	err = store.DB.Transaction(func(tx *gorm.DB) error {
 		locked, err := dao.ThreadByIDForUpdate(tx, threadID)
 		if err != nil {
@@ -375,20 +437,25 @@ func CreateReply(user *models.User, threadID uint, rawHTML string) (*forummodels
 		}
 
 		excerpt := content.Excerpt(processed.Text, 160)
-		replyNotified := false
-		if thread.AuthorID != user.ID {
-			replyNotified = true
-			if err := addNotification(tx, thread.AuthorID, user.ID, forummodels.NotificationTypeReply, threadID, reply.ID, excerpt); err != nil {
-				return err
-			}
+		plans, err := planReplyRecipients(tx, locked.AuthorID, user.ID, threadID, processed.Floors, processed.MentionIDs)
+		if err != nil {
+			return err
 		}
-
-		for _, recipient := range processed.MentionIDs {
-			if replyNotified && recipient == thread.AuthorID {
-				continue
-			}
-			if err := addNotification(tx, recipient, user.ID, forummodels.NotificationTypeMention, threadID, reply.ID, excerpt); err != nil {
+		for recipient, plan := range plans {
+			n, err := addNotification(tx, notificationInput{
+				RecipientID: recipient,
+				ActorID:     user.ID,
+				Type:        plan.Type,
+				ThreadID:    threadID,
+				ReplyID:     reply.ID,
+				QuotedFloor: plan.QuotedFloor,
+				Excerpt:     excerpt,
+			})
+			if err != nil {
 				return err
+			}
+			if n != nil {
+				created = append(created, *n)
 			}
 		}
 
@@ -398,6 +465,7 @@ func CreateReply(user *models.User, threadID uint, rawHTML string) (*forummodels
 		return nil, err
 	}
 
+	publishNotifications(created)
 	return reply, nil
 }
 
@@ -430,6 +498,7 @@ func UpdateReply(user *models.User, replyID uint, rawHTML string, asAdmin bool, 
 		return nil, err
 	}
 
+	var created []forummodels.Notification
 	err = store.DB.Transaction(func(tx *gorm.DB) error {
 		maxFloor, err := dao.MaxFloor(tx, reply.ThreadID)
 		if err != nil {
@@ -461,22 +530,75 @@ func UpdateReply(user *models.User, replyID uint, rawHTML string, asAdmin bool, 
 			return err
 		}
 
+		oldQuotes, err := quoteRecipients(tx, reply.ThreadID, content.ReplyFloors(reply.ContentHTML))
+		if err != nil {
+			return err
+		}
+		newQuotes, err := quoteRecipients(tx, reply.ThreadID, processed.Floors)
+		if err != nil {
+			return err
+		}
+
+		// 只补发新增引用；已有任意内容类通知的接收者不重复提醒。
+		for recipient, floor := range newQuotes {
+			if recipient == user.ID {
+				continue
+			}
+			if _, existed := oldQuotes[recipient]; existed {
+				continue
+			}
+			exists, err := dao.HasContentNotification(tx, recipient, reply.ThreadID, reply.ID)
+			if err != nil {
+				return err
+			}
+			if exists {
+				continue
+			}
+			n, err := addNotification(tx, notificationInput{
+				RecipientID: recipient,
+				ActorID:     user.ID,
+				Type:        forummodels.NotificationTypeQuote,
+				ThreadID:    reply.ThreadID,
+				ReplyID:     reply.ID,
+				QuotedFloor: floor,
+				Excerpt:     excerpt,
+			})
+			if err != nil {
+				return err
+			}
+			if n != nil {
+				created = append(created, *n)
+			}
+		}
+
 		oldMentions := content.MentionIDs(reply.ContentHTML)
 		for _, recipient := range newMentionIDs(oldMentions, processed.MentionIDs) {
-			if recipient == thread.AuthorID {
-				// 主题作者在创建跟帖时已经收到 reply 通知，不重复提醒。
-				var count int64
-				if err := tx.Model(&forummodels.Notification{}).
-					Where("recipient_id = ? AND thread_id = ? AND reply_id = ?", recipient, reply.ThreadID, reply.ID).
-					Count(&count).Error; err != nil {
-					return err
-				}
-				if count > 0 {
-					continue
-				}
+			if recipient == user.ID {
+				continue
 			}
-			if err := addNotification(tx, recipient, user.ID, forummodels.NotificationTypeMention, reply.ThreadID, reply.ID, excerpt); err != nil {
+			if _, quoted := newQuotes[recipient]; quoted {
+				continue
+			}
+			exists, err := dao.HasContentNotification(tx, recipient, reply.ThreadID, reply.ID)
+			if err != nil {
 				return err
+			}
+			if exists {
+				continue
+			}
+			n, err := addNotification(tx, notificationInput{
+				RecipientID: recipient,
+				ActorID:     user.ID,
+				Type:        forummodels.NotificationTypeMention,
+				ThreadID:    reply.ThreadID,
+				ReplyID:     reply.ID,
+				Excerpt:     excerpt,
+			})
+			if err != nil {
+				return err
+			}
+			if n != nil {
+				created = append(created, *n)
 			}
 		}
 
@@ -486,6 +608,8 @@ func UpdateReply(user *models.User, replyID uint, rawHTML string, asAdmin bool, 
 		return nil, err
 	}
 
+	publishNotifications(created)
+
 	if asAdmin {
 		dao.Audit(c, user.ID, "reply.update", "reply", reply.ID, map[string]any{"threadId": reply.ThreadID})
 	}
@@ -493,7 +617,7 @@ func UpdateReply(user *models.User, replyID uint, rawHTML string, asAdmin bool, 
 	return dao.ReplyByID(reply.ID, false)
 }
 
-// DeleteReply 软删除跟帖并保留楼层占位。
+// DeleteReply 软删除跟帖并保留楼层占位；通知刻意保留。
 // asAdmin 表示操作来自管理入口，即使操作者是作者本人也需要审计。
 func DeleteReply(user *models.User, replyID uint, reason string, asAdmin bool, c *gin.Context) error {
 	reply, err := dao.ReplyByID(replyID, false)
@@ -524,9 +648,6 @@ func DeleteReply(user *models.User, replyID uint, reason string, asAdmin bool, c
 		if err := tx.Model(&forummodels.Reply{}).
 			Where("id = ?", reply.ID).
 			Updates(map[string]any{"deleted_at": time.Now(), "deleted_by": user.ID}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("reply_id = ?", reply.ID).Delete(&forummodels.Notification{}).Error; err != nil {
 			return err
 		}
 		return dao.RecalculateLastReplyAt(tx, reply.ThreadID)
@@ -683,21 +804,118 @@ func syncThreadTags(tx *gorm.DB, threadID uint, tags []string) error {
 	return nil
 }
 
-// addNotification 写入通知；重复触发由唯一索引兜底，自触发跳过。
+// notificationInput 是写入一条通知所需的字段。
+type notificationInput struct {
+	RecipientID uint
+	ActorID     uint
+	Type        forummodels.NotificationType
+	ThreadID    uint
+	ReplyID     uint
+	QuotedFloor uint
+	Excerpt     string
+}
+
+// addNotification 写入一条通知；自触发或唯一键冲突时返回 nil。
 // excerpt 由调用方负责截断（同一段文本会被多个接收者复用，避免重复计算）。
-func addNotification(tx *gorm.DB, recipientID, actorID uint, typ forummodels.NotificationType, threadID, replyID uint, excerpt string) error {
-	if recipientID == 0 || recipientID == actorID {
-		return nil
+func addNotification(tx *gorm.DB, in notificationInput) (*forummodels.Notification, error) {
+	if in.RecipientID == 0 || in.RecipientID == in.ActorID {
+		return nil, nil
 	}
 
 	notification := forummodels.Notification{
-		RecipientID: recipientID,
-		ActorID:     actorID,
-		Type:        string(typ),
-		ThreadID:    threadID,
-		ReplyID:     replyID,
-		Excerpt:     excerpt,
+		RecipientID: in.RecipientID,
+		ActorID:     in.ActorID,
+		Type:        string(in.Type),
+		ThreadID:    in.ThreadID,
+		ReplyID:     in.ReplyID,
+		QuotedFloor: in.QuotedFloor,
+		Excerpt:     in.Excerpt,
 		CreatedAt:   time.Now(),
 	}
-	return tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&notification).Error
+	result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&notification)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 || notification.ID == 0 {
+		return nil, nil
+	}
+	return &notification, nil
+}
+
+// quoteRecipients 按文档顺序返回被引用楼层作者 -> 首个楼层号。
+func quoteRecipients(tx *gorm.DB, threadID uint, floors []uint) (map[uint]uint, error) {
+	targets, err := dao.QuoteTargets(tx, threadID, floors)
+	if err != nil {
+		return nil, err
+	}
+
+	byFloor := make(map[uint]dao.QuoteTarget, len(targets))
+	for _, target := range targets {
+		byFloor[target.Floor] = target
+	}
+
+	result := make(map[uint]uint)
+	seenFloor := make(map[uint]bool, len(floors))
+	for _, floor := range floors {
+		if floor == 0 || seenFloor[floor] {
+			continue
+		}
+		seenFloor[floor] = true
+
+		target, ok := byFloor[floor]
+		if !ok || target.AuthorID == 0 {
+			continue
+		}
+		if _, exists := result[target.AuthorID]; !exists {
+			result[target.AuthorID] = floor
+		}
+	}
+	return result, nil
+}
+
+type recipientPlan struct {
+	Type        forummodels.NotificationType
+	QuotedFloor uint
+}
+
+// planReplyRecipients 实现 quote > reply(主题作者) > mention 的优先级，
+// 每个接收者最多产生一条内容类通知。
+func planReplyRecipients(
+	tx *gorm.DB,
+	threadAuthorID, actorID, threadID uint,
+	floors, mentionIDs []uint,
+) (map[uint]recipientPlan, error) {
+	plans := make(map[uint]recipientPlan)
+
+	quotes, err := quoteRecipients(tx, threadID, floors)
+	if err != nil {
+		return nil, err
+	}
+	for recipient, floor := range quotes {
+		if recipient == 0 || recipient == actorID {
+			continue
+		}
+		plans[recipient] = recipientPlan{
+			Type:        forummodels.NotificationTypeQuote,
+			QuotedFloor: floor,
+		}
+	}
+
+	if threadAuthorID != 0 && threadAuthorID != actorID {
+		if _, exists := plans[threadAuthorID]; !exists {
+			plans[threadAuthorID] = recipientPlan{Type: forummodels.NotificationTypeReply}
+		}
+	}
+
+	for _, recipient := range mentionIDs {
+		if recipient == 0 || recipient == actorID {
+			continue
+		}
+		if _, exists := plans[recipient]; exists {
+			continue
+		}
+		plans[recipient] = recipientPlan{Type: forummodels.NotificationTypeMention}
+	}
+
+	return plans, nil
 }

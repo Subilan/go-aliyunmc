@@ -94,6 +94,14 @@ func (c *Client) Close() {
 // 事件源（订阅 channel）关闭即表示流结束，Listen 不解释任何业务事件名。
 func (c *Client) Listen() {
 	defer c.Close()
+
+	// 立即发送一条注释并 flush，让浏览器尽早触发 onopen，
+	// 不必等到第一个事件或 keep-alive tick。
+	if err := c.writeComment("connected"); err != nil {
+		return
+	}
+	c.flusher.Flush()
+
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 

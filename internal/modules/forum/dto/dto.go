@@ -124,6 +124,7 @@ type Notification struct {
 	ThreadID    uint         `json:"threadId"`
 	ThreadTitle string       `json:"threadTitle"`
 	ReplyID     uint         `json:"replyId"`
+	QuotedFloor uint         `json:"quotedFloor"`
 	Excerpt     string       `json:"excerpt"`
 	Read        bool         `json:"read"`
 	CreatedAt   string       `json:"createdAt"`

@@ -69,5 +69,11 @@ func MarkNotificationsRead(user *models.User, ids []uint, all bool) (int64, erro
 		return 0, err
 	}
 
-	return dao.UnreadNotificationCount(user.ID), nil
+	unread := dao.UnreadNotificationCount(user.ID)
+	markedIDs := ids
+	if all {
+		markedIDs = nil
+	}
+	publishNotificationRead(user.ID, unread, markedIDs, all)
+	return unread, nil
 }

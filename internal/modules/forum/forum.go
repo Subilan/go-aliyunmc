@@ -6,9 +6,11 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/mid"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/perms"
+	"github.com/Subilan/go-aliyunmc/internal/modules/forum/realtime"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/admin_routes"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/auth_routes"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/board_routes"
+	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/event_routes"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/notification_routes"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/reply_routes"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum/routes/search_routes"
@@ -28,6 +30,7 @@ const Prefix = "/forum-v1"
 func MustInitialize() {
 	uploads.MustInitialize()
 	perms.MustInitialize()
+	realtime.Initialize()
 }
 
 // Bind 注册 forum 模块的全部 HTTP 路由。
@@ -46,6 +49,7 @@ func Bind(engine *gin.Engine) {
 	user_routes.Bind(router)
 	search_routes.Bind(router)
 	notification_routes.Bind(router)
+	event_routes.Bind(router)
 	upload_routes.Bind(router)
 
 	admin_routes.Bind(router.Group("/admin"))
