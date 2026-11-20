@@ -11,6 +11,7 @@ type Config struct {
 	SSH    SSH    `toml:"ssh"`
 
 	UserRoutes UserRoutes `toml:"user_routes"`
+	Bot        Bot        `toml:"bot"`
 	Tasks      Tasks      `toml:"tasks"`
 	Monitors   Monitors   `toml:"monitors"`
 	Samplers   Samplers   `toml:"samplers"`
