@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
+	"github.com/Subilan/go-aliyunmc/internal/common/messages"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/models"
@@ -52,6 +53,8 @@ func HandleDeleteActiveInstance(c *gin.Context) (any, error) {
 	if monitor := monitors.GetAutoArchiveIdleMonitor(); monitor != nil && monitor.Countdown() != nil {
 		monitor.Countdown().Cancel()
 	}
+
+	messages.Send(messages.ServerReleased, nil)
 
 	return nil, nil
 }

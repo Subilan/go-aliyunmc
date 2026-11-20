@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/messages"
 	"github.com/Subilan/go-aliyunmc/internal/common/states"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
@@ -27,8 +29,12 @@ type AutoArchiveIdleMonitor struct {
 	stopWaitTimeout       time.Duration
 	offlineCheckInterval  time.Duration
 	ignoreMissingOnDelete bool
-	countdown             *IdleCountdownController
-	logger                *log_util.NamedLogger
+	// reminderBefore 是倒计时剩余多少时发送提醒，0 表示不提醒。
+	reminderBefore time.Duration
+	// reminderSent 记录本轮倒计时是否已经发送过提醒，只在 run 协程中读写。
+	reminderSent bool
+	countdown    *IdleCountdownController
+	logger       *log_util.NamedLogger
 }
 
 func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
@@ -49,9 +55,32 @@ func newAutoArchiveIdleMonitor() *AutoArchiveIdleMonitor {
 		stopWaitTimeout:       time.Duration(config.Get().Monitors.AutoArchiveIdle.StopWaitTimeoutSec) * time.Second,
 		offlineCheckInterval:  time.Duration(config.Get().Monitors.AutoArchiveIdle.OfflineCheckIntervalSec) * time.Second,
 		ignoreMissingOnDelete: config.Get().Monitors.AutoArchiveIdle.DeleteIgnoreNonExistent,
-		countdown:             countdown,
-		logger:                logger,
+		reminderBefore: resolveIdleReminderBefore(
+			logger,
+			config.Get().Monitors.AutoArchiveIdle.IdleCountdownSec,
+			config.Get().Monitors.AutoArchiveIdle.ReminderBeforeSec,
+		),
+		countdown: countdown,
+		logger:    logger,
 	}
+}
+
+// resolveIdleReminderBefore 校验倒计时提醒阈值。
+// 0 表示关闭提醒；负值、超过 7 天或不小于倒计时总时长都视为配置不合理，
+// 此时记录 warning 并返回 0，本次启动跳过该提醒。
+func resolveIdleReminderBefore(logger *log_util.NamedLogger, idleCountdownSec, reminderBeforeSec int) time.Duration {
+	if reminderBeforeSec == 0 {
+		return 0
+	}
+	if reminderBeforeSec < 0 || int64(reminderBeforeSec) > maxIdleCountdownSeconds || reminderBeforeSec >= idleCountdownSec {
+		logger.Warn(
+			"空服倒计时提醒配置不合理：reminder_before_sec（%d）必须大于 0、不超过 7 天且小于 idle_countdown_sec（%d），已跳过该提醒",
+			reminderBeforeSec,
+			idleCountdownSec,
+		)
+		return 0
+	}
+	return time.Duration(reminderBeforeSec) * time.Second
 }
 
 // Countdown 返回关服倒计时控制器，供管理接口读取和操作。
@@ -66,6 +95,14 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 		return
 	}
 	go m.countdown.run(ctx)
+
+	// 提醒关闭时不启动定时器，nil channel 永远不会被选中。
+	var reminderTick <-chan time.Time
+	if m.reminderBefore > 0 {
+		reminderTicker := time.NewTicker(time.Second)
+		defer reminderTicker.Stop()
+		reminderTick = reminderTicker.C
+	}
 
 	cancelCountdown := func(reason string) {
 		if m.countdown.Cancel() {
@@ -153,6 +190,8 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			}
 			current = s
 			handleSnapshot(s)
+		case <-reminderTick:
+			m.maybeSendReminder()
 		case <-m.countdown.Expired():
 			m.logger.Info("倒计时结束，开始执行归档流程")
 			go func() {
@@ -169,6 +208,72 @@ func (m *AutoArchiveIdleMonitor) run(ctx context.Context) {
 			handleSnapshot(current)
 		}
 	}
+}
+
+// idleReminderMessageData 是 idle_countdown_reminder 消息模板可用的变量。
+type idleReminderMessageData struct {
+	IdleMinutes      int64
+	RemainingMinutes int64
+}
+
+// decideIdleReminder 根据倒计时状态判断是否需要发送提醒。
+// 只有运行中的倒计时首次进入阈值范围时才发送；暂停、结束与已经发送过的状态都不重复发送。
+// 返回值依次是：是否发送、下一次判断使用的已发送状态、消息数据。
+func decideIdleReminder(state IdleCountdownState, reminderBefore time.Duration, sent bool) (send bool, nextSent bool, data idleReminderMessageData) {
+	if reminderBefore <= 0 {
+		return false, sent, idleReminderMessageData{}
+	}
+
+	switch state.Status {
+	case IdleCountdownRunning:
+	case IdleCountdownPaused:
+		// 暂停期间不提醒；已经发送过的话，恢复后也不重复发送。
+		return false, sent, idleReminderMessageData{}
+	default:
+		// 倒计时已结束或取消，下一轮重新提醒。
+		return false, false, idleReminderMessageData{}
+	}
+
+	remaining := time.Duration(state.RemainingSeconds) * time.Second
+	if remaining > reminderBefore {
+		// 剩余时间被重置到阈值之上，说明开始了新一轮倒计时。
+		return false, false, idleReminderMessageData{}
+	}
+	if remaining <= 0 || sent {
+		return false, sent, idleReminderMessageData{}
+	}
+
+	return true, true, idleReminderMessageData{
+		IdleMinutes:      completedMinutes(time.Duration(state.IdleSeconds) * time.Second),
+		RemainingMinutes: minutesCeil(remaining),
+	}
+}
+
+// maybeSendReminder 在本轮倒计时剩余时间首次到达阈值时发送一次群提醒。
+// 只在 run 协程中调用，因此 reminderSent 不需要加锁。
+func (m *AutoArchiveIdleMonitor) maybeSendReminder() {
+	send, nextSent, data := decideIdleReminder(m.countdown.State(), m.reminderBefore, m.reminderSent)
+	m.reminderSent = nextSent
+	if !send {
+		return
+	}
+
+	m.logger.Info("发送空服倒计时提醒：已空服 %d 分钟，剩余 %d 分钟", data.IdleMinutes, data.RemainingMinutes)
+	messages.Send(messages.IdleCountdownReminder, data)
+}
+
+// minutesCeil 把时长向上取整为分钟，避免提醒中的剩余分钟数偏小。
+func minutesCeil(duration time.Duration) int64 {
+	return int64(math.Ceil(duration.Minutes()))
+}
+
+// completedMinutes 把时长向下取整为分钟，不足一分钟时按一分钟计。
+func completedMinutes(duration time.Duration) int64 {
+	minutes := int64(duration / time.Minute)
+	if minutes < 1 && duration > 0 {
+		return 1
+	}
+	return minutes
 }
 
 // executeArchivePipeline 执行服务器离线、数据归档和实例记录删除的流程。
@@ -226,6 +331,7 @@ func (m *AutoArchiveIdleMonitor) executeArchivePipeline(ctx context.Context) err
 	}
 
 	m.logger.Info("实例删除成功")
+	messages.Send(messages.ServerReleased, nil)
 	return nil
 }
 

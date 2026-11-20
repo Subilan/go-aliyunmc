@@ -87,6 +87,10 @@ enabled = false
 # 每分钟允许的请求数；0 表示不限制
 rate_limit_per_minute = 120
 
+[bot.api]
+# 机器人 HTTP 接口端口；后端固定连接 127.0.0.1
+port = 8081
+
 [tasks]
 [tasks.deploy]
 # 部署脚本模板变量
@@ -143,6 +147,10 @@ poll_interval_sec = 5
 # 实例状态轮询间隔（秒）
 poll_interval_sec = 5
 
+[monitors.player_presence]
+# 是否启用玩家进出服务器的群消息播报
+enabled = false
+
 [monitors.file_sync]
 # 文件同步配置列表，每项形如 { remote_path = '...', local_path = '...', poll_interval_sec = 10 }
 files = []
@@ -154,6 +162,8 @@ dirs = []
 enabled = false
 # 空服触发回收的倒计时（秒）
 idle_countdown_sec = 1200
+# 倒计时剩余多少秒时发送群提醒；0 表示关闭，必须小于 idle_countdown_sec
+reminder_before_sec = 600
 # 发送stop后等待离线的最长时间（秒）
 stop_wait_timeout_sec = 60
 # 等待离线时的状态检查间隔（秒）

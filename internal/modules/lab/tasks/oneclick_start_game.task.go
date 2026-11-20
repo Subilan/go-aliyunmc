@@ -2,7 +2,11 @@ package tasks
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 
+	"github.com/Subilan/go-aliyunmc/internal/common/config"
+	"github.com/Subilan/go-aliyunmc/internal/common/messages"
 	"github.com/Subilan/go-aliyunmc/internal/common/perm_util"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/global_states"
@@ -55,6 +59,7 @@ func oneClickStartGameTask(tc *TaskContext, args map[string]any) error {
 		if snap := SnapshotServerStatus(); snap.IsValid() && snap.Value.Online {
 			tc.println("[oneclick_start_game] 服务器已在线，跳过启动")
 			tc.println("[oneclick_start_game] 启动游戏完成")
+			notifyServerStarted()
 			return nil
 		}
 	}
@@ -71,7 +76,26 @@ func oneClickStartGameTask(tc *TaskContext, args map[string]any) error {
 	}
 
 	tc.println("[oneclick_start_game] 启动游戏完成")
+	notifyServerStarted()
 	return nil
+}
+
+// serverStartedMessageData 是 server_started 消息模板可用的变量。
+type serverStartedMessageData struct {
+	Address string
+	Port    uint16
+}
+
+// notifyServerStarted 在启动游戏成功后异步推送群消息。
+// 消息模板来自 config/messages.toml；出错只记录日志，不影响任务结果。
+func notifyServerStarted() {
+	port := config.Get().Server.Port
+	data := serverStartedMessageData{Port: port}
+	if ip, err := dao.GetActiveInstanceIpNonEmpty(); err == nil {
+		data.Address = net.JoinHostPort(ip, strconv.FormatUint(uint64(port), 10))
+	}
+
+	messages.Send(messages.ServerStarted, data)
 }
 
 // enforceOneClickStartGameTask 在创建新实例时沿用创建实例任务的权限规则。

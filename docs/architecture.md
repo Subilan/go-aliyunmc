@@ -19,6 +19,7 @@ internal/
 
 依赖方向固定为 `modules/* → common`；`common` 不得 import 任何业务模块。`bot` 是接入适配层，
 后续业务 handler 可以 import `lab` / `forum` 的服务包；反向依赖（`lab` / `forum` import `bot`）不允许。
+后端主动调用机器人 HTTP 接口的客户端位于 `internal/common/botapi`，业务模块可直接使用。
 
 ## 共享与独立
 

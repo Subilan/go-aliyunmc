@@ -1,0 +1,19 @@
+# 群消息模板。复制到 $GO_ALIYUNMC_STATE_DIR/config/messages.toml 后生效。
+# 模板使用 Go text/template 语法，每次发送前都会重新读取本文件，修改后无需重启。
+
+# oneclick_start_game 成功完成后的群消息。
+# 可用变量：{{.Address}}（IP:端口，IP 未知时为空）、{{.Port}}。
+server_started = "服务器已开启~"
+
+# 实例被删除或释放后的群消息。
+server_released = "服务器已释放，后续可前往 https://seatide.net/#/start 再次开启哦~"
+
+# 空服倒计时临近释放时的提醒，每个倒计时只发送一次。
+# 可用变量：{{.IdleMinutes}}（已空服分钟数）、{{.RemainingMinutes}}（距离释放的分钟数）。
+# 触发阈值见 [monitors.auto_archive_idle] reminder_before_sec。
+idle_countdown_reminder = "已经有{{.IdleMinutes}}分钟没有玩家上线了，服务器将在{{.RemainingMinutes}}分钟后释放，请知悉~"
+
+# 玩家加入 / 离开服务器的播报；同一播报窗口内的多个玩家合并为一条消息。
+# 可用变量：{{.Players}}（以「、」分隔的玩家名）。
+player_joined = "{{.Players}} 加入了服务器~"
+player_left = "{{.Players}} 离开了服务器"

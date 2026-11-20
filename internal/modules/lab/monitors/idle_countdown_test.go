@@ -294,3 +294,66 @@ func TestIdleCountdownValidationAndDisabledState(t *testing.T) {
 		t.Fatalf("Reset() error = %v, want ErrIdleCountdownDisabled", err)
 	}
 }
+
+func TestIdleCountdownIdleSeconds(t *testing.T) {
+	controller, clock := newTestIdleCountdown(20 * time.Minute)
+
+	if got := controller.State().IdleSeconds; got != 0 {
+		t.Fatalf("idle seconds before start = %d, want 0", got)
+	}
+
+	controller.StartIfInactive()
+	clock.Advance(5 * time.Minute)
+	if got := controller.State().IdleSeconds; got != 300 {
+		t.Fatalf("idle seconds after 5 minutes = %d, want 300", got)
+	}
+
+	// 暂停期间玩家仍然没有上线，空闲时长继续按实际时间累计。
+	if _, err := controller.Pause(); err != nil {
+		t.Fatalf("Pause() error = %v", err)
+	}
+	clock.Advance(2 * time.Minute)
+	if got := controller.State().IdleSeconds; got != 420 {
+		t.Fatalf("idle seconds while paused = %d, want 420", got)
+	}
+
+	if _, err := controller.Resume(); err != nil {
+		t.Fatalf("Resume() error = %v", err)
+	}
+	clock.Advance(time.Minute)
+	if got := controller.State().IdleSeconds; got != 480 {
+		t.Fatalf("idle seconds after resume = %d, want 480", got)
+	}
+
+	// 手动重置剩余时间不应把空服周期重新计时。
+	if _, err := controller.Reset(); err != nil {
+		t.Fatalf("Reset() error = %v", err)
+	}
+	if got := controller.State().IdleSeconds; got != 480 {
+		t.Fatalf("idle seconds after reset = %d, want 480", got)
+	}
+
+	controller.Cancel()
+	if got := controller.State().IdleSeconds; got != 0 {
+		t.Fatalf("idle seconds after cancel = %d, want 0", got)
+	}
+}
+
+func TestIdleCountdownPersistenceRestoresIdleSeconds(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "idle_countdown.json")
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+
+	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller.now = clock.Now
+	controller.AttachPersistence(path, nil)
+	controller.StartIfInactive()
+	clock.Advance(5 * time.Minute)
+
+	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored.now = clock.Now
+	restored.AttachPersistence(path, nil)
+
+	if got := restored.State().IdleSeconds; got != 300 {
+		t.Fatalf("restored idle seconds = %d, want 300", got)
+	}
+}

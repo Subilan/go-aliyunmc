@@ -64,6 +64,21 @@ func (s *PlayerListSampler) Snapshot() []PlayerListDataPoint {
 	return result
 }
 
+// Latest 返回最新的一个采样点；还没有任何采样时返回 false。
+func (s *PlayerListSampler) Latest() (PlayerListDataPoint, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if len(s.dataPoints) == 0 {
+		return PlayerListDataPoint{}, false
+	}
+	return s.dataPoints[len(s.dataPoints)-1], true
+}
+
+// Interval 返回采样间隔。
+func (s *PlayerListSampler) Interval() time.Duration {
+	return s.interval
+}
+
 func (s *PlayerListSampler) run(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()

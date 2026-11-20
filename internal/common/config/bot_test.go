@@ -14,4 +14,7 @@ func TestBotDefaults(t *testing.T) {
 	if cfg.Bot.RateLimitPerMinute != 120 {
 		t.Errorf("rate_limit_per_minute 默认值不正确: %d", cfg.Bot.RateLimitPerMinute)
 	}
+	if cfg.Bot.API.Port != 8081 {
+		t.Errorf("api.port 默认值不正确: %d", cfg.Bot.API.Port)
+	}
 }

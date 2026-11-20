@@ -8,6 +8,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/env"
 	"github.com/Subilan/go-aliyunmc/internal/common/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/messages"
 	"github.com/Subilan/go-aliyunmc/internal/common/states"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/aliyun"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
@@ -105,6 +106,8 @@ func (m *InstanceStatusMonitor) pollAndStore(ctx context.Context) {
 		err := dao.DeleteActiveInstance()
 		if err != nil {
 			m.logger.Error("删除数据库实例失败: %v", err)
+		} else {
+			messages.Send(messages.ServerReleased, nil)
 		}
 		m.store.StoreError(emptyValueError, m.logger)
 		return

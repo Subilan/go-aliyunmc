@@ -91,6 +91,14 @@ instance_type_exclusion = "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$"
 | `enabled` | `false` | 为 false 时不注册 `/bot-v1` |
 | `rate_limit_per_minute` | 120 | 每分钟请求数；0 表示不限制 |
 
+`[bot.api]` 是后端调用机器人 HTTP 接口的连接配置。机器人固定监听本机，只有端口需要配置：
+
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `port` | 8081 | 机器人 HTTP 接口端口 |
+
+出站调用的接入方式见 [机器人消息推送](bot-message-api.md)。
+
 ## 论坛参数
 
 `[forum]` 控制论坛上传与正文限制：

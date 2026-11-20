@@ -39,6 +39,8 @@ type IdleCountdownState struct {
 	Status            IdleCountdownStatus `json:"status"`
 	RemainingSeconds  int64               `json:"remaining_seconds"`
 	ConfiguredSeconds int64               `json:"configured_seconds"`
+	// IdleSeconds 是当前空服周期已持续的秒数（含暂停期间）；未处于倒计时中时为 0。
+	IdleSeconds int64 `json:"idle_seconds"`
 }
 
 type idleCountdownClock func() time.Time
@@ -49,17 +51,21 @@ type idleCountdownPersistedState struct {
 	Status      IdleCountdownStatus `json:"status"`
 	RemainingMs int64               `json:"remaining_ms,omitempty"`
 	DeadlineMs  int64               `json:"deadline_ms,omitempty"`
+	IdleStartMs int64               `json:"idle_start_ms,omitempty"`
 }
 
 // IdleCountdownController 管理关服倒计时。它把剩余时间与动态截止时间分开保存，
 // 从而避免每秒修改全局状态，并让暂停/恢复保持精确。
 type IdleCountdownController struct {
-	mu           sync.RWMutex
-	enabled      bool
-	configured   time.Duration
-	status       IdleCountdownStatus
-	remaining    time.Duration
-	deadline     time.Time
+	mu         sync.RWMutex
+	enabled    bool
+	configured time.Duration
+	status     IdleCountdownStatus
+	remaining  time.Duration
+	deadline   time.Time
+	// idleSince 是当前空服周期开始的时刻。暂停不会重置它，
+	// 因此可以据此算出玩家已经多久没有上线。
+	idleSince    time.Time
 	now          idleCountdownClock
 	expired      chan struct{}
 	tickInterval time.Duration
@@ -143,6 +149,7 @@ func (c *IdleCountdownController) cancelLocked(preservePause bool) bool {
 	c.status = IdleCountdownInactive
 	c.remaining = 0
 	c.deadline = time.Time{}
+	c.idleSince = time.Time{}
 	if changed {
 		c.persistLocked()
 	}
@@ -209,6 +216,7 @@ func (c *IdleCountdownController) Complete() {
 	c.status = IdleCountdownInactive
 	c.remaining = 0
 	c.deadline = time.Time{}
+	c.idleSince = time.Time{}
 	c.persistLocked()
 }
 
@@ -227,6 +235,10 @@ func (c *IdleCountdownController) startAt(duration time.Duration, now time.Time)
 }
 
 func (c *IdleCountdownController) startLocked(duration time.Duration, now time.Time) {
+	// 已有空服周期时不重置起点；暂停恢复和手动调整剩余时间仍属于同一周期。
+	if c.idleSince.IsZero() {
+		c.idleSince = now
+	}
 	c.status = IdleCountdownRunning
 	c.remaining = duration
 	c.deadline = now.Add(duration)
@@ -245,11 +257,20 @@ func (c *IdleCountdownController) stateLocked(now time.Time) IdleCountdownState 
 	if c.status == IdleCountdownInactive {
 		remainingSeconds = 0
 	}
+
+	idleSeconds := int64(0)
+	if !c.idleSince.IsZero() {
+		if elapsed := now.Sub(c.idleSince); elapsed > 0 {
+			idleSeconds = int64(math.Ceil(elapsed.Seconds()))
+		}
+	}
+
 	return IdleCountdownState{
 		Enabled:           c.enabled,
 		Status:            c.status,
 		RemainingSeconds:  remainingSeconds,
 		ConfiguredSeconds: int64(c.configured / time.Second),
+		IdleSeconds:       idleSeconds,
 	}
 }
 
@@ -287,6 +308,7 @@ func (c *IdleCountdownController) restoreLocked() {
 		c.status = IdleCountdownPaused
 		c.remaining = time.Duration(saved.RemainingMs) * time.Millisecond
 		c.deadline = time.Time{}
+		c.restoreIdleSinceLocked(saved, now)
 		c.logInfo("已恢复暂停的倒计时：剩余 %d 秒", int64(math.Ceil(c.remaining.Seconds())))
 	case IdleCountdownRunning:
 		remaining := time.UnixMilli(saved.DeadlineMs).Sub(now)
@@ -299,7 +321,25 @@ func (c *IdleCountdownController) restoreLocked() {
 		c.status = IdleCountdownRunning
 		c.remaining = remaining
 		c.deadline = now.Add(remaining)
+		c.restoreIdleSinceLocked(saved, now)
 		c.logInfo("已恢复运行中的倒计时：剩余 %d 秒", int64(math.Ceil(c.remaining.Seconds())))
+	}
+}
+
+// restoreIdleSinceLocked 恢复空服周期起点。旧版本状态文件没有该字段，
+// 此时按倒计时已经过去的时长近似。
+func (c *IdleCountdownController) restoreIdleSinceLocked(saved idleCountdownPersistedState, now time.Time) {
+	if saved.IdleStartMs > 0 {
+		idleSince := time.UnixMilli(saved.IdleStartMs)
+		if !idleSince.After(now) {
+			c.idleSince = idleSince
+			return
+		}
+	}
+
+	elapsed := c.configured - c.remaining
+	if elapsed > 0 {
+		c.idleSince = now.Add(-elapsed)
 	}
 }
 
@@ -319,6 +359,9 @@ func (c *IdleCountdownController) persistLocked() {
 	}
 
 	saved := idleCountdownPersistedState{Status: c.status}
+	if !c.idleSince.IsZero() {
+		saved.IdleStartMs = c.idleSince.UnixMilli()
+	}
 	if c.status == IdleCountdownPaused {
 		saved.RemainingMs = c.remaining.Milliseconds()
 	} else {

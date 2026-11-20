@@ -104,6 +104,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		{"store.port", cfg.Store.Port, 3306},
 		{"server.port", int(cfg.Server.Port), 25565},
 		{"monitors.server.poll_interval_sec", cfg.Monitors.Server.PollIntervalSec, 5},
+		{"monitors.player_presence.batch_sec", cfg.Monitors.PlayerPresence.BatchSec, 10},
 		{"monitors.auto_archive_idle.idle_countdown_sec", cfg.Monitors.AutoArchiveIdle.IdleCountdownSec, 1200},
 		{"monitors.best_ecs_candidate.poll_interval_sec", cfg.Monitors.BestEcsCandidate.PollIntervalSec, 600},
 		{"tasks.deploy.vars.java_version", cfg.Tasks.Deploy.Vars.JavaVersion, 21},

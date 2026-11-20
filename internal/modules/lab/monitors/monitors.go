@@ -70,6 +70,7 @@ func MustInitialize(ctx context.Context) {
 		bestEcsCandidateMonitor = newBestEcsCandidateMonitor()
 		playerListSampler = newPlayerListSampler()
 		balanceSampler = newBalanceSampler()
+		playerPresenceMonitor := newPlayerPresenceMonitor(playerListSampler, serverMonitor)
 
 		tasks.SnapshotServerStatus = serverMonitor.Snapshot
 		tasks.SnapshotBestEcsCandidate = bestEcsCandidateMonitor.Snapshot
@@ -84,5 +85,6 @@ func MustInitialize(ctx context.Context) {
 		go bestEcsCandidateMonitor.run(ctx)
 		go playerListSampler.run(ctx)
 		go balanceSampler.run(ctx)
+		go playerPresenceMonitor.run(ctx)
 	})
 }

@@ -4,11 +4,18 @@ package config
 type Monitors struct {
 	Server           MonitorsServer           `toml:"server"`
 	Instance         MonitorsInstance         `toml:"instance"`
+	PlayerPresence   MonitorsPlayerPresence   `toml:"player_presence"`
 	FileSync         MonitorsFileSync         `toml:"file_sync"`
 	AutoArchiveIdle  MonitorsAutoArchiveIdle  `toml:"auto_archive_idle"`
 	Backup           MonitorsBackup           `toml:"backup"`
 	SpotInterruption MonitorsSpotInterruption `toml:"spot_interruption"`
 	BestEcsCandidate MonitorsBestEcsCandidate `toml:"best_ecs_candidate"`
+}
+
+// MonitorsPlayerPresence 对应 [monitors.player_presence]。
+type MonitorsPlayerPresence struct {
+	Enabled  bool `toml:"enabled" comment:"是否启用玩家进出服务器的群消息播报"`
+	BatchSec int  `toml:"batch_sec" default:"10" validate:"min=1" comment:"合并播报窗口（秒）"`
 }
 
 // MonitorsServer 对应 [monitors.server]。
@@ -46,6 +53,7 @@ type MonitorsFileSync struct {
 type MonitorsAutoArchiveIdle struct {
 	Enabled                 bool `toml:"enabled" comment:"是否启用空服自动归档回收监控"`
 	IdleCountdownSec        int  `toml:"idle_countdown_sec" default:"1200" validate:"min=1" comment:"空服触发回收的倒计时（秒）"`
+	ReminderBeforeSec       int  `toml:"reminder_before_sec" default:"600" comment:"倒计时剩余多少秒时发送群提醒；0 表示关闭，必须小于 idle_countdown_sec"`
 	StopWaitTimeoutSec      int  `toml:"stop_wait_timeout_sec" default:"60" validate:"min=1" comment:"发送stop后等待离线的最长时间（秒）"`
 	OfflineCheckIntervalSec int  `toml:"offline_check_interval_sec" default:"3" validate:"min=1" comment:"等待离线时的状态检查间隔（秒）"`
 	DeleteIgnoreNonExistent bool `toml:"delete_ignore_non_existent" comment:"删除active instance时是否忽略不存在错误"`
