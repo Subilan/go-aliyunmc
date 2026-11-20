@@ -61,5 +61,5 @@ func runGenBotKey() {
 	fmt.Printf("私钥: %s\n", privatePath)
 	fmt.Printf("公钥: %s\n", publicPath)
 	fmt.Printf("公钥指纹: sha256:%s\n", botkey.Fingerprint(pub))
-	fmt.Println("把私钥交给机器人；服务端 [bot].public_key_path 指向公钥文件。")
+	fmt.Println("把私钥交给机器人；把公钥放到配置目录，[bot].public_key_path 填 'bot_public.pem'（相对路径按配置目录解析）。")
 }

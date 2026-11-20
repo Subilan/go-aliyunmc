@@ -8,8 +8,8 @@ type Bot struct {
 	// KeyID 是机器人密钥标识，请求头 X-Bot-Key-Id 必须与它一致。
 	KeyID string `toml:"key_id" default:"default" validate:"required,max=64" comment:"机器人密钥标识，请求头 X-Bot-Key-Id 必须匹配"`
 
-	// PublicKeyPath 是机器人公钥文件路径，用于验证请求签名。
-	PublicKeyPath string `toml:"public_key_path,commented" validate:"required_if=Enabled true" comment:"机器人公钥文件路径（PEM，PKIX 格式），用于验证请求签名"`
+	// PublicKeyPath 是机器人公钥文件路径，用于验证请求签名；始终相对配置目录解析，不支持绝对路径。
+	PublicKeyPath string `toml:"public_key_path,commented" validate:"required_if=Enabled true" comment:"机器人公钥文件路径（PEM，PKIX 格式），相对配置目录解析，不支持绝对路径"`
 
 	// TimestampToleranceSec 是允许的请求时间偏差，同时决定 nonce 缓存时长。
 	TimestampToleranceSec int `toml:"timestamp_tolerance_sec" default:"300" validate:"min=1,max=3600" comment:"允许的请求时间偏差（秒），同时决定 nonce 缓存时长"`

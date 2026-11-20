@@ -5,12 +5,14 @@ import (
 	"crypto/ed25519"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/botkey"
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/log_util"
+	"github.com/Subilan/go-aliyunmc/internal/common/paths"
 
 	"github.com/gin-gonic/gin"
 )
@@ -52,7 +54,18 @@ func ValidateConfig() error {
 	return nil
 }
 
+// loadPublicKey 读取并解析公钥。路径始终相对配置目录解析，因此公钥与
+// config.toml 放在同一目录即可，不受进程工作目录影响；不支持绝对路径。
 func loadPublicKey(path string) (ed25519.PublicKey, error) {
+	if path == "" {
+		return nil, fmt.Errorf("[bot].public_key_path 不能为空")
+	}
+	if filepath.IsAbs(path) {
+		return nil, fmt.Errorf("[bot].public_key_path 不支持绝对路径，请填写相对配置目录的路径: %s", path)
+	}
+
+	path = filepath.Join(paths.ConfigDir(), path)
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("读取机器人公钥失败(%s): %w", path, err)

@@ -90,7 +90,7 @@ instance_type_exclusion = "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$"
 |---|---|---|
 | `enabled` | `false` | 为 false 时不注册 `/bot-v1` |
 | `key_id` | `default` | 请求头 `X-Bot-Key-Id` 必须匹配 |
-| `public_key_path` | 无 | 机器人公钥文件（PKIX PEM）；启用时必填 |
+| `public_key_path` | 无 | 机器人公钥文件（PKIX PEM）；启用时必填。始终相对配置目录解析，不支持绝对路径 |
 | `timestamp_tolerance_sec` | 300 | 时钟容差，同时决定 nonce 缓存时长 |
 | `nonce_capacity` | 10000 | 防重放缓存容量 |
 | `max_body_bytes` | 1048576 | 机器人请求体上限 |

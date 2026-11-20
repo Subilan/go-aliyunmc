@@ -23,7 +23,8 @@ description: 外部机器人调用 /bot-v1 的 Ed25519 请求签名、配置与 
 [bot]
 enabled = true
 key_id = 'default'
-public_key_path = '/etc/aliyunmc/bot_public.pem'
+# 始终相对配置目录解析，与 config.toml 同目录
+public_key_path = 'bot_public.pem'
 timestamp_tolerance_sec = 300
 nonce_capacity = 10000
 max_body_bytes = 1048576
@@ -34,13 +35,15 @@ rate_limit_per_minute = 120
 |---|---|
 | `enabled` | 为 false 时不注册 `/bot-v1`，访问返回 404 |
 | `key_id` | 请求头 `X-Bot-Key-Id` 必须与它完全一致 |
-| `public_key_path` | 机器人公钥文件，PKIX PEM；按进程工作目录解析，推荐绝对路径 |
+| `public_key_path` | 机器人公钥文件，PKIX PEM；始终相对配置目录（`$STATE_DIR/config`）解析，不支持绝对路径 |
 | `timestamp_tolerance_sec` | 允许的时钟偏差，同时决定 nonce 缓存时长 |
 | `nonce_capacity` | 防重放缓存容量 |
 | `max_body_bytes` | 机器人请求体上限 |
 | `rate_limit_per_minute` | 每分钟请求数；0 表示不限制 |
 
 `./aliyunmc check_config` 会额外加载公钥文件；路径错误或文件不是 PKIX Ed25519 公钥都会在启动前失败。
+
+`public_key_path` 始终相对配置目录解析，不支持绝对路径。CI 与生产机的目录布局不同，只有相对路径能让 `check_config` 在两边都指向随 `config/` 发布的公钥。
 
 ## 密钥生成与分发
 
@@ -93,7 +96,7 @@ v1
 ## 服务端配置步骤
 
 1. 生成密钥对，把私钥安全交给机器人。
-2. 把公钥放到服务端，例如 `/etc/aliyunmc/bot_public.pem`，确保服务运行用户可以读取。
+2. 把公钥放到服务端配置目录（`$STATE_DIR/config/bot_public.pem`），与 `config.toml` 同目录并确保服务运行用户可以读取；`public_key_path` 填 `'bot_public.pem'` 即可。
 3. 在 `$GO_ALIYUNMC_STATE_DIR/config/config.toml` 写入上文 `[bot]` 配置。
 4. 执行 `GO_ALIYUNMC_STATE_DIR=/opt/aliyunmc ./aliyunmc check_config`。
 5. 重启服务，确认 HTTPS 由本机 TLS 或反向代理提供。

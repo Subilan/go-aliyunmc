@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/common/botkey"
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
+	"github.com/Subilan/go-aliyunmc/internal/common/paths"
 
 	"github.com/gin-gonic/gin"
 )
@@ -353,13 +355,19 @@ func TestValidateConfig(t *testing.T) {
 	original := config.TryGet()
 	t.Cleanup(func() { config.Set(original) })
 
+	stateDir := t.TempDir()
+	t.Setenv(paths.StateDirEnv, stateDir)
+	configDir := filepath.Join(stateDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("创建配置目录失败: %v", err)
+	}
+
 	privatePEM, publicPEM, err := botkey.Generate()
 	if err != nil {
 		t.Fatalf("生成密钥失败: %v", err)
 	}
-	dir := t.TempDir()
-	publicPath := filepath.Join(dir, "bot_public.pem")
-	privatePath := filepath.Join(dir, "bot_private.pem")
+	publicPath := filepath.Join(configDir, "bot_public.pem")
+	privatePath := filepath.Join(configDir, "bot_private.pem")
 	if err := os.WriteFile(publicPath, publicPEM, 0644); err != nil {
 		t.Fatalf("写入公钥失败: %v", err)
 	}
@@ -370,7 +378,7 @@ func TestValidateConfig(t *testing.T) {
 	valid := config.Bot{
 		Enabled:       true,
 		KeyID:         "default",
-		PublicKeyPath: publicPath,
+		PublicKeyPath: "bot_public.pem",
 	}
 
 	t.Run("未启用时直接通过", func(t *testing.T) {
@@ -387,9 +395,22 @@ func TestValidateConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("绝对路径被拒绝", func(t *testing.T) {
+		cfg := valid
+		cfg.PublicKeyPath = publicPath
+		config.Set(&config.Config{Bot: cfg})
+		err := ValidateConfig()
+		if err == nil {
+			t.Fatal("绝对路径应当被拒绝")
+		}
+		if !strings.Contains(err.Error(), "绝对路径") {
+			t.Errorf("报错未说明不支持绝对路径: %v", err)
+		}
+	})
+
 	t.Run("公钥文件不存在", func(t *testing.T) {
 		cfg := valid
-		cfg.PublicKeyPath = filepath.Join(dir, "missing.pem")
+		cfg.PublicKeyPath = "missing.pem"
 		config.Set(&config.Config{Bot: cfg})
 		if err := ValidateConfig(); err == nil {
 			t.Fatal("公钥文件不存在时应当报错")
@@ -398,7 +419,7 @@ func TestValidateConfig(t *testing.T) {
 
 	t.Run("把私钥当公钥", func(t *testing.T) {
 		cfg := valid
-		cfg.PublicKeyPath = privatePath
+		cfg.PublicKeyPath = "bot_private.pem"
 		config.Set(&config.Config{Bot: cfg})
 		if err := ValidateConfig(); err == nil {
 			t.Fatal("私钥文件不应当被接受为公钥")

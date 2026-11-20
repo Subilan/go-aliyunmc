@@ -87,6 +87,7 @@ enabled = false
 # 机器人密钥标识，请求头 X-Bot-Key-Id 必须匹配
 key_id = 'default'
 # 机器人公钥文件路径（PEM，PKIX 格式），用于验证请求签名
+# 始终相对配置目录解析，不支持绝对路径；与 config.toml 同目录时直接填 'bot_public.pem'
 # public_key_path = ''
 # 允许的请求时间偏差（秒），同时决定 nonce 缓存时长
 timestamp_tolerance_sec = 300
