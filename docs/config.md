@@ -82,6 +82,21 @@ instance_type_exclusion = "^ecs\\.(e|s6|xn4|n4|mn4|e4|t|d).*$"
 `[base.tls].enabled` 为真时 Cookie 自动带 `Secure`。如果 TLS 在上游反向代理终止，请设置
 `secure_cookie = true`，避免浏览器把登录 Cookie 发送到明文连接。
 
+## 机器人参数
+
+`[bot]` 控制外部机器人接口，协议与密钥步骤见 [机器人接入](bot-integration.md)。
+
+| 字段 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 为 false 时不注册 `/bot-v1` |
+| `key_id` | `default` | 请求头 `X-Bot-Key-Id` 必须匹配 |
+| `public_key_path` | 无 | 机器人公钥文件（PKIX PEM）；启用时必填 |
+| `scopes` | `[]` | `read` / `account` / `admin`，不隐含继承 |
+| `timestamp_tolerance_sec` | 300 | 时钟容差，同时决定 nonce 缓存时长 |
+| `nonce_capacity` | 10000 | 防重放缓存容量 |
+| `max_body_bytes` | 1048576 | 机器人请求体上限 |
+| `rate_limit_per_minute` | 120 | 每分钟请求数；0 表示不限制 |
+
 ## 论坛参数
 
 `[forum]` 控制论坛上传与正文限制：

@@ -29,6 +29,7 @@ func TestSectionPaths(t *testing.T) {
 		"[aliyun]", "[aliyun.ecs]", "[aliyun.ecs.system_disk]", "[aliyun.ecs.data_disk]",
 		"[server]", "[ssh]",
 		"[user_routes]", "[user_routes.chat_token]",
+		"[bot]",
 		"[tasks]", "[tasks.deploy]", "[tasks.deploy.vars]",
 		"[tasks.backup]", "[tasks.backup.vars]",
 		"[tasks.archive]", "[tasks.archive.vars]",
