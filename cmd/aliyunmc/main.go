@@ -45,7 +45,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  create_user  创建用户\n")
 		fmt.Fprintf(os.Stderr, "  check_config 校验配置，不连接任何外部依赖\n")
 		fmt.Fprintf(os.Stderr, "  gen_policy   根据策略配置渲染 RAM 策略并输出到 stdout\n")
-		fmt.Fprintf(os.Stderr, "  gen_bot_key  生成机器人 Ed25519 密钥对\n")
 		os.Exit(1)
 	}
 
@@ -60,8 +59,6 @@ func main() {
 		runCheckConfig()
 	case "gen_policy":
 		runGenPolicy()
-	case "gen_bot_key":
-		runGenBotKey()
 	default:
 		fmt.Fprintf(os.Stderr, "未知指令: %s\n", os.Args[1])
 		os.Exit(1)
@@ -114,7 +111,7 @@ func runServer() {
 	// 注册 forum 模块路由（/forum-v1）。
 	forum.Bind(engine)
 
-	// 注册 bot 模块路由（/bot-v1）；未启用时不注册。
+	// 注册 bot 模块路由（/bot-v1，仅限本机回环访问）；未启用时不注册。
 	bot.Bind(engine)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -158,10 +155,6 @@ func runServer() {
 // runCheckConfig 用来在部署前确认配置与二进制的版本匹配
 func runCheckConfig() {
 	config.MustLoad()
-	if err := bot.ValidateConfig(); err != nil {
-		fmt.Fprintf(os.Stderr, "机器人配置校验失败: %v\n", err)
-		os.Exit(1)
-	}
 	fmt.Println("配置校验通过")
 }
 

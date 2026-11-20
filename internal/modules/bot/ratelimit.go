@@ -16,7 +16,7 @@ const (
 	limiterCapacity = 16
 )
 
-// rateLimiter 按 key_id 做进程内限流。
+// rateLimiter 按来源地址做进程内限流。
 type rateLimiter struct {
 	perMinute int
 	limiters  *ttlcache.Cache[string, *rate.Limiter]
@@ -51,10 +51,10 @@ func (r *rateLimiter) Stop() {
 	r.limiters.Stop()
 }
 
-// RateLimit 按机器人 key_id 限流。
+// RateLimit 按来源地址限流。
 func RateLimit(rt *botRuntime) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !rt.limiter.Allow(rt.keyID) {
+		if !rt.limiter.Allow(c.ClientIP()) {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, h.DetailsF("请求过于频繁，请稍后再试"))
 			return
 		}

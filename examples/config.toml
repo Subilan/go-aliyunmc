@@ -82,19 +82,8 @@ rcon_port = 25575
 expire_seconds = 3600
 
 [bot]
-# 是否启用机器人接口；关闭时不注册 /bot-v1 路由
+# 是否启用内网机器人接口；关闭时不注册 /bot-v1 路由
 enabled = false
-# 机器人密钥标识，请求头 X-Bot-Key-Id 必须匹配
-key_id = 'default'
-# 机器人公钥文件路径（PEM，PKIX 格式），用于验证请求签名
-# 始终相对配置目录解析，不支持绝对路径；与 config.toml 同目录时直接填 'bot_public.pem'
-# public_key_path = ''
-# 允许的请求时间偏差（秒），同时决定 nonce 缓存时长
-timestamp_tolerance_sec = 300
-# 防重放 nonce 缓存容量
-nonce_capacity = 10000
-# 机器人请求体上限（字节）
-max_body_bytes = 1048576
 # 每分钟允许的请求数；0 表示不限制
 rate_limit_per_minute = 120
 

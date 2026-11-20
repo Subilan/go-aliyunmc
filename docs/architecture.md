@@ -13,7 +13,7 @@ internal/
   modules/
     lab/           # lab 业务：路由、任务、监控、阿里云、lab RBAC 策略
     forum/         # 论坛业务：forum_* 表、权限节点、内容管线、上传与后台 API
-    bot/           # 机器人接入：/bot-v1 的签名认证、防重放与密钥加载
+    bot/           # 机器人接入：/bot-v1 的本机回环访问控制与路由
     entities.go    # 合并各模块的 GORM 实体，供 DEV AutoMigrate 与 Atlas 使用
 ```
 
@@ -34,7 +34,7 @@ internal/
 
 - lab：`/lab-v1/...`，由 `internal/modules/lab.Bind` 注册。
 - forum：`/forum-v1/...`，由 `internal/modules/forum.Bind` 注册。
-- bot：`/bot-v1/...`，由 `internal/modules/bot.Bind` 注册；未启用机器人时不注册。
+- bot：`/bot-v1/...`，由 `internal/modules/bot.Bind` 注册；仅接受本机回环地址的直连请求，未启用机器人时不注册。
 - 根路径 `GET /` 保留为进程级健康检查。
 
 不提供旧路径兼容；前端与后端需要同批上线。
