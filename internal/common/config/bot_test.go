@@ -40,20 +40,3 @@ func TestBotRequiresPublicKeyWhenEnabled(t *testing.T) {
 		t.Errorf("报错未指出 PublicKeyPath: %v", err)
 	}
 }
-
-func TestBotRejectsUnknownScope(t *testing.T) {
-	_, err := loadAll(t, validConfig+"\n[bot]\nscopes = [\"root\"]\n")
-	if err == nil {
-		t.Fatal("非法 scope 应当报错")
-	}
-}
-
-func TestBotAcceptsKnownScopes(t *testing.T) {
-	cfg, err := loadAll(t, validConfig+"\n[bot]\nscopes = [\"read\", \"account\", \"admin\"]\n")
-	if err != nil {
-		t.Fatalf("合法 scope 不应报错: %v", err)
-	}
-	if len(cfg.Bot.Scopes) != 3 {
-		t.Fatalf("scope 数量不正确: %v", cfg.Bot.Scopes)
-	}
-}

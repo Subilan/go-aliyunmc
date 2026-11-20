@@ -25,7 +25,6 @@ type botRuntime struct {
 	cfg       config.Bot
 	keyID     string
 	publicKey ed25519.PublicKey
-	scopes    map[string]struct{}
 	nonces    *nonceCache
 	limiter   *rateLimiter
 	now       func() time.Time
@@ -81,16 +80,10 @@ func newRuntime(cfg config.Bot) (*botRuntime, error) {
 		return nil, err
 	}
 
-	scopes := make(map[string]struct{}, len(cfg.Scopes))
-	for _, scope := range cfg.Scopes {
-		scopes[scope] = struct{}{}
-	}
-
 	return &botRuntime{
 		cfg:       cfg,
 		keyID:     cfg.KeyID,
 		publicKey: pub,
-		scopes:    scopes,
 		nonces:    newNonceCache(2*time.Duration(cfg.TimestampToleranceSec)*time.Second, cfg.NonceCapacity),
 		limiter:   newRateLimiter(cfg.RateLimitPerMinute),
 		now:       time.Now,

@@ -1,13 +1,13 @@
 ---
 title: 机器人接入
-description: 外部机器人调用 /bot-v1 的 Ed25519 请求签名、配置、权限范围与客户端示例。
+description: 外部机器人调用 /bot-v1 的 Ed25519 请求签名、配置与 Python 客户端示例。
 ---
 
 # 机器人接入
 
 外部机器人通过 HTTP 调用 `/bot-v1`，使用 Ed25519 对每个请求签名。服务端只保存机器人公钥，不向机器人签发用户登录态，也不复用 `/lab-v1`、`/forum-v1` 的 Cookie Session。
 
-当前只提供 `GET /bot-v1/ping`，用于验证密钥、时钟与签名链路；业务接口后续再加入同一前缀。
+当前只提供 `GET /bot-v1/ping`，用于验证密钥、时钟与签名链路；业务接口后续再加入同一前缀。认证通过后即可访问 `/bot-v1` 下的全部接口，不再划分权限范围。
 
 ## 安全边界
 
@@ -24,8 +24,6 @@ description: 外部机器人调用 /bot-v1 的 Ed25519 请求签名、配置、�
 enabled = true
 key_id = 'default'
 public_key_path = '/etc/aliyunmc/bot_public.pem'
-# 按实际能力授予；scope 之间不隐含
-scopes = ['read', 'account']
 timestamp_tolerance_sec = 300
 nonce_capacity = 10000
 max_body_bytes = 1048576
@@ -37,13 +35,12 @@ rate_limit_per_minute = 120
 | `enabled` | 为 false 时不注册 `/bot-v1`，访问返回 404 |
 | `key_id` | 请求头 `X-Bot-Key-Id` 必须与它完全一致 |
 | `public_key_path` | 机器人公钥文件，PKIX PEM；按进程工作目录解析，推荐绝对路径 |
-| `scopes` | 授予机器人的权限范围：`read`、`account`、`admin` |
 | `timestamp_tolerance_sec` | 允许的时钟偏差，同时决定 nonce 缓存时长 |
 | `nonce_capacity` | 防重放缓存容量 |
 | `max_body_bytes` | 机器人请求体上限 |
 | `rate_limit_per_minute` | 每分钟请求数；0 表示不限制 |
 
-`./aliyunmc check_config` 会额外加载公钥文件；路径错误、文件不是 PKIX Ed25519 公钥、scope 拼错都会在启动前失败。
+`./aliyunmc check_config` 会额外加载公钥文件；路径错误或文件不是 PKIX Ed25519 公钥都会在启动前失败。
 
 ## 密钥生成与分发
 
@@ -156,48 +153,6 @@ headers["Content-Type"] = "application/json"
 resp = requests.post(BASE_URL + "/bot-v1/example", data=body, headers=headers)
 ```
 
-### Node.js
-
-```js
-import crypto from "node:crypto";
-import fs from "node:fs";
-
-const KEY_ID = "default";
-const BASE_URL = "https://mc.example.com";
-const privateKey = crypto.createPrivateKey(fs.readFileSync("bot_private.pem"));
-
-function signedHeaders(method, pathQuery, body = Buffer.alloc(0)) {
-  const ts = String(Math.floor(Date.now() / 1000));
-  const nonce = crypto.randomBytes(16).toString("base64url"); // 22 个 URL-safe 字符
-  const bodyHash = crypto.createHash("sha256").update(body).digest("hex");
-  const canonical = ["v1", KEY_ID, method, pathQuery, ts, nonce, bodyHash].join("\n");
-  const signature = crypto.sign(null, Buffer.from(canonical), privateKey).toString("base64");
-  return {
-    "X-Bot-Key-Id": KEY_ID,
-    "X-Bot-Timestamp": ts,
-    "X-Bot-Nonce": nonce,
-    "X-Bot-Signature": signature,
-  };
-}
-
-const res = await fetch(BASE_URL + "/bot-v1/ping", {
-  headers: signedHeaders("GET", "/bot-v1/ping"),
-});
-console.log(res.status, await res.text());
-```
-
-Ed25519 使用 `crypto.sign(null, ...)`：`null` 表示不指定摘要算法，与 Python 的 `PRIVATE_KEY.sign(message)` 等价。
-
-## 权限范围
-
-| scope | 用途 |
-|---|---|
-| `read` | 服务器状态、在线玩家、余额、排行榜、玩家统计等只读查询 |
-| `account` | QQ 号与站内账号绑定、白名单查询/绑定/解绑 |
-| `admin` | 启停服务器、触发任务、封禁用户等敏感操作 |
-
-scope 不做隐式继承：需要哪些就在配置里写哪些。没有对应 scope 的接口返回 `403`。
-
 ## 响应与错误码
 
 响应沿用项目约定：成功为 `{"data": ...}`，失败为 `{"details": "..."}`。
@@ -206,8 +161,7 @@ scope 不做隐式继承：需要哪些就在配置里写哪些。没有对应 s
 |---|---|
 | `200` | 请求通过 |
 | `401` | 认证失败：头部缺失/重复、`key_id` 不符、时间戳超差、nonce 格式错误或重放、签名无效 |
-| `403` | 已认证，但缺少接口所需的 scope |
 | `413` | 请求体超过 `max_body_bytes` |
 | `429` | 超过 `rate_limit_per_minute` |
 
-`GET /bot-v1/ping` 返回服务端时间、`key_id` 与当前 scope，可用于排查时钟与权限问题。
+`GET /bot-v1/ping` 返回服务端时间与 `key_id`，可用于排查时钟与密钥配置问题。

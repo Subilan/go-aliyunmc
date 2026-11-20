@@ -13,7 +13,7 @@ internal/
   modules/
     lab/           # lab 业务：路由、任务、监控、阿里云、lab RBAC 策略
     forum/         # 论坛业务：forum_* 表、权限节点、内容管线、上传与后台 API
-    bot/           # 机器人接入：/bot-v1 的签名认证、防重放、scope 与密钥加载
+    bot/           # 机器人接入：/bot-v1 的签名认证、防重放与密钥加载
     entities.go    # 合并各模块的 GORM 实体，供 DEV AutoMigrate 与 Atlas 使用
 ```
 

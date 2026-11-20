@@ -85,7 +85,7 @@ func Verify(rt *botRuntime) gin.HandlerFunc {
 			return
 		}
 
-		SetPrincipal(c, &Principal{KeyID: keyID, Scopes: rt.scopes})
+		SetPrincipal(c, &Principal{KeyID: keyID})
 		c.Next()
 	}
 }

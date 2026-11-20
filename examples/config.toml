@@ -88,8 +88,6 @@ enabled = false
 key_id = 'default'
 # 机器人公钥文件路径（PEM，PKIX 格式），用于验证请求签名
 # public_key_path = ''
-# 授予机器人的权限范围：read / account / admin
-scopes = []
 # 允许的请求时间偏差（秒），同时决定 nonce 缓存时长
 timestamp_tolerance_sec = 300
 # 防重放 nonce 缓存容量

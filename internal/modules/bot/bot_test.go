@@ -32,7 +32,7 @@ func nextNonce() string {
 	return fmt.Sprintf("nonce-%016d", nonceCounter.Add(1))
 }
 
-func newTestRuntime(t *testing.T, scopes []string, mutate func(*config.Bot)) (*botRuntime, ed25519.PrivateKey) {
+func newTestRuntime(t *testing.T, mutate func(*config.Bot)) (*botRuntime, ed25519.PrivateKey) {
 	t.Helper()
 
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -43,7 +43,6 @@ func newTestRuntime(t *testing.T, scopes []string, mutate func(*config.Bot)) (*b
 	cfg := config.Bot{
 		Enabled:               true,
 		KeyID:                 "default",
-		Scopes:                scopes,
 		TimestampToleranceSec: 300,
 		NonceCapacity:         1000,
 		MaxBodyBytes:          1 << 20,
@@ -53,16 +52,10 @@ func newTestRuntime(t *testing.T, scopes []string, mutate func(*config.Bot)) (*b
 		mutate(&cfg)
 	}
 
-	scopeSet := make(map[string]struct{}, len(scopes))
-	for _, scope := range scopes {
-		scopeSet[scope] = struct{}{}
-	}
-
 	rt := &botRuntime{
 		cfg:       cfg,
 		keyID:     cfg.KeyID,
 		publicKey: pub,
-		scopes:    scopeSet,
 		nonces:    newNonceCache(2*time.Duration(cfg.TimestampToleranceSec)*time.Second, cfg.NonceCapacity),
 		limiter:   newRateLimiter(cfg.RateLimitPerMinute),
 		now:       time.Now,
@@ -84,9 +77,6 @@ func newTestRouter(rt *botRuntime) *gin.Engine {
 	group.Use(RateLimit(rt))
 
 	group.GET("/ping", h.G(handlePing))
-	group.GET("/admin", RequireScope(ScopeAdmin), h.G(func(*gin.Context) (any, error) {
-		return "ok", nil
-	}))
 	group.POST("/echo", h.B(func(body echoBody, _ *gin.Context) (any, error) {
 		return body, nil
 	}))
@@ -130,7 +120,7 @@ func doRequest(t *testing.T, engine *gin.Engine, method, uri string, body []byte
 }
 
 func TestVerifyAcceptsValidRequest(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
+	rt, priv := newTestRuntime(t, nil)
 	engine := newTestRouter(rt)
 
 	headers := signRequest(priv, rt.keyID, requestSpec{
@@ -150,7 +140,7 @@ func TestVerifyAcceptsValidRequest(t *testing.T) {
 }
 
 func TestVerifyRejectsInvalidRequests(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
+	rt, priv := newTestRuntime(t, nil)
 	engine := newTestRouter(rt)
 	now := time.Now().Unix()
 
@@ -247,7 +237,7 @@ func TestVerifyRejectsInvalidRequests(t *testing.T) {
 }
 
 func TestVerifyRejectsTamperedBody(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
+	rt, priv := newTestRuntime(t, nil)
 	engine := newTestRouter(rt)
 
 	signedBody := []byte(`{"message":"hello"}`)
@@ -267,7 +257,7 @@ func TestVerifyRejectsTamperedBody(t *testing.T) {
 }
 
 func TestVerifyRejectsReplay(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
+	rt, priv := newTestRuntime(t, nil)
 	engine := newTestRouter(rt)
 
 	headers := signRequest(priv, rt.keyID, requestSpec{
@@ -289,7 +279,7 @@ func TestVerifyRejectsReplay(t *testing.T) {
 }
 
 func TestVerifyRestoresBodyForBinding(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
+	rt, priv := newTestRuntime(t, nil)
 	engine := newTestRouter(rt)
 
 	body := []byte(`{"message":"hello"}`)
@@ -312,7 +302,7 @@ func TestVerifyRestoresBodyForBinding(t *testing.T) {
 }
 
 func TestVerifyRejectsOversizedBody(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, func(cfg *config.Bot) {
+	rt, priv := newTestRuntime(t, func(cfg *config.Bot) {
 		cfg.MaxBodyBytes = 8
 	})
 	engine := newTestRouter(rt)
@@ -333,42 +323,8 @@ func TestVerifyRejectsOversizedBody(t *testing.T) {
 	}
 }
 
-func TestRequireScope(t *testing.T) {
-	t.Run("缺少 scope", func(t *testing.T) {
-		rt, priv := newTestRuntime(t, []string{ScopeRead}, nil)
-		engine := newTestRouter(rt)
-
-		headers := signRequest(priv, rt.keyID, requestSpec{
-			method: "GET",
-			uri:    "/bot-v1/admin",
-			ts:     time.Now().Unix(),
-			nonce:  nextNonce(),
-		})
-		recorder := doRequest(t, engine, "GET", "/bot-v1/admin", nil, headers)
-		if recorder.Code != http.StatusForbidden {
-			t.Fatalf("期望 403，得到 %d", recorder.Code)
-		}
-	})
-
-	t.Run("拥有 scope", func(t *testing.T) {
-		rt, priv := newTestRuntime(t, []string{ScopeAdmin}, nil)
-		engine := newTestRouter(rt)
-
-		headers := signRequest(priv, rt.keyID, requestSpec{
-			method: "GET",
-			uri:    "/bot-v1/admin",
-			ts:     time.Now().Unix(),
-			nonce:  nextNonce(),
-		})
-		recorder := doRequest(t, engine, "GET", "/bot-v1/admin", nil, headers)
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("期望 200，得到 %d", recorder.Code)
-		}
-	})
-}
-
 func TestRateLimit(t *testing.T) {
-	rt, priv := newTestRuntime(t, []string{ScopeRead}, func(cfg *config.Bot) {
+	rt, priv := newTestRuntime(t, func(cfg *config.Bot) {
 		cfg.RateLimitPerMinute = 1
 	})
 	engine := newTestRouter(rt)

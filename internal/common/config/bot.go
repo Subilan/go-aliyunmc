@@ -11,9 +11,6 @@ type Bot struct {
 	// PublicKeyPath 是机器人公钥文件路径，用于验证请求签名。
 	PublicKeyPath string `toml:"public_key_path,commented" validate:"required_if=Enabled true" comment:"机器人公钥文件路径（PEM，PKIX 格式），用于验证请求签名"`
 
-	// Scopes 是授予机器人的权限范围。
-	Scopes []string `toml:"scopes" validate:"unique,dive,oneof=read account admin" comment:"授予机器人的权限范围：read / account / admin"`
-
 	// TimestampToleranceSec 是允许的请求时间偏差，同时决定 nonce 缓存时长。
 	TimestampToleranceSec int `toml:"timestamp_tolerance_sec" default:"300" validate:"min=1,max=3600" comment:"允许的请求时间偏差（秒），同时决定 nonce 缓存时长"`
 
