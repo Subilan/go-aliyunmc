@@ -22,7 +22,7 @@ func (c *fakeIdleCountdownClock) Advance(duration time.Duration) {
 
 func newTestIdleCountdown(duration time.Duration) (*IdleCountdownController, *fakeIdleCountdownClock) {
 	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
-	controller := newIdleCountdownController(true, duration)
+	controller := newIdleCountdownController(true, duration, 0)
 	controller.now = clock.Now
 	return controller, clock
 }
@@ -142,7 +142,7 @@ func TestIdleCountdownPersistenceRestoresPausedAcrossRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "idle_countdown.json")
 	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
 
-	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller := newIdleCountdownController(true, 20*time.Minute, 0)
 	controller.now = clock.Now
 	controller.AttachPersistence(path, nil)
 	controller.StartIfInactive()
@@ -152,7 +152,7 @@ func TestIdleCountdownPersistenceRestoresPausedAcrossRestart(t *testing.T) {
 	}
 
 	// 模拟进程重启：新控制器从同一文件恢复。
-	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored := newIdleCountdownController(true, 20*time.Minute, 0)
 	restored.now = clock.Now
 	restored.AttachPersistence(path, nil)
 
@@ -169,13 +169,13 @@ func TestIdleCountdownPersistenceRestoresRunning(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "idle_countdown.json")
 	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
 
-	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller := newIdleCountdownController(true, 20*time.Minute, 0)
 	controller.now = clock.Now
 	controller.AttachPersistence(path, nil)
 	controller.StartIfInactive()
 	clock.Advance(5 * time.Minute)
 
-	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored := newIdleCountdownController(true, 20*time.Minute, 0)
 	restored.now = clock.Now
 	restored.AttachPersistence(path, nil)
 
@@ -189,14 +189,14 @@ func TestIdleCountdownPersistenceDropsExpiredRunningAndClearedState(t *testing.T
 	path := filepath.Join(t.TempDir(), "idle_countdown.json")
 	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
 
-	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller := newIdleCountdownController(true, 20*time.Minute, 0)
 	controller.now = clock.Now
 	controller.AttachPersistence(path, nil)
 	controller.StartIfInactive()
 
 	// 停机时间超过截止时间：不恢复运行中的倒计时，交给快照逻辑重新判断。
 	clock.Advance(30 * time.Minute)
-	expired := newIdleCountdownController(true, 20*time.Minute)
+	expired := newIdleCountdownController(true, 20*time.Minute, 0)
 	expired.now = clock.Now
 	expired.AttachPersistence(path, nil)
 	if got := expired.State().Status; got != IdleCountdownInactive {
@@ -205,7 +205,7 @@ func TestIdleCountdownPersistenceDropsExpiredRunningAndClearedState(t *testing.T
 
 	// 显式取消会清空持久化文件。
 	controller.Cancel()
-	cleared := newIdleCountdownController(true, 20*time.Minute)
+	cleared := newIdleCountdownController(true, 20*time.Minute, 0)
 	cleared.now = clock.Now
 	cleared.AttachPersistence(path, nil)
 	if got := cleared.State(); got.Status != IdleCountdownInactive {
@@ -260,7 +260,7 @@ func TestIdleCountdownExpiresOnce(t *testing.T) {
 }
 
 func TestIdleCountdownBackgroundExpiry(t *testing.T) {
-	controller := newIdleCountdownController(true, 30*time.Millisecond)
+	controller := newIdleCountdownController(true, 30*time.Millisecond, 0)
 	controller.tickInterval = 5 * time.Millisecond
 	controller.StartIfInactive()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -286,7 +286,7 @@ func TestIdleCountdownValidationAndDisabledState(t *testing.T) {
 		t.Fatalf("SetRemaining(too large) error = %v, want ErrIdleCountdownDuration", err)
 	}
 
-	disabled := newIdleCountdownController(false, time.Minute)
+	disabled := newIdleCountdownController(false, time.Minute, 0)
 	if disabled.StartIfInactive() {
 		t.Fatal("disabled countdown started")
 	}
@@ -343,17 +343,138 @@ func TestIdleCountdownPersistenceRestoresIdleSeconds(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "idle_countdown.json")
 	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
 
-	controller := newIdleCountdownController(true, 20*time.Minute)
+	controller := newIdleCountdownController(true, 20*time.Minute, 0)
 	controller.now = clock.Now
 	controller.AttachPersistence(path, nil)
 	controller.StartIfInactive()
 	clock.Advance(5 * time.Minute)
 
-	restored := newIdleCountdownController(true, 20*time.Minute)
+	restored := newIdleCountdownController(true, 20*time.Minute, 0)
 	restored.now = clock.Now
 	restored.AttachPersistence(path, nil)
 
 	if got := restored.State().IdleSeconds; got != 300 {
 		t.Fatalf("restored idle seconds = %d, want 300", got)
+	}
+}
+
+func remindIdleCountdown(controller *IdleCountdownController, now time.Time) {
+	controller.mu.Lock()
+	defer controller.mu.Unlock()
+	controller.remindLocked(now)
+}
+
+func expectNoIdleReminder(t *testing.T, controller *IdleCountdownController) {
+	t.Helper()
+	select {
+	case event := <-controller.Reminded():
+		t.Fatalf("不应收到提醒: %+v", event)
+	default:
+	}
+}
+
+func TestIdleCountdownReminder(t *testing.T) {
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+	controller := newIdleCountdownController(true, 20*time.Minute, 10*time.Minute)
+	controller.now = clock.Now
+	controller.StartIfInactive()
+
+	remindIdleCountdown(controller, clock.Now())
+	expectNoIdleReminder(t, controller)
+
+	clock.Advance(10 * time.Minute)
+	remindIdleCountdown(controller, clock.Now())
+
+	select {
+	case event := <-controller.Reminded():
+		if event.IdleSeconds != 600 || event.RemainingSeconds != 600 {
+			t.Fatalf("提醒事件不正确: %+v", event)
+		}
+	default:
+		t.Fatal("到达阈值后应收到提醒")
+	}
+
+	// 同一轮倒计时只提醒一次。
+	remindIdleCountdown(controller, clock.Now())
+	expectNoIdleReminder(t, controller)
+
+	// 暂停恢复不重复提醒。
+	if _, err := controller.Pause(); err != nil {
+		t.Fatalf("Pause() error = %v", err)
+	}
+	clock.Advance(time.Minute)
+	if _, err := controller.Resume(); err != nil {
+		t.Fatalf("Resume() error = %v", err)
+	}
+	remindIdleCountdown(controller, clock.Now())
+	expectNoIdleReminder(t, controller)
+
+	// 重置到阈值之上后重新允许提醒。
+	if _, err := controller.Reset(); err != nil {
+		t.Fatalf("Reset() error = %v", err)
+	}
+	clock.Advance(10 * time.Minute)
+	remindIdleCountdown(controller, clock.Now())
+	select {
+	case <-controller.Reminded():
+	default:
+		t.Fatal("重置后应重新提醒")
+	}
+}
+
+func TestIdleCountdownReminderRestartsAfterCancel(t *testing.T) {
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+	controller := newIdleCountdownController(true, 20*time.Minute, 10*time.Minute)
+	controller.now = clock.Now
+
+	controller.StartIfInactive()
+	clock.Advance(10 * time.Minute)
+	remindIdleCountdown(controller, clock.Now())
+	select {
+	case <-controller.Reminded():
+	default:
+		t.Fatal("第一轮倒计时应收到提醒")
+	}
+
+	controller.Cancel()
+	if !controller.StartIfInactive() {
+		t.Fatal("取消后应能开始新一轮倒计时")
+	}
+	clock.Advance(10 * time.Minute)
+	remindIdleCountdown(controller, clock.Now())
+	select {
+	case <-controller.Reminded():
+	default:
+		t.Fatal("新一轮倒计时应再次提醒")
+	}
+}
+
+func TestIdleCountdownReminderDisabled(t *testing.T) {
+	clock := &fakeIdleCountdownClock{now: time.Unix(1_700_000_000, 0)}
+	controller := newIdleCountdownController(true, 20*time.Minute, 0)
+	controller.now = clock.Now
+	controller.StartIfInactive()
+
+	clock.Advance(15 * time.Minute)
+	remindIdleCountdown(controller, clock.Now())
+	expectNoIdleReminder(t, controller)
+}
+
+func TestIdleCountdownBackgroundReminder(t *testing.T) {
+	controller := newIdleCountdownController(true, 60*time.Millisecond, 20*time.Millisecond)
+	controller.tickInterval = 5 * time.Millisecond
+	controller.StartIfInactive()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go controller.run(ctx)
+
+	select {
+	case event := <-controller.Reminded():
+		if event.RemainingSeconds <= 0 {
+			t.Fatalf("提醒事件剩余时间不正确: %+v", event)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("后台倒计时没有发出提醒")
 	}
 }

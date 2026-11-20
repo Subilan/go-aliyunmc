@@ -27,7 +27,6 @@ const (
 	loopbackHost = "127.0.0.1"
 
 	groupMessagePath = "/bot/group-message"
-	healthPath       = "/bot/health"
 
 	requestTimeout   = 10 * time.Second
 	dialTimeout      = 3 * time.Second
@@ -136,24 +135,6 @@ func NotifyGroup(message string) {
 	Default().SendGroupMessageAsync(message)
 }
 
-// HealthResult 是机器人探活接口的结果。
-type HealthResult struct {
-	// BotReady 表示 QQ 机器人是否已连接且就绪。
-	BotReady bool `json:"bot_ready"`
-	// GroupConfigured 表示是否已确定目标群 openid。
-	GroupConfigured bool `json:"group_configured"`
-}
-
-// Health 调用 GET /bot/health，确认机器人是否可用。
-// 该接口不发起 QQ 侧请求，可用于高频轮询。
-func (c *Client) Health(ctx context.Context) (*HealthResult, error) {
-	var result HealthResult
-	if err := c.doJSON(ctx, http.MethodGet, healthPath, nil, &result); err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
 // APIError 表示机器人接口返回了非 200 响应。
 type APIError struct {
 	// StatusCode 是机器人返回的 HTTP 状态码。
@@ -167,12 +148,6 @@ func (e *APIError) Error() string {
 		return fmt.Sprintf("机器人接口返回 HTTP %d", e.StatusCode)
 	}
 	return fmt.Sprintf("机器人接口返回 HTTP %d：%s", e.StatusCode, e.Detail)
-}
-
-// Retryable 报告该错误是否可能通过稍后重试恢复：
-// 502（QQ 发送失败）与 503（机器人未连接或未就绪）属于这类错误。
-func (e *APIError) Retryable() bool {
-	return e.StatusCode == http.StatusBadGateway || e.StatusCode == http.StatusServiceUnavailable
 }
 
 type groupMessageRequest struct {

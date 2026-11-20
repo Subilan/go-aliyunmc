@@ -117,9 +117,6 @@ func TestSendGroupMessageAPIError(t *testing.T) {
 	if apiErr.Detail != "QQ 机器人尚未连接" {
 		t.Errorf("detail 不正确: %s", apiErr.Detail)
 	}
-	if !apiErr.Retryable() {
-		t.Error("503 应被标记为可重试")
-	}
 	if !strings.Contains(apiErr.Error(), "QQ 机器人尚未连接") {
 		t.Errorf("错误信息应包含 detail: %s", apiErr.Error())
 	}
@@ -143,9 +140,6 @@ func TestSendGroupMessageValidationErrorDetailIsArray(t *testing.T) {
 	}
 	if !strings.Contains(apiErr.Detail, "field required") {
 		t.Errorf("detail 应包含数组中的原因: %s", apiErr.Detail)
-	}
-	if apiErr.Retryable() {
-		t.Error("422 不应被标记为可重试")
 	}
 }
 
@@ -177,31 +171,6 @@ func TestSendGroupMessageTransportError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "调用机器人接口失败") {
 		t.Fatalf("错误信息不正确: %v", err)
-	}
-}
-
-func TestHealth(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Errorf("请求方法应为 GET，得到 %s", r.Method)
-		}
-		if r.URL.Path != healthPath {
-			t.Errorf("请求路径不正确: %s", r.URL.Path)
-		}
-
-		_, _ = io.WriteString(w, `{"ok":true,"bot_ready":true,"group_configured":false}`)
-	}))
-	defer server.Close()
-
-	result, err := newClient(server.URL).Health(context.Background())
-	if err != nil {
-		t.Fatalf("探活失败: %v", err)
-	}
-	if !result.BotReady {
-		t.Error("bot_ready 应为 true")
-	}
-	if result.GroupConfigured {
-		t.Error("group_configured 应为 false")
 	}
 }
 

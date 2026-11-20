@@ -93,7 +93,7 @@ func (m *PlayerPresenceMonitor) collectLatest() {
 		return
 	}
 
-	m.tracker.Observe(point.Time, playerSet(point.PlayerNames))
+	m.tracker.Observe(point.Time, playerSet(point.Players))
 }
 
 // flush 播报自上次播报以来的净变化；同一窗口内的多个玩家会合并成一条消息。
@@ -182,14 +182,11 @@ func (t *playerPresenceTracker) Flush() (joined, left []string) {
 	return joined, left
 }
 
-// playerSet 把采样器保存的逗号分隔玩家名转换成集合。
-func playerSet(raw string) map[string]struct{} {
-	players := make(map[string]struct{})
-	for name := range strings.SplitSeq(raw, ",") {
-		name = strings.TrimSpace(name)
-		if name != "" {
-			players[name] = struct{}{}
-		}
+// playerSet 把采样器解析后的玩家名列表转换成集合。
+func playerSet(names []string) map[string]struct{} {
+	players := make(map[string]struct{}, len(names))
+	for _, name := range names {
+		players[name] = struct{}{}
 	}
 	return players
 }

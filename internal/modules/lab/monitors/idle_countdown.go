@@ -45,6 +45,14 @@ type IdleCountdownState struct {
 
 type idleCountdownClock func() time.Time
 
+// IdleReminderEvent 是倒计时剩余时间首次到达提醒阈值时的快照。
+type IdleReminderEvent struct {
+	// IdleSeconds 是当前空服周期已持续的秒数。
+	IdleSeconds int64
+	// RemainingSeconds 是距离释放的秒数。
+	RemainingSeconds int64
+}
+
 // idleCountdownPersistedState 是写入 state/idle_countdown.json 的内容。
 // 运行中的倒计时保存绝对截止时间，暂停中的倒计时保存冻结的剩余时长。
 type idleCountdownPersistedState struct {
@@ -65,23 +73,30 @@ type IdleCountdownController struct {
 	deadline   time.Time
 	// idleSince 是当前空服周期开始的时刻。暂停不会重置它，
 	// 因此可以据此算出玩家已经多久没有上线。
-	idleSince    time.Time
-	now          idleCountdownClock
-	expired      chan struct{}
+	idleSince time.Time
+	now       idleCountdownClock
+	expired   chan struct{}
+	// reminderBefore 是触发提醒的剩余时长，0 表示不提醒。
+	reminderBefore time.Duration
+	// reminded 记录本轮倒计时是否已经发出提醒，避免暂停恢复后重复发送。
+	reminded     bool
+	remindedCh   chan IdleReminderEvent
 	tickInterval time.Duration
 	// statePath 为空表示不持久化；非空时每次状态迁移都会写入该文件。
 	statePath string
 	logger    *log_util.NamedLogger
 }
 
-func newIdleCountdownController(enabled bool, configured time.Duration) *IdleCountdownController {
+func newIdleCountdownController(enabled bool, configured, reminderBefore time.Duration) *IdleCountdownController {
 	return &IdleCountdownController{
-		enabled:      enabled,
-		configured:   configured,
-		status:       IdleCountdownInactive,
-		now:          time.Now,
-		expired:      make(chan struct{}, 1),
-		tickInterval: time.Second,
+		enabled:        enabled,
+		configured:     configured,
+		reminderBefore: reminderBefore,
+		status:         IdleCountdownInactive,
+		now:            time.Now,
+		expired:        make(chan struct{}, 1),
+		remindedCh:     make(chan IdleReminderEvent, 1),
+		tickInterval:   time.Second,
 	}
 }
 
@@ -106,6 +121,11 @@ func (c *IdleCountdownController) State() IdleCountdownState {
 // Expired 在倒计时归零时收到一次通知。
 func (c *IdleCountdownController) Expired() <-chan struct{} {
 	return c.expired
+}
+
+// Reminded 在每轮倒计时剩余时间首次到达提醒阈值时收到一次通知。
+func (c *IdleCountdownController) Reminded() <-chan IdleReminderEvent {
+	return c.remindedCh
 }
 
 // StartIfInactive 由空服监控触发。运行中、暂停中或正在关服时不会覆盖现有状态。
@@ -150,6 +170,7 @@ func (c *IdleCountdownController) cancelLocked(preservePause bool) bool {
 	c.remaining = 0
 	c.deadline = time.Time{}
 	c.idleSince = time.Time{}
+	c.reminded = false
 	if changed {
 		c.persistLocked()
 	}
@@ -217,6 +238,7 @@ func (c *IdleCountdownController) Complete() {
 	c.remaining = 0
 	c.deadline = time.Time{}
 	c.idleSince = time.Time{}
+	c.reminded = false
 	c.persistLocked()
 }
 
@@ -238,6 +260,10 @@ func (c *IdleCountdownController) startLocked(duration time.Duration, now time.T
 	// 已有空服周期时不重置起点；暂停恢复和手动调整剩余时间仍属于同一周期。
 	if c.idleSince.IsZero() {
 		c.idleSince = now
+	}
+	// 剩余时间被重置到阈值之上时，允许新一轮提醒；恢复暂停时保留已提醒状态。
+	if duration > c.reminderBefore {
+		c.reminded = false
 	}
 	c.status = IdleCountdownRunning
 	c.remaining = duration
@@ -415,6 +441,28 @@ func (c *IdleCountdownController) expireLocked(now time.Time) {
 	}
 }
 
+// remindLocked 在剩余时间首次进入提醒阈值时发出一次事件。
+func (c *IdleCountdownController) remindLocked(now time.Time) {
+	if c.reminderBefore <= 0 || c.reminded || c.status != IdleCountdownRunning {
+		return
+	}
+
+	remaining := c.deadline.Sub(now)
+	if remaining <= 0 || remaining > c.reminderBefore {
+		return
+	}
+
+	c.reminded = true
+	state := c.stateLocked(now)
+	select {
+	case c.remindedCh <- IdleReminderEvent{
+		IdleSeconds:      state.IdleSeconds,
+		RemainingSeconds: state.RemainingSeconds,
+	}:
+	default:
+	}
+}
+
 func (c *IdleCountdownController) run(ctx context.Context) {
 	ticker := time.NewTicker(c.tickInterval)
 	defer ticker.Stop()
@@ -427,6 +475,7 @@ func (c *IdleCountdownController) run(ctx context.Context) {
 		case now := <-ticker.C:
 			c.mu.Lock()
 			c.expireLocked(now)
+			c.remindLocked(now)
 			c.mu.Unlock()
 		}
 	}

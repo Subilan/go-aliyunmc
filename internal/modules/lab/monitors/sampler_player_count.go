@@ -19,6 +19,8 @@ import (
 type PlayerListDataPoint struct {
 	Time        time.Time `json:"time"`
 	PlayerNames string    `json:"playerNames"`
+	// Players 是解析后的玩家名，仅供进程内使用，不参与 JSON 序列化。
+	Players []string `json:"-"`
 }
 
 // PlayerListSampler 定期采样在线玩家列表。
@@ -51,6 +53,7 @@ func (s *PlayerListSampler) loadFromDB() {
 		s.dataPoints = append(s.dataPoints, PlayerListDataPoint{
 			Time:        records[i].CreatedAt,
 			PlayerNames: records[i].PlayerNames,
+			Players:     labmodels.SplitPlayerNames(records[i].PlayerNames),
 		})
 	}
 }
@@ -114,6 +117,7 @@ func (s *PlayerListSampler) sampleAndStore(ctx context.Context) {
 	point := PlayerListDataPoint{
 		Time:        now,
 		PlayerNames: playerNames,
+		Players:     labmodels.SplitPlayerNames(playerNames),
 	}
 
 	// 持久化到数据库

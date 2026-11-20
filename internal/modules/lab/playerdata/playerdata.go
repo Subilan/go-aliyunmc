@@ -13,6 +13,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/common/paths"
 	"github.com/Subilan/go-aliyunmc/internal/common/store"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/mc"
+	"github.com/Subilan/go-aliyunmc/internal/modules/lab/models"
 )
 
 const (
@@ -313,9 +314,7 @@ func BatchQueryOnlineDates(playerNames []string) (map[string][]time.Time, error)
 
 	result := make(map[string][]time.Time)
 	for _, r := range rows {
-		names := strings.Split(r.PlayerNames, ",")
-		for _, name := range names {
-			name = strings.TrimSpace(name)
+		for _, name := range labmodels.SplitPlayerNames(r.PlayerNames) {
 			if nameSet[name] {
 				d := r.CreatedAt.Truncate(24 * time.Hour)
 				result[name] = append(result[name], d)

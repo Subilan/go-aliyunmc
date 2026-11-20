@@ -15,7 +15,7 @@ func testPlayerSet(names ...string) map[string]struct{} {
 }
 
 func TestPlayerSet(t *testing.T) {
-	got := playerSet(" Alice, Bob ,, 张三 ")
+	got := playerSet([]string{"Alice", "Bob", "张三"})
 	for _, name := range []string{"Alice", "Bob", "张三"} {
 		if _, ok := got[name]; !ok {
 			t.Errorf("playerSet 缺少玩家 %q: %v", name, got)
@@ -24,8 +24,8 @@ func TestPlayerSet(t *testing.T) {
 	if len(got) != 3 {
 		t.Errorf("playerSet 数量不正确: %v", got)
 	}
-	if len(playerSet("")) != 0 {
-		t.Errorf("空采样应返回空集合: %v", playerSet(""))
+	if len(playerSet(nil)) != 0 {
+		t.Errorf("空采样应返回空集合: %v", playerSet(nil))
 	}
 }
 

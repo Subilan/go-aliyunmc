@@ -13,7 +13,6 @@ description: 后端调用机器人发送群消息的客户端、消息模板、�
 | 方法 | 路径 | 用途 |
 |---|---|---|
 | POST | `/bot/group-message` | 向固定群发送一条纯文本消息 |
-| GET | `/bot/health` | 查询机器人是否已连接、目标群是否已配置 |
 
 机器人只接受本机回环地址的直连请求，携带 `Forwarded`、`X-Forwarded-For`、`X-Real-IP`
 的请求一律返回 `403`。客户端固定连接 `127.0.0.1`，并关闭环境代理，避免请求经本机代理转发。
@@ -103,21 +102,9 @@ batch_sec = 10
 server_started = "服务器已开启~ 地址：{{.Address}}"
 ```
 
-探活：
-
-```go
-health, err := client.Health(ctx)
-if err == nil && health.BotReady && health.GroupConfigured {
-    // 可以发送
-}
-```
-
-`Health` 不触发 QQ 侧请求，可以高频轮询。
-
 ## 错误处理
 
-非 `200` 响应返回 `*botapi.APIError`，`StatusCode` 与 `Detail` 对应机器人返回的状态码和 `detail` 字段；
-`Retryable()` 在 `502`、`503` 时为真，适合退避重试。
+非 `200` 响应返回 `*botapi.APIError`，`StatusCode` 与 `Detail` 对应机器人返回的状态码和 `detail` 字段。
 
 | 状态码 | 含义 |
 |---|---|

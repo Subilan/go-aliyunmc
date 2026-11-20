@@ -1,7 +1,6 @@
 package sample_routes
 
 import (
-	"strings"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
@@ -61,7 +60,7 @@ func HandleGetPlayerOnlineRanges(c *gin.Context) (any, error) {
 	var ranges []PlayerOnlineRange
 
 	for _, sample := range samples {
-		currentPlayers := splitPlayerNames(sample.PlayerNames)
+		currentPlayers := labmodels.SplitPlayerNames(sample.PlayerNames)
 
 		// 检查之前在线但现在不在的玩家 → 结束会话
 		for name, sess := range active {
@@ -98,13 +97,6 @@ func HandleGetPlayerOnlineRanges(c *gin.Context) (any, error) {
 	}
 
 	return ranges, nil
-}
-
-func splitPlayerNames(raw string) []string {
-	if raw == "" {
-		return nil
-	}
-	return strings.Split(raw, ",")
 }
 
 func contains(list []string, target string) bool {
