@@ -58,9 +58,9 @@ description: /bot-v1 的服务器状态聚合与一键启动接口、响应字�
 以服务器状态轮询（`[monitors.server] poll_interval_sec`）为准。
 
 `uptimeSeconds`、`memory` 与 `cpu` 由 `mc` 用户通过 SSH 读取实例的 `/proc` 得到，采样间隔由
-`[samplers.system_metrics] sample_interval_sec` 控制（默认 `10` 秒）。无法连接实例或实例未部署、
+`[samplers.system_metrics] sample_interval_sec` 控制（默认 `60` 秒）。无法连接实例或实例未部署、
 未运行时，这些字段为 `null`；`cpu` 还需要相邻两次采样才能计算，因此服务刚启动或实例刚恢复时
-可能短暂为 `null`。
+会在一个采样间隔内为 `null`。
 
 ## POST /bot-v1/trigger-one-click-start
 

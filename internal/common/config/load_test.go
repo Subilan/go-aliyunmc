@@ -112,7 +112,7 @@ func TestLoadAppliesDefaults(t *testing.T) {
 		{"tasks.archive.timeout_sec", cfg.Tasks.Archive.TimeoutSec, 600},
 		{"samplers.player_count.max_data_points", cfg.Samplers.PlayerCount.MaxDataPoints, 100},
 		{"samplers.balance.sample_interval_sec", cfg.Samplers.Balance.SampleIntervalSec, 300},
-		{"samplers.system_metrics.sample_interval_sec", cfg.Samplers.SystemMetrics.SampleIntervalSec, 10},
+		{"samplers.system_metrics.sample_interval_sec", cfg.Samplers.SystemMetrics.SampleIntervalSec, 60},
 	} {
 		if tc.got != tc.want {
 			t.Errorf("%s 的默认值未生效: 得到 %d，期望 %d", tc.name, tc.got, tc.want)
