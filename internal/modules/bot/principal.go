@@ -6,17 +6,7 @@ const principalKey = "bot_principal"
 
 // Principal 是已通过签名认证的机器人身份。
 type Principal struct {
-	KeyID  string
-	Scopes map[string]struct{}
-}
-
-// HasScope 判断是否拥有指定权限范围。
-func (p *Principal) HasScope(scope string) bool {
-	if p == nil {
-		return false
-	}
-	_, ok := p.Scopes[scope]
-	return ok
+	KeyID string
 }
 
 // SetPrincipal 把机器人身份写入 gin.Context。

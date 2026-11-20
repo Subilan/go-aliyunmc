@@ -2,7 +2,6 @@ package bot
 
 import (
 	"net/http"
-	"sort"
 	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
@@ -22,16 +21,9 @@ func handlePing(c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusUnauthorized, "机器人认证失败")
 	}
 
-	scopes := make([]string, 0, len(p.Scopes))
-	for scope := range p.Scopes {
-		scopes = append(scopes, scope)
-	}
-	sort.Strings(scopes)
-
 	return gin.H{
 		"ok":     true,
 		"time":   time.Now().Unix(),
 		"key_id": p.KeyID,
-		"scopes": scopes,
 	}, nil
 }
