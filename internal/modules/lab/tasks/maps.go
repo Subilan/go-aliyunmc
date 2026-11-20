@@ -46,6 +46,18 @@ func RangeExecutors(fn func(taskId uint, executor *Executor)) {
 	})
 }
 
+// GetRunningTaskIDByType 返回指定类型正在执行的任务 ID。
+// 执行器只会在任务创建并写入 ID 后注册，因此这里读到的 ID 始终有效。
+func GetRunningTaskIDByType(taskType labmodels.TaskType) (uint, bool) {
+	var taskID uint
+	RangeExecutors(func(id uint, executor *Executor) {
+		if taskID == 0 && executor.taskDefinition.Type == taskType {
+			taskID = id
+		}
+	})
+	return taskID, taskID != 0
+}
+
 func GetExecutor(taskId uint) (*Executor, bool) {
 	executor, loaded := runningExecutors.Load(taskId)
 	if !loaded {

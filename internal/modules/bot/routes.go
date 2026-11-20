@@ -8,9 +8,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// bindRoutes 注册机器人基础设施路由；业务接口在后续版本加入。
+// bindRoutes 注册机器人接口。
 func bindRoutes(router *gin.RouterGroup) {
 	router.GET("/ping", h.G(handlePing))
+	router.GET("/server-status", h.G(handleServerStatus))
+	// 触发会产生副作用，使用 POST。
+	router.POST("/trigger-one-click-start", h.G(handleTriggerOneClickStart))
 }
 
 // handlePing 供机器人确认服务可达。

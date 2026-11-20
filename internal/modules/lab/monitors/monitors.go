@@ -20,8 +20,14 @@ var (
 	bestEcsCandidateMonitor *BestEcsCandidateMonitor
 	playerListSampler       *PlayerListSampler
 	balanceSampler          *BalanceSampler
+	systemMetricsSampler    *SystemMetricsSampler
 	initializeOnce          sync.Once
 )
+
+// GetSystemMetricsSampler 返回实例 CPU 与内存占用采样器实例。
+func GetSystemMetricsSampler() *SystemMetricsSampler {
+	return systemMetricsSampler
+}
 
 // GetPlayerListSampler 返回玩家列表采样器实例。
 func GetPlayerListSampler() *PlayerListSampler {
@@ -70,6 +76,7 @@ func MustInitialize(ctx context.Context) {
 		bestEcsCandidateMonitor = newBestEcsCandidateMonitor()
 		playerListSampler = newPlayerListSampler()
 		balanceSampler = newBalanceSampler()
+		systemMetricsSampler = newSystemMetricsSampler()
 		playerPresenceMonitor := newPlayerPresenceMonitor(playerListSampler, serverMonitor)
 
 		tasks.SnapshotServerStatus = serverMonitor.Snapshot
@@ -85,6 +92,7 @@ func MustInitialize(ctx context.Context) {
 		go bestEcsCandidateMonitor.run(ctx)
 		go playerListSampler.run(ctx)
 		go balanceSampler.run(ctx)
+		go systemMetricsSampler.run(ctx)
 		go playerPresenceMonitor.run(ctx)
 	})
 }

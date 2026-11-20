@@ -37,7 +37,7 @@ func TestSectionPaths(t *testing.T) {
 		"[monitors.file_sync]",
 		"[monitors.auto_archive_idle]", "[monitors.backup]", "[monitors.spot_interruption]",
 		"[monitors.best_ecs_candidate]", "[monitors.best_ecs_candidate.filters]",
-		"[samplers]", "[samplers.player_count]", "[samplers.balance]",
+		"[samplers]", "[samplers.player_count]", "[samplers.balance]", "[samplers.system_metrics]",
 		"[forum]", "[forum.rate_limit]",
 	}
 

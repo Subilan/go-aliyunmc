@@ -68,6 +68,7 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 	if err != nil {
 		next.Online = false
 		next.PlayerCount = 0
+		next.MaxPlayerCount = 0
 		m.store.ForceStore(next, m.logger)
 		return
 	}
@@ -76,6 +77,9 @@ func (m *ServerStatusMonitor) pollAndStore(ctx context.Context) {
 		next.Online = true
 		if statusValue.Players.Online != nil {
 			next.PlayerCount = *statusValue.Players.Online
+		}
+		if statusValue.Players.Max != nil {
+			next.MaxPlayerCount = *statusValue.Players.Max
 		}
 	}
 

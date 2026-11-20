@@ -7,7 +7,8 @@ description: 内网机器人调用 /bot-v1 的本机访问控制、配置与客�
 
 机器人进程与服务端部署在同一台机器上，直接通过 `127.0.0.1` 调用 `/bot-v1`。该路由只接受来自本机回环地址的直连请求，不涉及公私钥通信，也不需要请求签名；服务端不向机器人签发用户登录态，也不复用 `/lab-v1`、`/forum-v1` 的 Cookie Session。
 
-当前只提供 `GET /bot-v1/ping`，用于确认服务可达；业务接口后续再加入同一前缀。通过来源地址检查后即可访问 `/bot-v1` 下的全部接口。
+当前提供 `GET /bot-v1/ping`、`GET /bot-v1/server-status` 与 `POST /bot-v1/trigger-one-click-start`。
+`ping` 用于确认服务可达，另外两个接口见 [机器人服务器接口](bot-server-api.md)。通过来源地址检查后即可访问 `/bot-v1` 下的全部接口。
 
 反方向（后端主动调用机器人发送群消息）见 [机器人消息推送](bot-message-api.md)。
 
@@ -66,6 +67,7 @@ print(resp.status_code, resp.text)  # 200 {"data":{"ok":true,"time":...}}
 |---|---|
 | `200` | 请求通过 |
 | `403` | 来源不是本机回环地址，或请求带有代理转发头 |
+| `409` | 触发类接口被其他部署链任务占用，见 [机器人服务器接口](bot-server-api.md) |
 | `429` | 超过 `rate_limit_per_minute` |
 
 `GET /bot-v1/ping` 返回服务端时间，可用于确认机器人能否连通服务。

@@ -64,6 +64,12 @@ func TriggerTaskSystem(taskType labmodels.TaskType, args map[string]any) (*Execu
 	return TriggerTask(taskType, nil, args)
 }
 
+// TriggerTaskBot 以机器人身份触发任务。
+// 机器人不是用户账号，因此与系统触发一致，不记录 by；这个入口只用于区分调用来源的语义。
+func TriggerTaskBot(taskType labmodels.TaskType, args map[string]any) (*Executor, *labmodels.Task, error) {
+	return TriggerTask(taskType, nil, args)
+}
+
 // TriggerTaskSystemSync 与 TriggerTaskSystem 类似，但阻塞到任务结束。
 func TriggerTaskSystemSync(taskType labmodels.TaskType, args map[string]any) (*labmodels.Task, error) {
 	return TriggerTaskSync(taskType, nil, args)

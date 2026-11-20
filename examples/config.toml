@@ -214,6 +214,10 @@ max_data_points = 100
 # 采样间隔（秒）
 sample_interval_sec = 300
 
+[samplers.system_metrics]
+# 实例CPU与内存占用采样间隔（秒）
+sample_interval_sec = 10
+
 [forum]
 # 上传文件根目录；留空表示 $STATE_DIR/state/forum/uploads
 upload_dir = ''

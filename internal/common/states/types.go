@@ -3,8 +3,9 @@ package states
 import "fmt"
 
 type ServerStatusState struct {
-	Online      bool  `json:"online"`
-	PlayerCount int64 `json:"playerCount"`
+	Online         bool  `json:"online"`
+	PlayerCount    int64 `json:"playerCount"`
+	MaxPlayerCount int64 `json:"maxPlayerCount"`
 }
 
 type EcsCandidate struct {
