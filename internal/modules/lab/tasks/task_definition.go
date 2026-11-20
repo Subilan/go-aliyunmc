@@ -122,6 +122,7 @@ func RegisterTaskDefinitions() {
 		Type:           labmodels.TaskTypeOneClickStartGame,
 		Timeout:        0, // 与 deploy 任务一致：各步骤自带超时，整体不设上限
 		F:              oneClickStartGameTask,
+		C:              checkOneClickStartGameTask,
 		E:              enforceOneClickStartGameTask,
 	}
 

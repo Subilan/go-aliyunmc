@@ -67,7 +67,7 @@ print(resp.status_code, resp.text)  # 200 {"data":{"ok":true,"time":...}}
 |---|---|
 | `200` | 请求通过 |
 | `403` | 来源不是本机回环地址，或请求带有代理转发头 |
-| `409` | 触发类接口被其他部署链任务占用，见 [机器人服务器接口](bot-server-api.md) |
+| `409` | 已有活跃实例，或触发类接口被其他部署链任务占用，见 [机器人服务器接口](bot-server-api.md) |
 | `429` | 超过 `rate_limit_per_minute` |
 
 `GET /bot-v1/ping` 返回服务端时间，可用于确认机器人能否连通服务。

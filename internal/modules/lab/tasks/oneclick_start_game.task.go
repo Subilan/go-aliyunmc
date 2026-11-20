@@ -3,16 +3,19 @@ package tasks
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
+	"github.com/Subilan/go-aliyunmc/internal/common/h"
 	"github.com/Subilan/go-aliyunmc/internal/common/messages"
 	"github.com/Subilan/go-aliyunmc/internal/common/perm_util"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/dao"
 	"github.com/Subilan/go-aliyunmc/internal/modules/lab/global_states"
 )
 
-// oneClickStartGameTask 在一条任务记录内把服务器带到「已部署且在线」的终态。
+// oneClickStartGameTask 在一条任务记录内完成「创建实例、部署环境、启动服务器」。
+// 触发前已由 checkOneClickStartGameTask 确认没有活跃实例，这里不会续跑已有实例。
 func oneClickStartGameTask(tc *TaskContext, args map[string]any) error {
 	if value, ok := args["startWhenCreated"].(bool); ok && !value {
 		tc.println("[oneclick_start_game] 启动游戏需要启动实例，已忽略 startWhenCreated=false")
@@ -23,45 +26,16 @@ func oneClickStartGameTask(tc *TaskContext, args map[string]any) error {
 		return err
 	}
 
-	instance, err := dao.GetActiveInstanceDefaultNil()
-	if err != nil {
-		return err
-	}
-	instanceExisted := instance != nil
-
-	if instance == nil {
-		tc.println("[oneclick_start_game] 阶段 1/3：创建实例")
-		if err := createInstance(tc, params); err != nil {
-			return fmt.Errorf("创建实例失败: %w", err)
-		}
-
-		// 重新读取，拿到创建后的实例状态。
-		instance, err = dao.GetActiveInstance()
-		if err != nil {
-			return fmt.Errorf("读取实例信息失败: %w", err)
-		}
-	} else {
-		tc.println("[oneclick_start_game] 检测到已有实例，跳过创建实例")
+	// 触发校验与任务启动之间仍可能被其他部署链任务插入；此时 createInstance
+	// 会以「已存在活跃实例」失败，而不会改动或续跑已有实例。
+	tc.println("[oneclick_start_game] 阶段 1/3：创建实例")
+	if err := createInstance(tc, params); err != nil {
+		return fmt.Errorf("创建实例失败: %w", err)
 	}
 
-	if !instance.IsDeployed {
-		tc.println("[oneclick_start_game] 阶段 2/3：部署环境")
-		if err := deployTask(tc, nil); err != nil {
-			return fmt.Errorf("部署失败: %w", err)
-		}
-	} else {
-		tc.println("[oneclick_start_game] 实例已完成部署，跳过部署环境")
-	}
-
-	// 只有本次触发之前实例就已存在时才参考服务器状态快照。刚创建的实例可能
-	// 仍对应上一个实例留下的快照，不能据此判定服务器已经在线。
-	if instanceExisted && SnapshotServerStatus != nil {
-		if snap := SnapshotServerStatus(); snap.IsValid() && snap.Value.Online {
-			tc.println("[oneclick_start_game] 服务器已在线，跳过启动")
-			tc.println("[oneclick_start_game] 启动游戏完成")
-			notifyServerStarted()
-			return nil
-		}
+	tc.println("[oneclick_start_game] 阶段 2/3：部署环境")
+	if err := deployTask(tc, nil); err != nil {
+		return fmt.Errorf("部署失败: %w", err)
 	}
 
 	// 与单独触发 start_server 时保持一致：抢占式实例回收保护期间不启动服务器，
@@ -77,6 +51,21 @@ func oneClickStartGameTask(tc *TaskContext, args map[string]any) error {
 
 	tc.println("[oneclick_start_game] 启动游戏完成")
 	notifyServerStarted()
+	return nil
+}
+
+// checkOneClickStartGameTask 拒绝在已有活跃实例时触发一键启动。
+// 已有实例的部署与启动应使用对应任务，避免一键启动悄悄续跑已有实例。
+func checkOneClickStartGameTask(_ map[string]any) error {
+	instance, err := dao.GetActiveInstanceDefaultNil()
+	if err != nil {
+		return err
+	}
+
+	if instance != nil {
+		return h.HttpError(http.StatusConflict, "已存在活跃实例")
+	}
+
 	return nil
 }
 
@@ -99,7 +88,8 @@ func notifyServerStarted() {
 }
 
 // enforceOneClickStartGameTask 在创建新实例时沿用创建实例任务的权限规则。
-// 已有实例时只做续跑，不再检查创建规格的权限。
+// 已有实例时跳过创建规格的权限检查，让 checkOneClickStartGameTask 返回
+// 「已存在实例」的提示，而不是先报权限不足。
 func enforceOneClickStartGameTask(role perm_util.Role, args map[string]any) error {
 	instance, err := dao.GetActiveInstanceDefaultNil()
 	if err != nil {

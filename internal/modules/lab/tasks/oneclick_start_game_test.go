@@ -42,8 +42,8 @@ func TestOneClickStartGameTaskDefinitionRegistered(t *testing.T) {
 	if def.ExclusiveGroup != TaskExclusiveGroupDeployChain {
 		t.Fatalf("oneclick_start_game should share %s, got %s", TaskExclusiveGroupDeployChain, def.ExclusiveGroup)
 	}
-	if def.F == nil || def.E == nil {
-		t.Fatalf("oneclick_start_game should define F and E")
+	if def.F == nil || def.E == nil || def.C == nil {
+		t.Fatalf("oneclick_start_game should define F, E and C")
 	}
 }
 
@@ -121,6 +121,29 @@ func TestNormalizeOneClickStartGameArgs(t *testing.T) {
 	}
 }
 
+func TestCheckOneClickStartGameTaskRequiresNoInstance(t *testing.T) {
+	if err := checkOneClickStartGameTask(nil); err != nil {
+		t.Fatalf("expected no instance to pass the check, got %v", err)
+	}
+
+	instance := labmodels.Instance{
+		InstanceId:   "test-oneclick-start-game-reject",
+		InstanceType: "ecs.test",
+		RegionId:     "test-region",
+		ZoneId:       "test-zone",
+		VSwitchId:    "test-vswitch",
+	}
+	if err := store.DB.Create(&instance).Error; err != nil {
+		t.Fatalf("create instance failed: %v", err)
+	}
+	defer store.DB.Unscoped().Delete(&instance)
+
+	// 已有实例时一键启动直接拒绝，不再续跑部署或启动阶段。
+	if err := checkOneClickStartGameTask(nil); err == nil {
+		t.Fatalf("expected existing instance to be rejected")
+	}
+}
+
 func TestEnforceOneClickStartGameTaskSkipsCreateCheckWhenInstanceExists(t *testing.T) {
 	instance := labmodels.Instance{
 		InstanceId:   "test-oneclick-start-game-resume",
@@ -134,8 +157,12 @@ func TestEnforceOneClickStartGameTaskSkipsCreateCheckWhenInstanceExists(t *testi
 	}
 	defer store.DB.Unscoped().Delete(&instance)
 
-	// 续跑不会创建实例，因此不应再执行 create-custom-instance 的权限检查。
+	// 已有实例时不再检查创建规格的权限，由 checkOneClickStartGameTask 给出
+	// 「已存在实例」的提示。
 	if err := enforceOneClickStartGameTask(perm_util.RoleBasic, map[string]any{"zoneId": "custom-zone"}); err != nil {
-		t.Fatalf("expected no create permission check on resume, got %v", err)
+		t.Fatalf("expected no create permission check when instance exists, got %v", err)
+	}
+	if err := checkOneClickStartGameTask(nil); err == nil {
+		t.Fatalf("expected the check to reject an existing instance")
 	}
 }
