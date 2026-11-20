@@ -73,7 +73,8 @@ func B[T any](h BodyHandler[T]) gin.HandlerFunc {
 			if errors.As(err, &tooLarge) {
 				return nil, HttpError(http.StatusRequestEntityTooLarge, "请求体过大")
 			}
-			return nil, HttpError(http.StatusBadRequest, "请求体格式错误: "+err.Error())
+			// 绑定错误的原始文本会包含字段名与校验标签，属于内部细节，不返回给客户端。
+			return nil, HttpError(http.StatusBadRequest, "请求体格式错误")
 		}
 		return h(body, c)
 	})
@@ -115,7 +116,8 @@ func Q[T any](h QueryHandler[T]) gin.HandlerFunc {
 	return G(func(c *gin.Context) (any, error) {
 		var query T
 		if err := c.ShouldBindQuery(&query); err != nil {
-			return nil, HttpError(http.StatusBadRequest, "查询参数格式错误: "+err.Error())
+			// 同 B：不把包含字段名与校验标签的原始绑定错误返回给客户端。
+			return nil, HttpError(http.StatusBadRequest, "查询参数格式错误")
 		}
 		return h(query, c)
 	})
