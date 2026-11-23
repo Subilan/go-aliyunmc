@@ -42,8 +42,10 @@ type ReplyFilter struct {
 	AuthorID          uint
 	Keyword           string
 	OnlyEnabledBoards bool
-	Page              int
-	PageSize          int
+	// Sort 为 "recent" 时按创建时间倒序（用户主页），默认按主题与楼层升序（后台）。
+	Sort     string
+	Page     int
+	PageSize int
 	// MaxPageSize 是接口允许的最大页大小；0 表示后台默认 100。
 	MaxPageSize int
 }
@@ -101,7 +103,13 @@ func ListReplies(f ReplyFilter) ([]forummodels.Reply, int64, int, int, error) {
 	if joinThreads || len(f.BoardIDs) > 0 {
 		db = db.Select("forum_replies.*")
 	}
-	err := db.Order("forum_replies.thread_id ASC, forum_replies.floor ASC").
+
+	order := "forum_replies.thread_id ASC, forum_replies.floor ASC"
+	if f.Sort == "recent" {
+		order = "forum_replies.created_at DESC, forum_replies.id DESC"
+	}
+
+	err := db.Order(order).
 		Offset(Offset(page, pageSize)).
 		Limit(pageSize).
 		Find(&replies).Error

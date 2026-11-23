@@ -99,9 +99,11 @@ type ThreadDetail struct {
 }
 
 // Reply 是跟帖。删除后作为占位返回，作者与正文为 null。
+// ThreadTitle 仅在用户主页等跨主题列表中使用，主题内跟帖列表不返回。
 type Reply struct {
 	ID             uint         `json:"id"`
 	ThreadID       uint         `json:"threadId"`
+	ThreadTitle    string       `json:"threadTitle,omitempty"`
 	Floor          uint         `json:"floor"`
 	Author         *UserSummary `json:"author"`
 	ContentHTML    *string      `json:"contentHtml"`

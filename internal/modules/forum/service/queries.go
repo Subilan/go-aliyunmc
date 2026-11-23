@@ -322,6 +322,7 @@ func UserReplies(userID uint, page, pageSize int, viewer *models.User) (dto.Page
 	replies, total, page, pageSize, err := dao.ListReplies(dao.ReplyFilter{
 		AuthorID:          userID,
 		OnlyEnabledBoards: true,
+		Sort:              "recent",
 		Page:              page,
 		PageSize:          pageSize,
 		MaxPageSize:       50,
@@ -332,11 +333,19 @@ func UserReplies(userID uint, page, pageSize int, viewer *models.User) (dto.Page
 
 	replyIDs := make([]uint, 0, len(replies))
 	authorIDs := make([]uint, 0, len(replies))
+	threadIDs := make([]uint, 0, len(replies))
 	for _, reply := range replies {
 		replyIDs = append(replyIDs, reply.ID)
 		authorIDs = append(authorIDs, reply.AuthorID)
+		threadIDs = append(threadIDs, reply.ThreadID)
 	}
 	authorIDs = uniqueIDs(authorIDs)
+	threadIDs = uniqueIDs(threadIDs)
+
+	threadTitles := make(map[uint]string, len(threadIDs))
+	for id, thread := range dao.ThreadsByIDs(threadIDs, false) {
+		threadTitles[id] = thread.Title
+	}
 
 	var viewerID uint
 	if viewer != nil {
@@ -344,9 +353,10 @@ func UserReplies(userID uint, page, pageSize int, viewer *models.User) (dto.Page
 	}
 
 	ctx := dto.ReplyContext{
-		Views:     dao.LoadUserViews(authorIDs),
-		LikeCount: dao.ReplyLikeCounts(replyIDs),
-		Liked:     dao.LikedReplyIDs(viewerID, replyIDs),
+		Views:        dao.LoadUserViews(authorIDs),
+		LikeCount:    dao.ReplyLikeCounts(replyIDs),
+		Liked:        dao.LikedReplyIDs(viewerID, replyIDs),
+		ThreadTitles: threadTitles,
 	}
 
 	return dto.NewPage(dto.Replies(replies, ctx), total, page, pageSize), nil

@@ -176,11 +176,12 @@ func ThreadDetailFrom(thread forummodels.Thread, ctx ThreadContext, canEdit, can
 
 // ReplyContext 是批量组装跟帖 DTO 需要的关联数据与权限回调。
 type ReplyContext struct {
-	Views     map[uint]dao.UserView
-	LikeCount map[uint]int64
-	Liked     map[uint]bool
-	CanEdit   func(reply forummodels.Reply) bool
-	CanDelete func(reply forummodels.Reply) bool
+	Views        map[uint]dao.UserView
+	LikeCount    map[uint]int64
+	Liked        map[uint]bool
+	ThreadTitles map[uint]string
+	CanEdit      func(reply forummodels.Reply) bool
+	CanDelete    func(reply forummodels.Reply) bool
 }
 
 // Replies 批量构造跟帖 DTO；已删除跟帖返回占位。
@@ -189,12 +190,13 @@ func Replies(replies []forummodels.Reply, ctx ReplyContext) []Reply {
 	for _, reply := range replies {
 		if reply.DeletedAt.Valid {
 			items = append(items, Reply{
-				ID:        reply.ID,
-				ThreadID:  reply.ThreadID,
-				Floor:     reply.Floor,
-				Author:    nil,
-				Deleted:   true,
-				CreatedAt: Timestamp(reply.CreatedAt),
+				ID:          reply.ID,
+				ThreadID:    reply.ThreadID,
+				ThreadTitle: ctx.ThreadTitles[reply.ThreadID],
+				Floor:       reply.Floor,
+				Author:      nil,
+				Deleted:     true,
+				CreatedAt:   Timestamp(reply.CreatedAt),
 			})
 			continue
 		}
@@ -208,6 +210,7 @@ func Replies(replies []forummodels.Reply, ctx ReplyContext) []Reply {
 		item := Reply{
 			ID:             reply.ID,
 			ThreadID:       reply.ThreadID,
+			ThreadTitle:    ctx.ThreadTitles[reply.ThreadID],
 			Floor:          reply.Floor,
 			Author:         SummaryForID(reply.AuthorID, ctx.Views),
 			ContentHTML:    &html,

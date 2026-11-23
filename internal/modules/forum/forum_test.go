@@ -422,8 +422,12 @@ func TestForumE2E(t *testing.T) {
 	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/settings", nil, http.StatusOK)
 	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/permissions/thread.pin/users?boardId="+uintString(boardID), nil, http.StatusOK)
 	userReplies := memberClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d/replies", member.ID), nil, http.StatusOK)
-	if len(items(t, userReplies)) == 0 {
+	userReplyItems := items(t, userReplies)
+	if len(userReplyItems) == 0 {
 		t.Fatalf("user replies = %v", userReplies)
+	}
+	if title := userReplyItems[0].(map[string]any)["threadTitle"]; title != "第一篇主题" {
+		t.Fatalf("user reply thread title = %v", title)
 	}
 
 	// 封禁：写操作立即 403，解封后恢复。
