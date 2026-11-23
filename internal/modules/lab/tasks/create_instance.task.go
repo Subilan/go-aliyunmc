@@ -37,15 +37,27 @@ type CreateInstanceTaskArgs struct {
 	StartWhenCreated bool `json:"startWhenCreated"`
 }
 
-// deleteInstance 用于清除创建实例过程中产生的资源，避免残留未使用的实例占用配额或产生费用。
-// 它会尝试删除指定ID的实例，如果删除失败会记录错误日志但不会返回错误。
-func deleteInstance(id string) {
+// forceDeleteInstance 强制停止并删除指定ID的实例。
+// 无论实例当前是否在运行都可以删除，用于清理未完成流程产生的资源。
+func forceDeleteInstance(id string) error {
+	if aliyun.EcsClient == nil {
+		return errors.New("ecs client is nil")
+	}
+
 	deleteInstanceRequest := &ecs20140526.DeleteInstanceRequest{
 		InstanceId: tea.String(id),
+		Force:      tea.Bool(true),
+		ForceStop:  tea.Bool(true),
 	}
 
 	_, err := aliyun.EcsClient.DeleteInstance(deleteInstanceRequest)
-	if err != nil {
+	return err
+}
+
+// deleteInstance 用于清除创建实例过程中产生的资源，避免残留未使用的实例占用配额或产生费用。
+// 它会尝试删除指定ID的实例，如果删除失败会记录错误日志但不会返回错误。
+func deleteInstance(id string) {
+	if err := forceDeleteInstance(id); err != nil {
 		log_util.Error("在清理过程中无法删除实例：%v", err)
 	}
 }

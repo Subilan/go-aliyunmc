@@ -52,7 +52,7 @@ const (
 )
 
 // deploySteps 定义了部署任务的各个步骤，包括每个步骤对应的脚本模板路径和执行超时时间（秒）。
-// 所有脚本都必须保持幂等：部署失败后可以直接重新触发，已完成的步骤会跳过或安全覆盖。
+// 所有脚本都必须保持幂等：步骤执行到一半被中断或超时后重试时，已完成的修改会安全覆盖。
 var deploySteps = []deployStep{
 	{name: "创建部署用户", script: "deploy.create-user.tmpl.sh", timeoutSec: 30},
 	{name: "配置SSH公钥", script: "deploy.setup-ssh-authorized-keys.tmpl.sh", timeoutSec: 30},
@@ -127,15 +127,51 @@ func deployCopyWssCert(tc *TaskContext, conn *remote_util.Conn, ctx context.Cont
 	return nil
 }
 
+// cleanupFailedDeployInstance 在部署未成功时尽力删除实例，避免留下悬垂实例继续计费，
+// 也避免它作为活跃实例阻止下一次部署链任务。
+// 只有云上删除成功后才移除数据库记录；删除失败时保留记录，便于手动清理。
+func cleanupFailedDeployInstance(tc *TaskContext, instanceId string) {
+	tc.println("[deploy] 部署未成功，尝试删除实例 " + instanceId)
+
+	if err := forceDeleteInstance(instanceId); err != nil {
+		log_util.Error("部署失败后删除实例 %s 失败，保留实例记录以便手动清理: %v", instanceId, err)
+		tc.println("[deploy] 删除实例失败，请手动清理：" + err.Error())
+		return
+	}
+
+	if err := dao.DeleteActiveInstance(); err != nil {
+		log_util.Error("部署失败后删除实例记录失败: %v", err)
+		tc.println("[deploy] 删除实例记录失败：" + err.Error())
+		return
+	}
+
+	tc.println("[deploy] 未完成部署的实例已删除")
+}
+
 func deployTask(tc *TaskContext, args map[string]any) error {
 	// 由于这是一个分步任务，先将步骤推进到第一步，以便在日志中正确显示当前步骤信息
 	tc.nextStep()
 
-	ip, err := dao.GetActiveInstanceIpNonEmpty()
+	instance, err := dao.GetActiveInstance()
 
 	if err != nil {
 		return err
 	}
+
+	// 部署未成功时实例会停留在未部署状态；在确定成功之前，任何退出路径
+	// （返回错误、panic、任务中断或步骤超时）都 best-effort 清理实例。
+	// 清理失败只记录日志，不覆盖原始部署错误。
+	deployed := false
+	defer func() {
+		if !deployed {
+			cleanupFailedDeployInstance(tc, instance.InstanceId)
+		}
+	}()
+
+	if instance.Ip == "" {
+		return errors.New("IP地址未分配")
+	}
+	ip := instance.Ip
 
 	// 授权公钥从 mc 私钥推导。
 	authorizedKey, err := remote_util.AuthorizedKeyLine()
@@ -205,6 +241,9 @@ func deployTask(tc *TaskContext, args map[string]any) error {
 
 		tc.nextStep()
 	}
+
+	// 所有部署步骤都已成功，环境本身已可用；后续状态记录失败不应触发实例清理。
+	deployed = true
 
 	recordDeployState(conn, fmt.Sprintf("status=success\ntime=%s\n", time.Now().Format(time.RFC3339)))
 
