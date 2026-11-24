@@ -44,7 +44,7 @@ func listUsers(c *gin.Context) (any, error) {
 		return nil, h.HttpError(http.StatusBadRequest, "banned 必须是布尔值")
 	}
 
-	return service.AdminListUsers(c.Query("keyword"), banned, c.Query("permission"), page, pageSize)
+	return service.AdminListUsers(c.Query("keyword"), banned, c.QueryArray("permission"), page, pageSize)
 }
 
 func userDetail(c *gin.Context) (any, error) {

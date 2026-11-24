@@ -20,7 +20,7 @@ import (
 )
 
 // AdminListUsers 返回共享用户 + 论坛资料列表。
-func AdminListUsers(keyword string, banned *bool, permission string, page, pageSize int) (dto.Page[dto.AdminUser], error) {
+func AdminListUsers(keyword string, banned *bool, permissions []string, page, pageSize int) (dto.Page[dto.AdminUser], error) {
 	db := store.DB.Model(&models.User{}).
 		Joins("LEFT JOIN forum_profiles ON forum_profiles.user_id = users.id AND forum_profiles.deleted_at IS NULL").
 		Where("users.deleted_at IS NULL")
@@ -32,8 +32,8 @@ func AdminListUsers(keyword string, banned *bool, permission string, page, pageS
 	if banned != nil {
 		db = db.Where("users.banned = ?", *banned)
 	}
-	if permission != "" {
-		db = db.Where("EXISTS (SELECT 1 FROM forum_user_permissions up WHERE up.user_id = users.id AND up.permission_code = ?)", permission)
+	if len(permissions) > 0 {
+		db = db.Where("EXISTS (SELECT 1 FROM forum_user_permissions up WHERE up.user_id = users.id AND up.permission_code IN ?)", permissions)
 	}
 
 	var total int64

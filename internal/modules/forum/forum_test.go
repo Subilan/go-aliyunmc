@@ -417,6 +417,18 @@ func TestForumE2E(t *testing.T) {
 	if len(items(t, adminUsers)) != 1 {
 		t.Fatalf("admin users = %v", adminUsers)
 	}
+	// 多个 permission 参数取“任一命中”。
+	multiPermissionUsers := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/users?permission=thread.pin&permission=board.create", nil, http.StatusOK)
+	foundModerator := false
+	for _, item := range items(t, multiPermissionUsers) {
+		if num(t, item.(map[string]any), "id") == moderator.ID {
+			foundModerator = true
+			break
+		}
+	}
+	if !foundModerator {
+		t.Fatalf("multi-permission user filter = %v", multiPermissionUsers)
+	}
 	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d", member.ID), nil, http.StatusOK)
 	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d/login-records", member.ID), nil, http.StatusOK)
 	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/settings", nil, http.StatusOK)
