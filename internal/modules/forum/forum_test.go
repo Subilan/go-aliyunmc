@@ -231,7 +231,7 @@ func TestForumE2E(t *testing.T) {
 	}, http.StatusOK)
 
 	boardPayload := adminClient.mustDo(http.MethodPost, "/forum-v1/admin/boards", map[string]any{
-		"slug": "general", "name": "综合讨论", "description": "随便聊聊", "icon": "discussion", "color": "#6366f1",
+		"slug": "general", "name": "综合讨论", "description": "随便聊聊", "icon": "message-text", "color": "#6366f1",
 	}, http.StatusOK)
 	boardID := num(t, dataMap(t, boardPayload), "id")
 

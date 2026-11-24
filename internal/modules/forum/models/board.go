@@ -12,7 +12,7 @@ type Board struct {
 	Slug        string `gorm:"size:64;not null;uniqueIndex:idx_forum_boards_slug" json:"slug"`
 	Name        string `gorm:"size:64;not null" json:"name"`
 	Description string `gorm:"size:255;not null;default:''" json:"description"`
-	Icon        string `gorm:"size:32;not null;default:'discussion'" json:"icon"`
+	Icon        string `gorm:"size:64;not null;default:'message-text'" json:"icon"`
 	Color       string `gorm:"size:7;not null;default:'#6366f1'" json:"color"`
 	SortOrder   int    `gorm:"not null;default:0;index:idx_forum_boards_enabled_sort_order,priority:2" json:"sortOrder"`
 	Enabled     bool   `gorm:"not null;default:true;index:idx_forum_boards_enabled_sort_order,priority:1" json:"enabled"`

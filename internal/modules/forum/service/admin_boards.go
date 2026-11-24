@@ -21,10 +21,10 @@ import (
 
 var (
 	slugRe  = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
+	iconRe  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 	colorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
 
 	reservedSlugs = map[string]bool{"admin": true, "new": true, "api": true, "files": true}
-	allowedIcons  = map[string]bool{"discussion": true, "code": true, "life": true, "feedback": true}
 )
 
 // BoardInput 是创建/修改板块的输入。
@@ -111,7 +111,7 @@ func CreateBoard(user *models.User, input BoardInput, c *gin.Context) (*forummod
 	if err != nil {
 		return nil, err
 	}
-	icon, err := validateIcon(valueOr(input.Icon, "discussion"))
+	icon, err := validateIcon(valueOr(input.Icon, "message-text"))
 	if err != nil {
 		return nil, err
 	}
@@ -308,8 +308,8 @@ func validateBoardDescription(value string) (string, error) {
 }
 
 func validateIcon(value string) (string, error) {
-	if !allowedIcons[value] {
-		return "", h.HttpError(http.StatusBadRequest, "图标只能是 discussion、code、life 或 feedback")
+	if len(value) > 64 || !iconRe.MatchString(value) {
+		return "", h.HttpError(http.StatusBadRequest, "图标名只能包含小写字母、数字和连字符，且不超过 64 个字符")
 	}
 	return value, nil
 }
