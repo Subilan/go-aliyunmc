@@ -19,11 +19,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// AdminListUsers 返回共享用户 + 论坛资料列表。
+// AdminListUsers 返回已登录过论坛前台的共享用户 + 论坛资料列表。
+// 从未登录过论坛的 lab 账号在论坛侧视为不存在。
 func AdminListUsers(keyword string, banned *bool, permissions []string, page, pageSize int) (dto.Page[dto.AdminUser], error) {
 	db := store.DB.Model(&models.User{}).
 		Joins("LEFT JOIN forum_profiles ON forum_profiles.user_id = users.id AND forum_profiles.deleted_at IS NULL").
-		Where("users.deleted_at IS NULL")
+		Where("users.deleted_at IS NULL").
+		Where(dao.ForumLoginExistsSQL, forummodels.LoginChannelForum)
 
 	if keyword != "" {
 		like := "%" + keyword + "%"
@@ -59,6 +61,9 @@ func AdminUserDetail(userID uint) (*dto.AdminUser, error) {
 	var user models.User
 	if err := store.DB.First(&user, userID).Error; err != nil {
 		return nil, h.HttpError(http.StatusNotFound, "用户不存在")
+	}
+	if err := requireForumParticipant(userID); err != nil {
+		return nil, err
 	}
 
 	items := adminUsers([]models.User{user})
@@ -101,6 +106,9 @@ func AdminUpdateUserProfile(actor *models.User, userID uint, update ProfileUpdat
 	if err := store.DB.First(&target, userID).Error; err != nil {
 		return h.HttpError(http.StatusNotFound, "用户不存在")
 	}
+	if err := requireForumParticipant(userID); err != nil {
+		return err
+	}
 
 	if err := UpdateProfile(&target, update); err != nil {
 		return err
@@ -123,6 +131,9 @@ func AdminBanUser(actor *models.User, userID uint, banned bool, c *gin.Context) 
 	var target models.User
 	if err := store.DB.First(&target, userID).Error; err != nil {
 		return h.HttpError(http.StatusNotFound, "用户不存在")
+	}
+	if err := requireForumParticipant(userID); err != nil {
+		return err
 	}
 
 	if banned && !perms.IsSuperuser(actor) && perms.IsSuperuser(&target) {
@@ -337,6 +348,10 @@ func checkSelfLockout(actor *models.User, oldSet, newSet map[grantKey]bool) erro
 
 // AdminLoginRecords 返回用户的论坛/后台登录记录。
 func AdminLoginRecords(userID uint, page, pageSize int) (dto.Page[dto.LoginRecordItem], error) {
+	if err := requireForumParticipant(userID); err != nil {
+		return dto.Page[dto.LoginRecordItem]{}, err
+	}
+
 	page, pageSize = dao.Pagination(page, pageSize, 20, 100)
 
 	db := store.DB.Model(&forummodels.LoginRecord{}).Where("user_id = ?", userID)

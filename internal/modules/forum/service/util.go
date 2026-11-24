@@ -17,6 +17,19 @@ func requireEnabledBoard(boardID uint) (*forummodels.Board, error) {
 	return board, nil
 }
 
+// requireForumParticipant 把从未登录过论坛前台的共享账号视为不存在。
+// 账号由 lab 创建，首次登录论坛后才成为论坛用户。
+func requireForumParticipant(userID uint) error {
+	ok, err := dao.HasForumLogin(userID)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return h.HttpError(http.StatusNotFound, "用户不存在")
+	}
+	return nil
+}
+
 // uniqueIDs 按出现顺序返回去重后的 ID 列表。
 func uniqueIDs(ids []uint) []uint {
 	if len(ids) == 0 {

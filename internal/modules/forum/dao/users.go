@@ -115,6 +115,20 @@ func LoadUserViews(userIDs []uint) map[uint]UserView {
 	return views
 }
 
+// ForumLoginExistsSQL 是 users 表上的 EXISTS 条件：至少成功登录过一次论坛前台。
+// 论坛前台 session 只能由 /forum-v1/auth/login 签发，后台登录（channel=admin）
+// 不产生该记录，因此它等价于用户确实进入过论坛。
+const ForumLoginExistsSQL = "EXISTS (SELECT 1 FROM forum_login_records flr WHERE flr.user_id = users.id AND flr.channel = ?)"
+
+// HasForumLogin 判断用户是否至少成功登录过一次论坛前台。
+func HasForumLogin(userID uint) (bool, error) {
+	var count int64
+	err := store.DB.Model(&forummodels.LoginRecord{}).
+		Where("user_id = ? AND channel = ?", userID, forummodels.LoginChannelForum).
+		Count(&count).Error
+	return count > 0, err
+}
+
 // EnsureProfile 确保用户存在论坛资料，返回资料与是否新建。
 func EnsureProfile(tx *gorm.DB, userID uint) (*forummodels.Profile, bool, error) {
 	var profile forummodels.Profile

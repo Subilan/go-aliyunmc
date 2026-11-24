@@ -296,6 +296,9 @@ func UserThreads(userID uint, page, pageSize int, viewer *models.User) (dto.Page
 	if !ok || view.Deleted {
 		return dto.Page[dto.ThreadSummary]{}, h.HttpError(http.StatusNotFound, "用户不存在")
 	}
+	if err := requireForumParticipant(userID); err != nil {
+		return dto.Page[dto.ThreadSummary]{}, err
+	}
 
 	threads, total, page, pageSize, err := dao.ListThreads(dao.ThreadFilter{
 		AuthorID:          userID,
@@ -317,6 +320,9 @@ func UserReplies(userID uint, page, pageSize int, viewer *models.User) (dto.Page
 	view, ok := views[userID]
 	if !ok || view.Deleted {
 		return dto.Page[dto.Reply]{}, h.HttpError(http.StatusNotFound, "用户不存在")
+	}
+	if err := requireForumParticipant(userID); err != nil {
+		return dto.Page[dto.Reply]{}, err
 	}
 
 	replies, total, page, pageSize, err := dao.ListReplies(dao.ReplyFilter{
@@ -495,6 +501,7 @@ func MentionCandidates(query string, excludeUserID uint, limit int) ([]dto.UserS
 	var users []models.User
 	err := store.DB.
 		Joins("JOIN forum_profiles ON forum_profiles.user_id = users.id AND forum_profiles.deleted_at IS NULL").
+		Where(dao.ForumLoginExistsSQL, forummodels.LoginChannelForum).
 		Where("users.deleted_at IS NULL AND users.banned = ? AND users.id <> ?", false, excludeUserID).
 		Where("users.username LIKE ? OR forum_profiles.nickname LIKE ?", like, like).
 		Order("users.username ASC").

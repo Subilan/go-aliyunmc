@@ -151,6 +151,9 @@ func UserProfile(targetUserID uint, viewer *models.User) (*dto.UserProfile, erro
 	if !ok || view.Deleted {
 		return nil, h.HttpError(http.StatusNotFound, "用户不存在")
 	}
+	if err := requireForumParticipant(targetUserID); err != nil {
+		return nil, err
+	}
 
 	counts := dao.UserStatsBatch([]uint{targetUserID})[targetUserID]
 	profileLikes := dao.UserLikeCount(targetUserID)

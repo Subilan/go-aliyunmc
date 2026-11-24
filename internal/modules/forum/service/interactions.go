@@ -223,6 +223,9 @@ func LikeUser(user *models.User, targetUserID uint, like bool) (bool, int64, err
 		}
 		return false, 0, err
 	}
+	if err := requireForumParticipant(targetUserID); err != nil {
+		return false, 0, err
+	}
 
 	var (
 		changed      bool

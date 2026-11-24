@@ -224,6 +224,7 @@ func TestForumE2E(t *testing.T) {
 	superuser := createUser(t, "admin", "password", perm_util.RoleSuperuser)
 	member := createUser(t, "member", "password", perm_util.RoleBasic)
 	moderator := createUser(t, "moderator", "password", perm_util.RoleBasic)
+	pending := createUser(t, "pending", "password", perm_util.RoleSuperuser)
 
 	adminClient := newClient(t, server.URL)
 	adminClient.mustDo(http.MethodPost, "/forum-v1/admin/auth/login", map[string]any{
@@ -248,6 +249,27 @@ func TestForumE2E(t *testing.T) {
 	superClient.mustDo(http.MethodPost, "/forum-v1/auth/login", map[string]any{
 		"username": "admin", "password": "password",
 	}, http.StatusOK)
+
+	// 从未登录过论坛前台的共享账号在论坛与后台用户管理中都视为不存在。
+	// 后台登录会初始化资料与默认权限，但不产生论坛登录记录，因此仍应隐藏。
+	pendingClient := newClient(t, server.URL)
+	pendingClient.mustDo(http.MethodPost, "/forum-v1/admin/auth/login", map[string]any{
+		"username": "pending", "password": "password",
+	}, http.StatusOK)
+	memberClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d", pending.ID), nil, http.StatusNotFound)
+	memberClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d/threads", pending.ID), nil, http.StatusNotFound)
+	memberClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d/replies", pending.ID), nil, http.StatusNotFound)
+	pendingUsers := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/users?keyword=pending", nil, http.StatusOK)
+	if len(items(t, pendingUsers)) != 0 {
+		t.Fatalf("pending users = %v", pendingUsers)
+	}
+	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d", pending.ID), nil, http.StatusNotFound)
+	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d/login-records", pending.ID), nil, http.StatusNotFound)
+	for _, item := range items(t, memberClient.mustDo(http.MethodGet, "/forum-v1/users/search?q=pending", nil, http.StatusOK)) {
+		if num(t, item.(map[string]any), "id") == pending.ID {
+			t.Fatalf("pending user in mention search: %v", item)
+		}
+	}
 
 	imageURL := uploadPNG(t, memberClient)
 	threadContent := fmt.Sprintf(`<p>你好世界 #初见 <span class="mention" data-tag-type="mention" data-user-id="%d">@admin</span></p><p><img src="%s" alt="图"></p>`, superuser.ID, imageURL)
@@ -631,6 +653,13 @@ func TestForumE2E(t *testing.T) {
 	if lastThreadAdmin["lastReplyAt"] != nil {
 		t.Fatalf("lastReplyAt = %v, want nil", lastThreadAdmin["lastReplyAt"])
 	}
+
+	// 首次登录论坛后，账号才在论坛个人页与后台用户管理中可见。
+	pendingClient.mustDo(http.MethodPost, "/forum-v1/auth/login", map[string]any{
+		"username": "pending", "password": "password",
+	}, http.StatusOK)
+	pendingClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d", pending.ID), nil, http.StatusOK)
+	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d", pending.ID), nil, http.StatusOK)
 }
 
 func uploadPNG(t *testing.T, client *testClient) string {
