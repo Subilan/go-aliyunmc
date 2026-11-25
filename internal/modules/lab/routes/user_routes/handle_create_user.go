@@ -18,6 +18,9 @@ type CreateUserRequest struct {
 }
 
 // HandleCreateUser 由管理员创建用户并指定初始权限。
+//
+// 与自助注册不同，这里不校验密码格式，以便管理员设置便于记忆的临时测试密码；
+// 用户名格式与重名检查仍然保留。
 func HandleCreateUser(req CreateUserRequest, c *gin.Context) (any, error) {
 	// 登录与固定路由权限已由 Auth、Perm 中间件校验。
 	currentRole, _ := mid.CurrentRole(c)

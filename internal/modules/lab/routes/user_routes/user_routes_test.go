@@ -211,6 +211,38 @@ func TestHandleCreateUserWithRole(t *testing.T) {
 	}
 }
 
+// 管理员手动创建用户时不校验密码格式，便于设置临时测试账号。
+func TestHandleCreateUserSkipsPasswordFormat(t *testing.T) {
+	handler := setupTestRouter()
+	suffix := time.Now().UnixNano()
+	operator := createUserWithRole(t, fmt.Sprintf("weak_operator_%d", suffix), perm_util.RoleOperator)
+	cookie := loginAndGetSessionCookie(t, handler, operator.Username, "password123")
+	username := fmt.Sprintf("w%08d", suffix%100_000_000)
+
+	body, _ := json.Marshal(CreateUserRequest{
+		Username: username,
+		Password: "123",
+		Role:     perm_util.RoleBasic,
+	})
+	req, _ := http.NewRequest("POST", "/lab-v1/user/create", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d, body=%s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var created models.User
+	if err := store.DB.Where("username = ?", username).First(&created).Error; err != nil {
+		t.Fatalf("failed to find created user: %v", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(created.PasswordHash), []byte("123")); err != nil {
+		t.Fatalf("created user password is invalid: %v", err)
+	}
+}
+
 func TestHandleLogin(t *testing.T) {
 	handler := setupTestRouter()
 

@@ -23,17 +23,29 @@ var (
 
 // HandleRegister 用户注册处理函数
 func HandleRegister(req RegisterRequest, c *gin.Context) (any, error) {
+	if err := validatePasswordFormat(req.Password); err != nil {
+		return nil, err
+	}
 	return createUser(req.Username, req.Password, perm_util.RoleBasic)
+}
+
+// validatePasswordFormat 校验自助注册的密码格式。
+// 管理员手动创建用户（HandleCreateUser）不调用它，以便设置便于记忆的临时测试密码。
+func validatePasswordFormat(password string) error {
+	if len(password) < 8 || len(password) > 20 ||
+		!hasLetterPattern.MatchString(password) ||
+		!hasDigitPattern.MatchString(password) {
+		return h.HttpError(http.StatusBadRequest, "密码长度需为 8~20 个字符，且必须包含英文字母和数字")
+	}
+	return nil
 }
 
 func createUser(username, password string, role perm_util.Role) (*models.User, error) {
 	if !validUsernamePattern.MatchString(username) {
 		return nil, h.HttpError(http.StatusBadRequest, "用户名需为 4~12 个字符，且只能包含英文字母、数字和下划线")
 	}
-	if len(password) < 8 || len(password) > 20 ||
-		!hasLetterPattern.MatchString(password) ||
-		!hasDigitPattern.MatchString(password) {
-		return nil, h.HttpError(http.StatusBadRequest, "密码长度需为 8~20 个字符，且必须包含英文字母和数字")
+	if password == "" {
+		return nil, h.HttpError(http.StatusBadRequest, "密码不能为空")
 	}
 
 	// 检查用户名是否已存在
@@ -49,6 +61,10 @@ func createUser(username, password string, role perm_util.Role) (*models.User, e
 	// 加密密码
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
+		// 管理员创建用户时不限制密码长度，超长密码在这里转为 400，而不是 500。
+		if errors.Is(err, bcrypt.ErrPasswordTooLong) {
+			return nil, h.HttpError(http.StatusBadRequest, "密码过长")
+		}
 		return nil, err
 	}
 
