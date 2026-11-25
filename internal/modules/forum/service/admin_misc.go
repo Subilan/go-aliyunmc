@@ -195,9 +195,11 @@ func AdminDeleteUpload(actor *models.User, uploadID uint, c *gin.Context) error 
 }
 
 // AdminDashboard 返回数据看板。
+// days > 0 时总量与趋势都限定在最近 days 个自然日内；
+// days == 0 表示全部时间：总量取全站累计，趋势与明细仍只返回最近 30 天。
 func AdminDashboard(days int) (*dto.Dashboard, error) {
-	if days <= 0 {
-		days = 7
+	if days < 0 {
+		days = 0
 	}
 	if days > 30 {
 		days = 30
@@ -205,12 +207,25 @@ func AdminDashboard(days int) (*dto.Dashboard, error) {
 
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	trendStart := startOfDay.AddDate(0, 0, -(days - 1))
 
-	totalThreads := countRows(&forummodels.Thread{}, "deleted_at IS NULL")
-	totalReplies := countRows(&forummodels.Reply{}, "deleted_at IS NULL")
-	totalUsers := countRows(&models.User{}, "deleted_at IS NULL")
-	totalBoards := countRows(&forummodels.Board{}, "deleted_at IS NULL")
+	allTime := days == 0
+	trendDays := days
+	if allTime {
+		trendDays = 30
+	}
+	trendStart := startOfDay.AddDate(0, 0, -(trendDays - 1))
+
+	countInRange := func(model any) int64 {
+		if allTime {
+			return countRows(model, "deleted_at IS NULL")
+		}
+		return countSince(model, trendStart, "deleted_at IS NULL")
+	}
+
+	totalThreads := countInRange(&forummodels.Thread{})
+	totalReplies := countInRange(&forummodels.Reply{})
+	totalUsers := countInRange(&models.User{})
+	totalBoards := countInRange(&forummodels.Board{})
 
 	todayThreads := countSince(&forummodels.Thread{}, startOfDay, "deleted_at IS NULL")
 	todayReplies := countSince(&forummodels.Reply{}, startOfDay, "deleted_at IS NULL")
@@ -221,14 +236,14 @@ func AdminDashboard(days int) (*dto.Dashboard, error) {
 	replyTrend := dailyCounts(&forummodels.Reply{}, trendStart, "deleted_at IS NULL")
 	userTrend := dailyCounts(&models.User{}, trendStart, "deleted_at IS NULL")
 
-	trend := make([]dto.DashboardTrend, 0, days)
-	for i := 0; i < days; i++ {
-		day := trendStart.AddDate(0, 0, i).Format("2006-01-02")
+	trend := make([]dto.DashboardTrend, 0, trendDays)
+	for day := trendStart; !day.After(startOfDay); day = day.AddDate(0, 0, 1) {
+		key := day.Format("2006-01-02")
 		trend = append(trend, dto.DashboardTrend{
-			Date:    day,
-			Threads: threadTrend[day],
-			Replies: replyTrend[day],
-			Users:   userTrend[day],
+			Date:    key,
+			Threads: threadTrend[key],
+			Replies: replyTrend[key],
+			Users:   userTrend[key],
 		})
 	}
 

@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/perm_util"
@@ -22,6 +23,7 @@ import (
 	"github.com/Subilan/go-aliyunmc/internal/common/store/models"
 	"github.com/Subilan/go-aliyunmc/internal/common/testutil"
 	"github.com/Subilan/go-aliyunmc/internal/modules/forum"
+	forummodels "github.com/Subilan/go-aliyunmc/internal/modules/forum/models"
 	forumsession "github.com/Subilan/go-aliyunmc/internal/modules/forum/session"
 
 	"github.com/creasty/defaults"
@@ -528,6 +530,51 @@ func TestForumE2E(t *testing.T) {
 	if !ok || num(t, todayTrend, "threads") < 1 || num(t, todayTrend, "replies") < 1 {
 		t.Fatalf("dashboard today trend = %v", trend[len(trend)-1])
 	}
+	allPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/dashboard?days=0", nil, http.StatusOK)
+	allDashboard := dataMap(t, allPayload)
+	allTrend, ok := allDashboard["trend"].([]any)
+	if !ok || len(allTrend) != 30 {
+		t.Fatalf("all-time dashboard trend = %v", allDashboard["trend"])
+	}
+	allLastDay, ok := allTrend[len(allTrend)-1].(map[string]any)
+	if !ok || num(t, allLastDay, "threads") != num(t, todayTrend, "threads") || num(t, allLastDay, "replies") != num(t, todayTrend, "replies") {
+		t.Fatalf("all-time dashboard last day = %v, window last day = %v", allLastDay, todayTrend)
+	}
+
+	// 把一条主题回拨到 40 天前，确认时间范围同时作用于总量与趋势。
+	backdatedAt := time.Now().AddDate(0, 0, -40)
+	backdateThread := time.Now()
+	if err := store.DB.Model(&forummodels.Thread{}).Where("id = ?", threadID).Update("created_at", backdatedAt).Error; err != nil {
+		t.Fatalf("backdate thread: %v", err)
+	}
+	restoreThreadCreatedAt := func() {
+		if err := store.DB.Model(&forummodels.Thread{}).Where("id = ?", threadID).Update("created_at", backdateThread).Error; err != nil {
+			t.Fatalf("restore thread created_at: %v", err)
+		}
+	}
+	defer restoreThreadCreatedAt()
+
+	windowPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/dashboard?days=7", nil, http.StatusOK)
+	windowTotals := dataMap(t, windowPayload)["totals"].(map[string]any)
+	windowBeforeTotals := dashboard["totals"].(map[string]any)
+	if num(t, windowTotals, "threads")+1 != num(t, windowBeforeTotals, "threads") {
+		t.Fatalf("window totals after backdate = %v, before = %v", windowTotals, windowBeforeTotals)
+	}
+
+	allAgainPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/dashboard?days=0", nil, http.StatusOK)
+	allAgain := dataMap(t, allAgainPayload)
+	allTotals := allDashboard["totals"].(map[string]any)
+	if num(t, allAgain["totals"].(map[string]any), "threads") != num(t, allTotals, "threads") {
+		t.Fatalf("all-time totals after backdate = %v, before = %v", allAgain["totals"], allTotals)
+	}
+	allAgainTrend, ok := allAgain["trend"].([]any)
+	if !ok || len(allAgainTrend) != 30 {
+		t.Fatalf("all-time trend after backdate = %v", allAgain["trend"])
+	}
+	if lastDate := allAgainTrend[len(allAgainTrend)-1].(map[string]any)["date"]; lastDate != time.Now().Format("2006-01-02") {
+		t.Fatalf("all-time trend last date = %v", lastDate)
+	}
+	restoreThreadCreatedAt()
 	auditPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/audit-logs", nil, http.StatusOK)
 	if len(items(t, auditPayload)) == 0 {
 		t.Fatalf("audit logs empty: %v", auditPayload)

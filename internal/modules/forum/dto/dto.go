@@ -326,6 +326,8 @@ type DashboardTrend struct {
 }
 
 // Dashboard 是后台看板响应。
+// Totals 与 Trend 都限定在请求的时间范围内；days=0 表示全部时间，
+// 此时 Totals 为全站累计，Trend 仍只返回最近 30 天。
 type Dashboard struct {
 	Totals DashboardTotals  `json:"totals"`
 	Today  DashboardTotals  `json:"today"`
