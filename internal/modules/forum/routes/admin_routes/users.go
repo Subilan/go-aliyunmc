@@ -143,27 +143,8 @@ func loginRecords(c *gin.Context) (any, error) {
 
 func bindPermissions(admin *gin.RouterGroup) {
 	admin.GET("/permissions", mid.RequirePermission("permission.view"), h.G(permissionCatalog))
-	admin.GET("/permissions/:code/users", mid.RequirePermission("permission.view"), h.G(permissionUsers))
 }
 
 func permissionCatalog(c *gin.Context) (any, error) {
 	return gin.H{"items": service.AdminPermissionCatalog()}, nil
-}
-
-func permissionUsers(c *gin.Context) (any, error) {
-	code := c.Param("code")
-
-	var boardID *uint
-	if value := c.Query("boardId"); value != "" {
-		parsed, err := strconv.ParseUint(value, 10, 64)
-		if err != nil {
-			return nil, h.HttpError(http.StatusBadRequest, "boardId 必须是数字")
-		}
-		id := uint(parsed)
-		boardID = &id
-	}
-
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	pageSize, _ := strconv.Atoi(c.DefaultQuery("pageSize", "20"))
-	return service.AdminPermissionUsers(code, boardID, page, pageSize)
 }

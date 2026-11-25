@@ -301,6 +301,14 @@ type UploadStats struct {
 	SizeBytes int64  `json:"sizeBytes"`
 }
 
+// UploadStatsSummary 是上传分类统计与磁盘配额。
+// QuotaBytes / UserQuotaBytes 为 0 表示不限制。
+type UploadStatsSummary struct {
+	Items          []UploadStats `json:"items"`
+	QuotaBytes     int64         `json:"quotaBytes"`
+	UserQuotaBytes int64         `json:"userQuotaBytes"`
+}
+
 // DashboardTotals 是看板总量。
 type DashboardTotals struct {
 	Threads int64 `json:"threads"`
@@ -369,10 +377,4 @@ type BatchFailure struct {
 type BatchResult struct {
 	Succeeded []uint         `json:"succeeded"`
 	Failed    []BatchFailure `json:"failed"`
-}
-
-// PermissionUser 是“拥有某权限点的用户”列表项。
-type PermissionUser struct {
-	UserSummary
-	BoardID *uint `json:"boardId"`
 }

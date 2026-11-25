@@ -28,6 +28,15 @@ func UploadBytesByOwner(ownerID uint) (int64, error) {
 	return total, err
 }
 
+// UploadBytesTotal 返回全站未删除上传记录占用的总字节数。
+func UploadBytesTotal() (int64, error) {
+	var total int64
+	err := store.DB.Model(&forummodels.Upload{}).
+		Select("COALESCE(SUM(size_bytes), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
 // UploadByKey 按 key 读取上传记录。
 func UploadByKey(key string, includeDeleted bool) (*forummodels.Upload, error) {
 	db := store.DB

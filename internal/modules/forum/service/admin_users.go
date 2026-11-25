@@ -383,54 +383,6 @@ func AdminLoginRecords(userID uint, page, pageSize int) (dto.Page[dto.LoginRecor
 	return dto.NewPage(items, total, page, pageSize), nil
 }
 
-// AdminPermissionUsers 返回拥有指定权限点的用户。
-func AdminPermissionUsers(code string, boardID *uint, page, pageSize int) (dto.Page[dto.PermissionUser], error) {
-	if !perms.Exists(code) {
-		return dto.Page[dto.PermissionUser]{}, h.HttpError(http.StatusNotFound, "权限点不存在")
-	}
-
-	db := store.DB.Model(&forummodels.UserPermission{}).Where("permission_code = ?", code)
-	if boardID != nil {
-		db = db.Where("scope_board_id = ?", *boardID)
-	}
-
-	var total int64
-	if err := db.Distinct("user_id").Count(&total).Error; err != nil {
-		return dto.Page[dto.PermissionUser]{}, err
-	}
-
-	page, pageSize = dao.Pagination(page, pageSize, 20, 100)
-
-	var rows []forummodels.UserPermission
-	if err := db.Select("user_id").Group("user_id").
-		Order("user_id ASC").
-		Offset(dao.Offset(page, pageSize)).
-		Limit(pageSize).
-		Find(&rows).Error; err != nil {
-		return dto.Page[dto.PermissionUser]{}, err
-	}
-
-	ids := make([]uint, 0, len(rows))
-	for _, row := range rows {
-		ids = append(ids, row.UserID)
-	}
-	views := dao.LoadUserViews(ids)
-
-	items := make([]dto.PermissionUser, 0, len(rows))
-	for _, row := range rows {
-		view, ok := views[row.UserID]
-		if !ok || view.Deleted {
-			continue
-		}
-		items = append(items, dto.PermissionUser{
-			UserSummary: dto.SummaryFromView(view),
-			BoardID:     boardID,
-		})
-	}
-
-	return dto.NewPage(items, total, page, pageSize), nil
-}
-
 // AdminPermissionCatalog 返回权限点目录。
 func AdminPermissionCatalog() []dto.PermissionItem {
 	catalog := perms.All()

@@ -454,7 +454,6 @@ func TestForumE2E(t *testing.T) {
 	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d", member.ID), nil, http.StatusOK)
 	adminClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/admin/users/%d/login-records", member.ID), nil, http.StatusOK)
 	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/settings", nil, http.StatusOK)
-	adminClient.mustDo(http.MethodGet, "/forum-v1/admin/permissions/thread.pin/users?boardId="+uintString(boardID), nil, http.StatusOK)
 	userReplies := memberClient.mustDo(http.MethodGet, fmt.Sprintf("/forum-v1/users/%d/replies", member.ID), nil, http.StatusOK)
 	userReplyItems := items(t, userReplies)
 	if len(userReplyItems) == 0 {
@@ -508,6 +507,10 @@ func TestForumE2E(t *testing.T) {
 	statsPayload := adminClient.mustDo(http.MethodGet, "/forum-v1/admin/uploads/stats", nil, http.StatusOK)
 	if len(items(t, statsPayload)) != 1 {
 		t.Fatalf("upload stats = %v", statsPayload)
+	}
+	statsSummary := dataMap(t, statsPayload)
+	if num(t, statsSummary, "quotaBytes") != 1073741824 || num(t, statsSummary, "userQuotaBytes") != 268435456 {
+		t.Fatalf("upload stats quota = %v", statsSummary)
 	}
 
 	// 权限目录、看板与审计。

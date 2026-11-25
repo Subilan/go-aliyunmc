@@ -245,6 +245,8 @@ max_quote_refs_per_post = 20
 like_notification_cooldown_minutes = 10
 # 每个用户上传文件占用的磁盘上限（字节）；0 表示不限制
 user_quota_bytes = 268435456
+# 论坛上传文件总占用上限（字节）；0 表示不限制
+storage_quota_bytes = 1073741824
 
 [forum.rate_limit]
 # 是否启用论坛接口限流

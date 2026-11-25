@@ -40,11 +40,7 @@ func listUploads(c *gin.Context) (any, error) {
 }
 
 func uploadStats(c *gin.Context) (any, error) {
-	items, err := service.AdminUploadStats()
-	if err != nil {
-		return nil, err
-	}
-	return gin.H{"items": items}, nil
+	return service.AdminUploadStats()
 }
 
 func deleteUpload(c *gin.Context) (any, error) {

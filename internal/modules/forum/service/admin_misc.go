@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Subilan/go-aliyunmc/internal/common/config"
 	"github.com/Subilan/go-aliyunmc/internal/common/h"
 	"github.com/Subilan/go-aliyunmc/internal/common/log_util"
 	"github.com/Subilan/go-aliyunmc/internal/common/store"
@@ -122,8 +123,8 @@ func AdminListUploads(kind string, ownerID uint, page, pageSize int) (dto.Page[d
 	return dto.NewPage(items, total, page, pageSize), nil
 }
 
-// AdminUploadStats 返回按用途统计的上传数量与字节数。
-func AdminUploadStats() ([]dto.UploadStats, error) {
+// AdminUploadStats 返回按用途统计的上传数量、字节数与磁盘配额。
+func AdminUploadStats() (*dto.UploadStatsSummary, error) {
 	var rows []struct {
 		Kind      string
 		Count     int64
@@ -141,7 +142,13 @@ func AdminUploadStats() ([]dto.UploadStats, error) {
 	for _, row := range rows {
 		items = append(items, dto.UploadStats{Kind: row.Kind, Count: row.Count, SizeBytes: row.SizeBytes})
 	}
-	return items, nil
+
+	cfg := config.Get().Forum
+	return &dto.UploadStatsSummary{
+		Items:          items,
+		QuotaBytes:     cfg.StorageQuotaBytes,
+		UserQuotaBytes: cfg.UserQuotaBytes,
+	}, nil
 }
 
 // AdminDeleteUpload 删除未被引用的上传文件。

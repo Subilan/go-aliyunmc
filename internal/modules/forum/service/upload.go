@@ -34,6 +34,17 @@ func CreateUpload(user *models.User, kindValue, originalName string, data []byte
 		}
 	}
 
+	// 全站磁盘配额，避免整个论坛写满服务器磁盘。
+	if quota := config.Get().Forum.StorageQuotaBytes; quota > 0 {
+		used, err := dao.UploadBytesTotal()
+		if err != nil {
+			return nil, err
+		}
+		if used+int64(len(data)) > quota {
+			return nil, h.HttpError(http.StatusRequestEntityTooLarge, "上传空间不足")
+		}
+	}
+
 	saved, err := uploads.Save(data, kind)
 	if err != nil {
 		switch {

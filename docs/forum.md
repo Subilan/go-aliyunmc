@@ -115,7 +115,8 @@ chip 契约：
 - 读取：`GET /forum-v1/files/*key`，随机 key 不可猜，响应 `immutable` 缓存头并支持 Range。
 - 头像/背景通过 `PUT /me/avatar`、`PUT /me/background` 绑定上传 ID；未设置头像时使用
   `default_avatar_url_template`（`{username}` 占位）。
-- 每用户上传占用受 `user_quota_bytes` 限制（默认 256 MiB），超限返回 413。
+- 每用户上传占用受 `user_quota_bytes` 限制（默认 256 MiB），全站总占用受
+  `storage_quota_bytes` 限制（默认 1 GiB），超限返回 413。
 - 后台删除上传前检查用户资料与正文引用，被引用返回 409。
 
 ## 通知

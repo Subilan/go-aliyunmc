@@ -42,6 +42,9 @@ type Forum struct {
 	// UserQuotaBytes 是每个用户上传文件占用的磁盘上限；0 表示不限制。
 	UserQuotaBytes int64 `toml:"user_quota_bytes" default:"268435456" comment:"每个用户上传文件占用的磁盘上限（字节）；0 表示不限制"`
 
+	// StorageQuotaBytes 是论坛上传文件允许占用的总磁盘上限；0 表示不限制。
+	StorageQuotaBytes int64 `toml:"storage_quota_bytes" default:"1073741824" comment:"论坛上传文件总占用上限（字节）；0 表示不限制"`
+
 	// RateLimit 是论坛接口的进程内限流配置。
 	RateLimit ForumRateLimit `toml:"rate_limit"`
 }
